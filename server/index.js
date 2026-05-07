@@ -1,14 +1,14 @@
 import server from './server/index.js';
 
-import guard from './apps/guard/index.js';
-import terminal from './apps/terminal/index.js';
+import auth from './services/auth/index.js';
+import terminal from './services/terminal/index.js';
 import agents from './agents/index.js';
 
 async function boot() {
     console.log('🚀 正在启动 Meem...');
     agents.ensureSession();
 
-    guard.bindOnGrant((clientId) => {
+    auth.bindOnGrant((clientId) => {
         terminal.sendSnapshotTo(clientId);
         agents.sendConfig(`web:${clientId}`);
         agents.sendProviders(`web:${clientId}`);
@@ -28,7 +28,7 @@ async function boot() {
     server.ws.attach(httpServer, {
         onOpen: (clientId) => {
             // 新浏览器接入：推送各 feature 的初始快照
-            guard.sendAuthMode();
+            auth.sendAuthMode();
             terminal.sendSnapshotTo(clientId);
             agents.sendConfig(`web:${clientId}`);
             agents.sendProviders(`web:${clientId}`);

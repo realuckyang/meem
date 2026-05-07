@@ -1,6 +1,6 @@
 import os from 'os';
 import { spawn } from 'child_process';
-import { getDefaultShell, ensureDirectory, getDefaultDirectory } from '../../../apps/terminal/core/shell.js';
+import { getDefaultShell, ensureDirectory, getDefaultDirectory } from '../../../services/terminal/core/shell.js';
 
 export default async function terminal({ command, cwd, timeoutSeconds = 30 } = {}, { signal } = {}) {
     if (!command) throw new Error('缺少 command');

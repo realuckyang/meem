@@ -1,6 +1,6 @@
 import ws from './ws.js';
-import guard from '../apps/guard/index.js';
-import terminal from '../apps/terminal/index.js';
+import auth from '../services/auth/index.js';
+import terminal from '../services/terminal/index.js';
 import agents from '../agents/index.js';
 
 let onDevicesChanged = () => {};
@@ -23,7 +23,7 @@ async function dispatch(message) {
     if (t === 'connection.ready') return;
 
     if (t.startsWith('auth.')) {
-        if (await guard.handle(message)) return;
+        if (await auth.handle(message)) return;
     }
     if (t.startsWith('terminal.') || t.startsWith('data.') || t.startsWith('system.')) {
         if (await terminal.handle(message)) return;
