@@ -3,7 +3,6 @@ import path from 'path';
 import express from 'express';
 import { fileURLToPath } from 'url';
 import { HTTP_HOST, HTTP_PORT } from '../core/env.js';
-import todosRoute from '../routes/todos.js';
 import fsRoute from '../routes/fs.js';
 import screenRoute from '../routes/screen.js';
 import docsRoute from '../routes/docs.js';
@@ -19,7 +18,6 @@ function createApp() {
     app.use(express.json({ limit: '4mb' }));
 
     // /api/* 路由
-    app.use('/api/todos', todosRoute);
     app.use('/api/fs', fsRoute);
     app.use('/api/screen', screenRoute);
     app.use('/api/docs', docsRoute);

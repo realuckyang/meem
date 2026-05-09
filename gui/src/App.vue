@@ -5,6 +5,7 @@ import { useWsStore } from '@/stores/ws';
 import AppHeader from '@/components/AppHeader.vue';
 import AppDrawer from '@/components/AppDrawer.vue';
 import ToastHost from '@/components/ToastHost.vue';
+import AppDialog from '@/components/AppDialog.vue';
 
 const ws = useWsStore();
 const route = useRoute();
@@ -39,4 +40,5 @@ watch(
     </router-view>
 
     <ToastHost />
+    <AppDialog />
 </template>

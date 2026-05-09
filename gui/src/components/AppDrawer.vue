@@ -21,7 +21,6 @@ function navigateTo(path) {
             <div class="shrink-0 flex items-center justify-between px-4 py-3 border-b border-zinc-800">
                 <div class="flex items-baseline gap-2 min-w-0">
                     <div class="font-serif font-bold text-[16px] tracking-tight text-zinc-100">Meem</div>
-                    <div class="text-[11px] text-zinc-500">漫游</div>
                 </div>
                 <button @click="view.closeDrawer"
                     class="w-7 h-7 flex items-center justify-center text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded transition-colors">
@@ -45,6 +44,23 @@ function navigateTo(path) {
                     <span>{{ item.label }}</span>
                 </button>
             </nav>
+
+            <div class="shrink-0 border-t border-zinc-800 p-2">
+                <button @click="navigateTo('/settings')"
+                    class="relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm transition-colors"
+                    :class="route.path === '/settings'
+                        ? 'bg-zinc-800 text-zinc-100'
+                        : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800'">
+                    <span v-if="route.path === '/settings'"
+                        class="absolute left-0 top-2 bottom-2 w-[2px] rounded-r"
+                        style="background: var(--color-accent);"></span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6l-.09.09a2 2 0 0 1-3.82 0L10 20a1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1l-.09-.09a2 2 0 0 1 0-3.82L4 10a1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6l.09-.09a2 2 0 0 1 3.82 0L14 4a1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.2.34.4.66.6 1l.09.09a2 2 0 0 1 0 3.82L20 14c-.2.34-.4.66-.6 1z" />
+                    </svg>
+                    <span>设置</span>
+                </button>
+            </div>
 
         </aside>
     </div>

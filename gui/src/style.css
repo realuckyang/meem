@@ -47,6 +47,39 @@
     --c-terminal-bg:var(--color-bg);
 }
 
+:root[data-theme="light"] {
+    --color-bg:        #f7f1e6;
+    --color-bg-elev:   #fffaf2;
+    --color-bg-hi:     #efe3d2;
+    --color-line:      #dfcfb9;
+    --color-line-hi:   #cdb89d;
+    --color-ink:       #242019;
+    --color-muted:     #706657;
+    --color-faint:     #9a8c78;
+    --color-accent:    #b75f34;
+    --color-accent-hi: #d07445;
+    --color-good:      #287a45;
+    --color-bad:       #bf3d2b;
+
+    --c-bg:         var(--color-bg);
+    --c-surface:    var(--color-bg-elev);
+    --c-elevated:   var(--color-bg-hi);
+    --c-border:     var(--color-line-hi);
+    --c-border-soft:var(--color-line);
+    --c-text:       var(--color-ink);
+    --c-text-muted: var(--color-muted);
+    --c-text-dim:   var(--color-faint);
+    --c-accent:     var(--color-accent);
+    --c-accent-hov: var(--color-accent-hi);
+    --c-accent-soft:color-mix(in srgb, var(--color-accent) 16%, transparent);
+    --c-accent-fg:  var(--color-bg);
+    --c-danger:     var(--color-bad);
+    --c-warning:    var(--color-accent);
+    --c-scroll:     var(--color-line-hi);
+    --c-scroll-hov: #bfa98d;
+    --c-terminal-bg:var(--color-bg);
+}
+
 /* Base */
 html, body {
     height: 100%;
@@ -134,6 +167,37 @@ header, footer, section, button, [role="tab"] {
 .safe-top { padding-top: max(env(safe-area-inset-top), 0.5rem); }
 .safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 0.5rem); }
 
+@layer components {
+    .tb-btn {
+        @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-line bg-bg-elev text-ink transition-colors duration-150;
+    }
+    .tb-btn:hover {
+        @apply border-accent;
+    }
+    .tb-btn:disabled,
+    .tb-btn-sm:disabled {
+        @apply cursor-not-allowed opacity-45;
+    }
+    .tb-btn:disabled:hover {
+        @apply border-line;
+    }
+    .tb-btn.is-active {
+        @apply border-accent text-accent;
+    }
+    .tb-btn-sm {
+        @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted transition-colors duration-150;
+    }
+    .tb-btn-sm:hover {
+        @apply bg-bg-hi text-ink;
+    }
+    .icon-btn {
+        @apply flex h-8 w-8 items-center justify-center rounded text-muted transition-colors duration-150 hover:bg-bg-hi hover:text-ink;
+    }
+    .icon-btn-danger {
+        @apply flex h-8 w-8 items-center justify-center rounded text-muted transition-colors duration-150 hover:bg-red-950/40 hover:text-red-300;
+    }
+}
+
 /* =================================================================
    Markdown prose（assistant 输出用）
    ================================================================= */
@@ -155,7 +219,7 @@ header, footer, section, button, [role="tab"] {
     font-size: .88em;
 }
 .md pre {
-    background: #0a0908;
+    background: color-mix(in srgb, var(--color-bg) 88%, #000);
     padding: 12px 14px;
     border-radius: 8px;
     overflow-x: auto;

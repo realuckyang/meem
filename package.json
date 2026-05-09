@@ -1,12 +1,16 @@
 {
-  "name": "meem-new",
+  "name": "meem",
   "version": "0.2.0",
   "private": true,
   "description": "Meem (local-only edition): server + gui, 无 Cloudflare Worker 依赖",
+  "workspaces": [
+    "server",
+    "gui"
+  ],
   "scripts": {
-    "install:all": "npm install --prefix server && npm install --prefix gui",
-    "build": "npm run build --prefix gui",
-    "start": "npm start --prefix server",
+    "install:all": "npm install",
+    "build": "npm run build -w meem-gui",
+    "start": "npm start -w meem-server",
     "serve": "npm run build && npm start"
   }
 }

@@ -2,17 +2,12 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { useWsStore } from '@/stores/ws';
 
 const routes = [
-    { path: '/', redirect: '/todo' },
+    { path: '/', redirect: '/docs' },
     {
         path: '/guard',
         name: 'guard',
         meta: { public: true },
         component: () => import('./views/GuardView.vue'),
-    },
-    {
-        path: '/todo',
-        name: 'todo',
-        component: () => import('./views/TodoView.vue'),
     },
     {
         path: '/terminal',
@@ -37,9 +32,14 @@ const routes = [
     {
         path: '/docs',
         name: 'docs',
-        component: () => import('./views/DocsView.vue'),
+        component: () => import('./views/docs/DocsView.vue'),
     },
-    { path: '/:pathMatch(.*)*', redirect: '/todo' },
+    {
+        path: '/settings',
+        name: 'settings',
+        component: () => import('./views/SettingsView.vue'),
+    },
+    { path: '/:pathMatch(.*)*', redirect: '/docs' },
 ];
 
 export const router = createRouter({

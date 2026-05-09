@@ -34,7 +34,7 @@ watch(() => ws.authenticated, (v) => { if (v) toHome(); });
     <main class="flex-1 min-h-0 flex items-center justify-center px-6 py-10 overflow-y-auto bg-bg">
         <div class="w-full max-w-sm flex flex-col items-center">
             <h1 class="font-serif font-black text-[40px] leading-none tracking-tight text-center text-ink">
-                漫游<span class="text-accent">.</span>
+                Meem<span class="text-accent">.</span>
             </h1>
 
             <div v-if="status" class="mt-6 flex items-center gap-2">

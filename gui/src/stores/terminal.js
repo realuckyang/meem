@@ -6,7 +6,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { useWsStore } from './ws';
 import { useToastStore } from './toast';
 
-const TERMINAL_THEME = {
+const DARK_TERMINAL_THEME = {
     background: '#0d0c0a',
     foreground: '#ede7d8',
     cursor: '#e6946b',
@@ -18,6 +18,25 @@ const TERMINAL_THEME = {
     brightYellow: '#f0c982', brightBlue: '#a7bcd6', brightMagenta: '#dab0c9',
     brightCyan: '#9fc5c5', brightWhite: '#f5f0e4',
 };
+
+const LIGHT_TERMINAL_THEME = {
+    background: '#f7f1e6',
+    foreground: '#242019',
+    cursor: '#b75f34',
+    cursorAccent: '#f7f1e6',
+    selectionBackground: '#dfcfb9',
+    black: '#242019', red: '#bf3d2b', green: '#287a45', yellow: '#9a6700',
+    blue: '#315f8f', magenta: '#8b4d7a', cyan: '#2c6f70', white: '#fffaf2',
+    brightBlack: '#706657', brightRed: '#d0503c', brightGreen: '#3d9259',
+    brightYellow: '#b98212', brightBlue: '#4575aa', brightMagenta: '#a66694',
+    brightCyan: '#3f8586', brightWhite: '#ffffff',
+};
+
+function getTerminalTheme() {
+    return document.documentElement.dataset.theme === 'light'
+        ? LIGHT_TERMINAL_THEME
+        : DARK_TERMINAL_THEME;
+}
 
 const FONT_KEY = 'terminal_fontSize';
 const HISTORY_KEY = 'terminal_history';
@@ -58,6 +77,13 @@ const terminalInstances = new Map();
 const fitAddons = new Map();
 const terminalContainers = new Map();
 const pendingOutput = new Map();
+let themeObserver = null;
+
+function isContainerFitReady(container) {
+    if (!container || container.offsetParent === null) return false;
+    const rect = container.getBoundingClientRect();
+    return rect.width >= 120 && rect.height >= 80;
+}
 
 function queueOutput(terminalId, output) {
     if (!output) return;
@@ -90,6 +116,13 @@ export const useTerminalStore = defineStore('terminal', () => {
     let historyIdx = history.value.length;
     let historyDraft = '';
     let ready = false;
+
+    function applyTerminalTheme() {
+        const theme = getTerminalTheme();
+        for (const terminal of terminalInstances.values()) {
+            terminal.options.theme = theme;
+        }
+    }
 
     function activeTerminal() {
         return terminalTabs.value.find((item) => item.id === activeTerminalId.value) || terminalTabs.value[0] || null;
@@ -128,7 +161,7 @@ export const useTerminalStore = defineStore('terminal', () => {
             fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
             scrollback: 5000,
             allowProposedApi: true,
-            theme: TERMINAL_THEME,
+            theme: getTerminalTheme(),
         });
         const fitAddon = new FitAddon();
         terminal.loadAddon(fitAddon);
@@ -151,7 +184,9 @@ export const useTerminalStore = defineStore('terminal', () => {
         const container = terminalContainers.get(terminalId);
         if (container && !terminal.element) {
             terminal.open(container);
-            fitAddon.fit();
+            if (terminalId === activeTerminalId.value && isContainerFitReady(container)) {
+                fitAddon.fit();
+            }
         }
         flushOutput(terminalId);
         return terminal;
@@ -165,6 +200,8 @@ export const useTerminalStore = defineStore('terminal', () => {
 
     function sendResize(terminalId = activeTerminalId.value) {
         if (!terminalId) return;
+        const container = terminalContainers.get(terminalId);
+        if (!isContainerFitReady(container)) return;
         const terminal = ensureTerminalInstance(terminalId);
         if (!terminal) return;
         ws.sendMsg({
@@ -181,19 +218,22 @@ export const useTerminalStore = defineStore('terminal', () => {
         if (!terminal?.element) {
             terminal.open(container);
         }
-        fitAddons.get(terminalId)?.fit();
         flushOutput(terminalId);
-        if (terminalId === activeTerminalId.value) sendResize(terminalId);
+        if (terminalId === activeTerminalId.value) {
+            requestAnimationFrame(() => fitTerminal(terminalId));
+        }
     }
 
     function fitTerminal(terminalId = activeTerminalId.value) {
         if (!terminalId) return;
+        const container = terminalContainers.get(terminalId);
+        if (!isContainerFitReady(container)) return;
         fitAddons.get(terminalId)?.fit();
         sendResize(terminalId);
     }
 
     function fitActiveTerminal() {
-        fitTerminal(activeTerminalId.value);
+        requestAnimationFrame(() => fitTerminal(activeTerminalId.value));
     }
 
     function addRecentDir(dir) {
@@ -222,7 +262,7 @@ export const useTerminalStore = defineStore('terminal', () => {
         if (!terminalId || terminalId === activeTerminalId.value) return;
         activeTerminalId.value = terminalId;
         ws.sendMsg({ type: 'terminal.activate', to: 'desktop', data: { terminalId } });
-        setTimeout(() => fitTerminal(terminalId), 30);
+        requestAnimationFrame(() => setTimeout(() => fitTerminal(terminalId), 30));
     }
 
     function closeTerminal(terminalId = activeTerminalId.value) {
@@ -233,6 +273,11 @@ export const useTerminalStore = defineStore('terminal', () => {
     function ensureHandlers() {
         if (ready) return;
         ready = true;
+
+        if (!themeObserver) {
+            themeObserver = new MutationObserver(applyTerminalTheme);
+            themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+        }
 
         ws.onMessage('data.output', (msg) => {
             const terminalId = msg.data?.terminalId;
