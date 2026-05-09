@@ -1,6 +1,6 @@
 export default {
-    HTTP_HOST: '127.0.0.1', // 服务监听地址；远程访问通过 ngrok / cloudflared 等隧道工具暴露
-    HTTP_PORT: '9001',      // 服务监听端口
+    HTTP_HOST: '0.0.0.0',   // 服务监听地址；0.0.0.0 允许局域网设备访问
+    HTTP_PORT: '9503',      // 服务监听端口
     SESSION_ID: 'local',    // 会话标识；本地架构下任意字符串都行
     SESSION_PASSWORD: '',   // 远程网页访问密码；留空则不需要登录校验
     PLAYWRIGHT_BROWSER_CHANNEL: 'chrome', // Playwright 独立浏览器通道，常用值 chrome / msedge / chromium

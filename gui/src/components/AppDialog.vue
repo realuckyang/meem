@@ -33,31 +33,35 @@ function onKeyEnter(e) {
             class="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60"
             @click.self="dialog.dismiss"
             @keydown.esc="dialog.dismiss">
-            <div class="w-full max-w-sm rounded-xl border border-zinc-800 bg-zinc-900 shadow-2xl overflow-hidden">
-                <div class="px-5 pt-5 pb-2">
-                    <div v-if="dialog.title" class="text-[15px] font-semibold text-zinc-100">{{ dialog.title }}</div>
-                    <div v-if="dialog.message" class="mt-1 text-sm text-zinc-400 leading-relaxed">{{ dialog.message }}</div>
+            <div
+                class="w-full max-w-md rounded-md border shadow-2xl overflow-hidden"
+                style="background-color: var(--color-bg-elev); border-color: var(--color-line-hi);">
+
+                <div
+                    class="px-4 py-3 border-b text-[14px] font-semibold"
+                    style="border-color: var(--color-line-hi); color: var(--color-ink);">
+                    {{ dialog.title || '确认' }}
                 </div>
 
-                <div v-if="dialog.mode === 'prompt'" class="px-5 pt-2 pb-1">
-                    <input ref="inputEl"
-                        v-model="dialog.inputValue"
-                        :placeholder="dialog.placeholder"
-                        @keydown.enter="onKeyEnter"
-                        type="text"
-                        class="w-full px-3 h-10 bg-zinc-950 text-zinc-100 placeholder:text-zinc-600 border border-zinc-800 rounded focus:outline-none focus:border-emerald-600 transition-colors" />
+                <div class="px-4 py-4">
+                    <div v-if="dialog.message" class="text-[13px] leading-relaxed" style="color: var(--color-ink);">{{ dialog.message }}</div>
+                    <div v-if="dialog.mode === 'prompt'" class="mt-3">
+                        <input ref="inputEl"
+                            v-model="dialog.inputValue"
+                            :placeholder="dialog.placeholder"
+                            @keydown.enter="onKeyEnter"
+                            type="text"
+                            class="gh-input" />
+                    </div>
                 </div>
 
-                <div class="flex items-center justify-end gap-2 px-5 py-4">
-                    <button @click="dialog.dismiss"
-                        class="inline-flex h-9 items-center justify-center rounded border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 px-4 text-sm text-zinc-200 transition-colors">
-                        {{ dialog.cancelText }}
-                    </button>
-                    <button @click="dialog.accept"
-                        class="inline-flex h-9 items-center justify-center rounded px-4 text-sm font-medium transition-colors"
-                        :class="dialog.danger
-                            ? 'border border-rose-700 bg-rose-600 hover:bg-rose-500 text-white'
-                            : 'border border-emerald-700 bg-emerald-600 hover:bg-emerald-500 text-white'">
+                <div
+                    class="flex items-center justify-end gap-2 px-4 py-3 border-t"
+                    style="border-color: var(--color-line-hi); background-color: var(--color-bg);">
+                    <button @click="dialog.dismiss" class="gh-btn">{{ dialog.cancelText }}</button>
+                    <button
+                        @click="dialog.accept"
+                        :class="dialog.danger ? 'gh-btn-danger' : 'gh-btn-primary'">
                         {{ dialog.confirmText }}
                     </button>
                 </div>

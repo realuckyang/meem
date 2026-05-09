@@ -271,6 +271,15 @@ export const useFilesStore = defineStore('files', () => {
         } catch { toast.show('复制失败'); }
     }
 
+    async function copyPreviewPath() {
+        const path = preview.value?.path;
+        if (!path) return;
+        try {
+            await navigator.clipboard.writeText(path);
+            toast.show('路径已复制');
+        } catch { toast.show('复制失败'); }
+    }
+
     async function uploadFiles(fileList) {
         const files = Array.from(fileList || []);
         if (!files.length) return;
@@ -301,7 +310,7 @@ export const useFilesStore = defineStore('files', () => {
         preview, actionSheet, breadcrumbs,
         filterText, sortBy, sortDir, setSort,
         ensureLoaded, refresh, navigate, goUp, goHome, toggleHidden,
-        openEntry, openPreview, closePreview, downloadPreview,
+        openEntry, openPreview, closePreview, downloadPreview, copyPreviewPath,
         openActionSheet, closeActionSheet,
         downloadEntry, deleteEntry, renameEntry,
         createFolder, createFile, copyCurrentPath, uploadFiles,

@@ -52,6 +52,31 @@ const filteredDocs = computed(() => {
 const empty = computed(() => !loading.value && !folders.value.length && !docs.value.length);
 const filteredEmpty = computed(() => !loading.value && !filteredFolders.value.length && !filteredDocs.value.length);
 const renderedHtml = computed(() => renderMd(editorContent.value));
+const currentFolderPath = computed(() => {
+    const names = breadcrumb.value.map((item) => item.name).filter(Boolean);
+    return ['文档', ...names].join('/');
+});
+const currentDocPath = computed(() => {
+    const title = editorTitle.value || editing.value?.title || '未命名';
+    return `${currentFolderPath.value}/${title}`;
+});
+
+async function copyText(text) {
+    try {
+        await navigator.clipboard.writeText(text);
+        toast.show('路径已复制');
+    } catch {
+        toast.show('复制失败');
+    }
+}
+
+function copyCurrentFolderPath() {
+    copyText(currentFolderPath.value);
+}
+
+function copyCurrentDocPath() {
+    copyText(currentDocPath.value);
+}
 
 async function refresh() {
     loading.value = true;
@@ -209,8 +234,10 @@ onMounted(refresh);
             :updated-at="editing?.updated_at"
             :rendered-html="renderedHtml"
             :fmt-time="fmtTime"
+            :doc-path="currentDocPath"
             @close="closeEditor"
             @toggle-edit="editMode = !editMode"
+            @copy-path="copyCurrentDocPath"
             @save-input="scheduleSave"
             @save-blur="flushSave" />
 
@@ -222,6 +249,7 @@ onMounted(refresh);
                     :show-search="showSearch"
                     @toggle-search="toggleSearch"
                     @refresh="refresh"
+                    @copy-path="copyCurrentFolderPath"
                     @create-doc="createDoc"
                     @create-folder="createFolder" />
                 <DocsBreadcrumb

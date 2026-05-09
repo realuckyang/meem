@@ -83,6 +83,20 @@ CREATE TABLE IF NOT EXISTS docs (
 
 CREATE INDEX IF NOT EXISTS idx_docs_folder ON docs(folder_id, updated_at DESC);
 
+CREATE TABLE IF NOT EXISTS memories (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    title       TEXT NOT NULL,
+    summary     TEXT NOT NULL DEFAULT '',
+    content     TEXT NOT NULL DEFAULT '',
+    access      TEXT NOT NULL DEFAULT 'none' CHECK (access IN ('none', 'summary', 'full')),
+    pinned      INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_memories_access_updated ON memories(access, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_memories_pinned_updated ON memories(pinned DESC, updated_at DESC);
+
 CREATE TABLE IF NOT EXISTS prompts (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     title       TEXT NOT NULL,

@@ -6,6 +6,21 @@ export const useViewStore = defineStore('view', () => {
 
     const navItems = [
         {
+            path: '/home',
+            label: '主页',
+            iconPath: 'M3 10.5 12 3l9 7.5 M5 10v10h14V10 M9 20v-6h6v6',
+        },
+        {
+            path: '/activity',
+            label: '动态',
+            iconPath: 'M3 12h4l3 8 4-16 3 8h4',
+        },
+        {
+            path: '/memory',
+            label: '记忆',
+            iconPath: 'M12 3a7 7 0 0 0-7 7c0 2.4 1.2 4.4 3 5.7V19a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-3.3a7 7 0 0 0-4-12.7z M9 10h.01 M15 10h.01 M10 14h4',
+        },
+        {
             path: '/docs',
             label: '文档',
             iconPath: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M9 13h6 M9 17h6',

@@ -5,6 +5,7 @@ const props = defineProps({
     editMode: Boolean,
     dirty: Boolean,
     updatedAt: { type: String, default: '' },
+    docPath: { type: String, default: '' },
     title: { type: String, default: '' },
     content: { type: String, default: '' },
     renderedHtml: { type: String, default: '' },
@@ -14,6 +15,7 @@ const props = defineProps({
 const emit = defineEmits([
     'close',
     'toggle-edit',
+    'copy-path',
     'update:title',
     'update:content',
     'save-input',
@@ -44,9 +46,14 @@ const editorContent = computed({
                 <span v-else-if="editMode">已保存 · {{ fmtTime(updatedAt) }}</span>
                 <span v-else>{{ fmtTime(updatedAt) }}</span>
             </span>
+            <button @click="emit('copy-path')"
+                title="复制路径"
+                class="tb-btn ml-auto">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>
             <button @click="emit('toggle-edit')"
                 :title="editMode ? '完成' : '编辑'"
-                class="ml-auto inline-flex h-9 items-center gap-1.5 rounded border px-3 text-sm transition-colors"
+                class="inline-flex h-9 items-center gap-1.5 rounded border px-3 text-sm transition-colors"
                 :class="editMode
                     ? 'border-accent bg-accent text-bg hover:bg-accent-hi'
                     : 'border-line bg-bg-elev text-ink hover:border-accent'">

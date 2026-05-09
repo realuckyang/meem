@@ -14,6 +14,10 @@ const files = useFilesStore();
                     <div class="text-[11px] text-zinc-500 truncate">{{ files.preview.mime || '未知类型' }} · {{ humanSize(files.preview.size) }}</div>
                 </div>
                 <div class="shrink-0 flex items-center gap-1">
+                    <button @click="files.copyPreviewPath"
+                        class="px-3 h-8 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs rounded border border-zinc-700 transition-colors">
+                        复制路径
+                    </button>
                     <button @click="files.downloadPreview"
                         class="px-3 h-8 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs rounded border border-zinc-700 transition-colors">
                         下载

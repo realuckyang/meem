@@ -1,8 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useWsStore } from '@/stores/ws';
+import ActivityView from './views/ActivityView.vue';
+import HomeView from './views/HomeView.vue';
+import MemoryView from './views/MemoryView.vue';
+import MemoryFormView from './views/memory/MemoryFormView.vue';
 
 const routes = [
-    { path: '/', redirect: '/docs' },
+    { path: '/', redirect: '/home' },
     {
         path: '/guard',
         name: 'guard',
@@ -13,6 +17,31 @@ const routes = [
         path: '/terminal',
         name: 'terminal',
         component: () => import('./views/TerminalView.vue'),
+    },
+    {
+        path: '/home',
+        name: 'home',
+        component: HomeView,
+    },
+    {
+        path: '/activity',
+        name: 'activity',
+        component: ActivityView,
+    },
+    {
+        path: '/memory',
+        name: 'memory',
+        component: MemoryView,
+    },
+    {
+        path: '/memory/new',
+        name: 'memory-new',
+        component: MemoryFormView,
+    },
+    {
+        path: '/memory/:id',
+        name: 'memory-detail',
+        component: MemoryFormView,
     },
     {
         path: '/files',
@@ -39,7 +68,7 @@ const routes = [
         name: 'settings',
         component: () => import('./views/SettingsView.vue'),
     },
-    { path: '/:pathMatch(.*)*', redirect: '/docs' },
+    { path: '/:pathMatch(.*)*', redirect: '/home' },
 ];
 
 export const router = createRouter({

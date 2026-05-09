@@ -1,32 +1,38 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400..900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
-
 @import "tailwindcss";
 @import "@xterm/xterm/css/xterm.css";
 
 /* =================================================================
-   单一暖暗主题 —— 取自 chatnext-agent 的视觉语言
+   GitHub Primer 配色 —— 深色 + 浅色 双主题
+   参考 https://primer.style/ 的 canvas / fg / border / accent token
    ================================================================= */
 
 @theme {
-    --color-bg:        #0d0c0a;
-    --color-bg-elev:   #161310;
-    --color-bg-hi:     #1e1a14;
-    --color-line:      #2a241c;
-    --color-line-hi:   #3a3226;
-    --color-ink:       #ede7d8;
-    --color-muted:     #9a9180;
-    --color-faint:     #6a6355;
-    --color-accent:    #e6946b;
-    --color-accent-hi: #f1a57d;
-    --color-good:      #7bcc8b;
-    --color-bad:       #ff6a4a;
+    /* —— 深色（默认） —— */
+    --color-bg:        #0d1117;   /* canvas-default */
+    --color-bg-elev:   #151b23;   /* canvas-overlay */
+    --color-bg-hi:     #21262d;   /* canvas-subtle / btn hover */
+    --color-line:      #21262d;   /* border-muted */
+    --color-line-hi:   #30363d;   /* border-default */
+    --color-ink:       #e6edf3;   /* fg-default */
+    --color-muted:     #7d8590;   /* fg-muted */
+    --color-faint:     #6e7681;   /* fg-subtle */
 
-    --font-sans:  'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', sans-serif;
-    --font-serif: 'Fraunces', Georgia, 'Songti SC', 'STSong', serif;
-    --font-mono:  'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    /* GitHub 主操作按钮是绿色，链接 / 焦点是蓝色 */
+    --color-accent:    #238636;   /* btn-primary-bg (success-emphasis) */
+    --color-accent-hi: #2ea043;   /* btn-primary-hover */
+    --color-link:      #2f81f7;   /* accent-fg dark */
+    --color-link-hi:   #58a6ff;
+    --color-good:      #3fb950;   /* success-fg */
+    --color-bad:       #f85149;   /* danger-fg */
+    --color-warn:      #d29922;   /* attention-fg */
+
+    /* 字体：完全跟 GitHub 一致，去掉 Fraunces 衬线 */
+    --font-sans:  -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, 'PingFang SC', 'Noto Sans SC', sans-serif;
+    --font-serif: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, 'PingFang SC', 'Noto Sans SC', sans-serif;
+    --font-mono:  ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
 }
 
-/* 兼容老映射层的别名（旧组件里还有 zinc/emerald 类在用） */
+/* 兼容老映射（旧组件仍然有 zinc/emerald 类） */
 :root {
     --c-bg:         var(--color-bg);
     --c-surface:    var(--color-bg-elev);
@@ -38,28 +44,32 @@
     --c-text-dim:   var(--color-faint);
     --c-accent:     var(--color-accent);
     --c-accent-hov: var(--color-accent-hi);
-    --c-accent-soft:color-mix(in srgb, var(--color-accent) 20%, transparent);
-    --c-accent-fg:  var(--color-bg);
+    --c-accent-soft:color-mix(in srgb, var(--color-accent) 24%, transparent);
+    --c-accent-fg:  #ffffff;
     --c-danger:     var(--color-bad);
-    --c-warning:    var(--color-accent);
+    --c-warning:    var(--color-warn);
     --c-scroll:     var(--color-line-hi);
-    --c-scroll-hov: #4a4234;
-    --c-terminal-bg:var(--color-bg);
+    --c-scroll-hov: #484f58;
+    --c-terminal-bg:#010409;       /* canvas-inset，更深 */
 }
 
 :root[data-theme="light"] {
-    --color-bg:        #f7f1e6;
-    --color-bg-elev:   #fffaf2;
-    --color-bg-hi:     #efe3d2;
-    --color-line:      #dfcfb9;
-    --color-line-hi:   #cdb89d;
-    --color-ink:       #242019;
-    --color-muted:     #706657;
-    --color-faint:     #9a8c78;
-    --color-accent:    #b75f34;
-    --color-accent-hi: #d07445;
-    --color-good:      #287a45;
-    --color-bad:       #bf3d2b;
+    --color-bg:        #ffffff;
+    --color-bg-elev:   #f6f8fa;
+    --color-bg-hi:     #eaeef2;
+    --color-line:      #d8dee4;
+    --color-line-hi:   #d0d7de;
+    --color-ink:       #1f2328;
+    --color-muted:     #59636e;
+    --color-faint:     #6e7781;
+
+    --color-accent:    #1f883d;
+    --color-accent-hi: #1a7f37;
+    --color-link:      #0969da;
+    --color-link-hi:   #0550ae;
+    --color-good:      #1a7f37;
+    --color-bad:       #cf222e;
+    --color-warn:      #9a6700;
 
     --c-bg:         var(--color-bg);
     --c-surface:    var(--color-bg-elev);
@@ -72,11 +82,11 @@
     --c-accent:     var(--color-accent);
     --c-accent-hov: var(--color-accent-hi);
     --c-accent-soft:color-mix(in srgb, var(--color-accent) 16%, transparent);
-    --c-accent-fg:  var(--color-bg);
+    --c-accent-fg:  #ffffff;
     --c-danger:     var(--color-bad);
-    --c-warning:    var(--color-accent);
+    --c-warning:    var(--color-warn);
     --c-scroll:     var(--color-line-hi);
-    --c-scroll-hov: #bfa98d;
+    --c-scroll-hov: #afb8c1;
     --c-terminal-bg:var(--color-bg);
 }
 
@@ -93,7 +103,8 @@ body {
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
     font-family: var(--font-sans);
-    font-feature-settings: 'ss01', 'cv11';
+    font-size: 14px;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
@@ -104,11 +115,14 @@ body {
     background-color: var(--color-bg);
 }
 input, textarea, button, select { font: inherit; }
-input, textarea { font-size: 16px; }
+input, textarea { font-size: 14px; }
 header, footer, section, button, [role="tab"] {
     -webkit-user-select: none;
     user-select: none;
 }
+
+a { color: var(--color-link); text-decoration: none; }
+a:hover { text-decoration: underline; }
 
 .xterm { padding: 8px; }
 .xterm-viewport { overflow-y: auto !important; background: transparent !important; }
@@ -126,9 +140,7 @@ header, footer, section, button, [role="tab"] {
 }
 .pulse { animation: pulse-dot 1.2s ease-in-out infinite; }
 
-@keyframes pulse-soft {
-    50% { opacity: .35; }
-}
+@keyframes pulse-soft { 50% { opacity: .35; } }
 
 @keyframes dot-bounce {
     0%, 100% { opacity: .3; transform: translateY(0); }
@@ -147,10 +159,7 @@ header, footer, section, button, [role="tab"] {
 }
 .sheet-enter { animation: sheet-in 0.2s ease-out; }
 
-@keyframes fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 .fade-enter { animation: fade-in 0.15s ease-out; }
 
 @keyframes slide-in-left {
@@ -159,74 +168,181 @@ header, footer, section, button, [role="tab"] {
 }
 .drawer-enter { animation: slide-in-left 0.2s ease-out; }
 
-::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar { width: 12px; height: 12px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--color-line); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: var(--color-line-hi); }
+::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--color-muted) 40%, transparent);
+    border-radius: 6px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--color-muted); background-clip: padding-box; border: 3px solid transparent; }
 
 .safe-top { padding-top: max(env(safe-area-inset-top), 0.5rem); }
 .safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 0.5rem); }
 
+/* =================================================================
+   GitHub 风格按钮 / 工具栏组件
+   ================================================================= */
 @layer components {
+    /* 默认按钮（次操作）—— GitHub btn-default */
+    .gh-btn {
+        @apply inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md border px-3 text-[13px] font-medium transition-colors;
+        background-color: var(--color-bg-hi);
+        border-color: var(--color-line-hi);
+        color: var(--color-ink);
+    }
+    .gh-btn:hover {
+        background-color: color-mix(in srgb, var(--color-bg-hi) 80%, var(--color-line-hi));
+        border-color: color-mix(in srgb, var(--color-line-hi) 70%, var(--color-muted));
+    }
+    .gh-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+    /* 主按钮（绿色 CTA）—— GitHub btn-primary */
+    .gh-btn-primary {
+        @apply inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md border px-3 text-[13px] font-medium transition-colors;
+        background-color: var(--color-accent);
+        border-color: color-mix(in srgb, #ffffff 12%, var(--color-accent));
+        color: #ffffff;
+    }
+    .gh-btn-primary:hover {
+        background-color: var(--color-accent-hi);
+    }
+    .gh-btn-primary:disabled { opacity: .6; cursor: not-allowed; }
+
+    /* 危险按钮 —— GitHub btn-danger */
+    .gh-btn-danger {
+        @apply inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md border px-3 text-[13px] font-medium transition-colors;
+        background-color: var(--color-bg-hi);
+        border-color: var(--color-line-hi);
+        color: var(--color-bad);
+    }
+    .gh-btn-danger:hover {
+        background-color: var(--color-bad);
+        border-color: var(--color-bad);
+        color: #ffffff;
+    }
+
+    /* 图标方按钮（工具栏） */
+    .gh-icon-btn {
+        @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition-colors;
+        background-color: var(--color-bg-hi);
+        border-color: var(--color-line-hi);
+        color: var(--color-muted);
+    }
+    .gh-icon-btn:hover {
+        color: var(--color-ink);
+        background-color: color-mix(in srgb, var(--color-bg-hi) 80%, var(--color-line-hi));
+    }
+    .gh-icon-btn.is-active {
+        color: var(--color-link);
+        border-color: color-mix(in srgb, var(--color-link) 60%, transparent);
+        background-color: color-mix(in srgb, var(--color-link) 14%, transparent);
+    }
+
+    /* 输入框（GitHub form-control） */
+    .gh-input {
+        @apply h-8 w-full rounded-md border bg-transparent px-3 text-[13px] outline-none transition-colors;
+        background-color: var(--color-bg);
+        border-color: var(--color-line-hi);
+        color: var(--color-ink);
+    }
+    .gh-input:focus {
+        border-color: var(--color-link);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-link) 30%, transparent);
+    }
+    .gh-input::placeholder { color: var(--color-faint); }
+
+    /* GitHub Box（卡片容器） */
+    .gh-box {
+        @apply rounded-md border;
+        background-color: var(--color-bg-elev);
+        border-color: var(--color-line-hi);
+    }
+    .gh-box-header {
+        @apply px-4 py-3 border-b text-[13px] font-semibold;
+        border-color: var(--color-line-hi);
+        background-color: var(--color-bg-elev);
+        color: var(--color-ink);
+    }
+
+    /* Label / pill —— GitHub Label */
+    .gh-label {
+        @apply inline-flex h-5 items-center rounded-full border px-2 text-[11px] font-medium leading-none;
+        border-color: var(--color-line-hi);
+        color: var(--color-muted);
+        background-color: transparent;
+    }
+
+    /* —— 旧 token 兼容 —— */
     .tb-btn {
-        @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-line bg-bg-elev text-ink transition-colors duration-150;
+        @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition-colors;
+        background-color: var(--color-bg-hi);
+        border-color: var(--color-line-hi);
+        color: var(--color-muted);
     }
     .tb-btn:hover {
-        @apply border-accent;
-    }
-    .tb-btn:disabled,
-    .tb-btn-sm:disabled {
-        @apply cursor-not-allowed opacity-45;
-    }
-    .tb-btn:disabled:hover {
-        @apply border-line;
+        color: var(--color-ink);
+        background-color: color-mix(in srgb, var(--color-bg-hi) 80%, var(--color-line-hi));
     }
     .tb-btn.is-active {
-        @apply border-accent text-accent;
+        color: var(--color-link);
+        border-color: color-mix(in srgb, var(--color-link) 60%, transparent);
+        background-color: color-mix(in srgb, var(--color-link) 14%, transparent);
     }
     .tb-btn-sm {
-        @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted transition-colors duration-150;
+        @apply inline-flex h-7 w-7 shrink-0 items-center justify-center rounded transition-colors;
+        color: var(--color-muted);
     }
-    .tb-btn-sm:hover {
-        @apply bg-bg-hi text-ink;
-    }
+    .tb-btn-sm:hover { background-color: var(--color-bg-hi); color: var(--color-ink); }
+    .tb-btn:disabled, .tb-btn-sm:disabled { opacity: .45; cursor: not-allowed; }
     .icon-btn {
-        @apply flex h-8 w-8 items-center justify-center rounded text-muted transition-colors duration-150 hover:bg-bg-hi hover:text-ink;
+        @apply inline-flex h-8 w-8 items-center justify-center rounded transition-colors;
+        color: var(--color-muted);
     }
+    .icon-btn:hover { background-color: var(--color-bg-hi); color: var(--color-ink); }
     .icon-btn-danger {
-        @apply flex h-8 w-8 items-center justify-center rounded text-muted transition-colors duration-150 hover:bg-red-950/40 hover:text-red-300;
+        @apply inline-flex h-8 w-8 items-center justify-center rounded transition-colors;
+        color: var(--color-muted);
     }
+    .icon-btn-danger:hover { background-color: color-mix(in srgb, var(--color-bad) 18%, transparent); color: var(--color-bad); }
 }
 
 /* =================================================================
-   Markdown prose（assistant 输出用）
+   Markdown prose（按 GitHub Markdown 视觉重写）
    ================================================================= */
 
-.md { color: var(--color-ink); line-height: 1.7; font-size: 13px; }
-.md p { margin: 0 0 .65em; }
+.md {
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    font-size: 14px;
+    word-wrap: break-word;
+}
+.md p { margin: 0 0 16px; }
 .md p:last-child { margin-bottom: 0; }
-.md ul, .md ol { margin: .25em 0 .65em; padding-left: 1.4em; }
+.md ul, .md ol { margin: 0 0 16px; padding-left: 2em; }
 .md ul { list-style: disc; }
 .md ol { list-style: decimal; }
 .md li { margin: .15em 0; }
 .md li > p { margin: 0; }
 .md code {
-    background: color-mix(in srgb, var(--color-accent) 12%, transparent);
-    color: var(--color-accent-hi);
-    padding: 1px 5px;
-    border-radius: 4px;
+    background: color-mix(in srgb, var(--color-muted) 24%, transparent);
+    color: var(--color-ink);
+    padding: .2em .4em;
+    border-radius: 6px;
     font-family: var(--font-mono);
-    font-size: .88em;
+    font-size: 85%;
 }
 .md pre {
-    background: color-mix(in srgb, var(--color-bg) 88%, #000);
-    padding: 12px 14px;
-    border-radius: 8px;
+    background: var(--color-bg-elev);
+    padding: 16px;
+    border-radius: 6px;
     overflow-x: auto;
-    margin: .5em 0;
-    font-size: .86em;
-    border: 1px solid var(--color-line);
-    line-height: 1.5;
+    margin: 0 0 16px;
+    font-size: 85%;
+    line-height: 1.45;
+    border: 1px solid var(--color-line-hi);
     font-family: var(--font-mono);
 }
 .md pre code {
@@ -234,36 +350,47 @@ header, footer, section, button, [role="tab"] {
     color: var(--color-ink);
     padding: 0;
     font-size: inherit;
+    border-radius: 0;
 }
-.md a { color: var(--color-accent); text-decoration: underline; text-underline-offset: 2px; }
-.md a:hover { color: var(--color-accent-hi); }
-.md strong { font-weight: 700; color: var(--color-ink); }
+.md a { color: var(--color-link); text-decoration: none; }
+.md a:hover { text-decoration: underline; }
+.md strong { font-weight: 600; color: var(--color-ink); }
 .md em { font-style: italic; }
-.md h1, .md h2, .md h3, .md h4 {
-    font-family: var(--font-serif);
-    font-weight: 700;
-    margin: .9em 0 .4em;
-    line-height: 1.3;
+.md h1, .md h2, .md h3, .md h4, .md h5, .md h6 {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    margin: 24px 0 16px;
+    line-height: 1.25;
     color: var(--color-ink);
 }
-.md h1 { font-size: 1.35em; }
-.md h2 { font-size: 1.2em; }
-.md h3 { font-size: 1.08em; }
+.md h1 { font-size: 2em; padding-bottom: .3em; border-bottom: 1px solid var(--color-line-hi); }
+.md h2 { font-size: 1.5em; padding-bottom: .3em; border-bottom: 1px solid var(--color-line-hi); }
+.md h3 { font-size: 1.25em; }
+.md h4 { font-size: 1em; }
 .md blockquote {
-    border-left: 3px solid var(--color-accent);
-    padding-left: 1em;
+    border-left: .25em solid var(--color-line-hi);
+    padding: 0 1em;
     color: var(--color-muted);
-    margin: .5em 0;
-    font-style: italic;
+    margin: 0 0 16px;
 }
-.md hr { border: 0; border-top: 1px solid var(--color-line); margin: .8em 0; }
-.md table { border-collapse: collapse; font-size: .9em; margin: .5em 0; }
-.md th, .md td { border: 1px solid var(--color-line); padding: .3em .6em; }
-.md th { background: var(--color-bg-elev); }
+.md hr { border: 0; border-top: 1px solid var(--color-line-hi); margin: 24px 0; height: .25em; padding: 0; background: transparent; }
+.md table {
+    border-collapse: collapse;
+    font-size: 14px;
+    margin: 0 0 16px;
+    display: block;
+    overflow: auto;
+    width: max-content;
+    max-width: 100%;
+}
+.md th, .md td { border: 1px solid var(--color-line-hi); padding: 6px 13px; }
+.md tr { background: var(--color-bg); border-top: 1px solid var(--color-line-hi); }
+.md tr:nth-child(2n) { background: var(--color-bg-elev); }
+.md th { background: var(--color-bg-elev); font-weight: 600; }
+.md img { max-width: 100%; border-radius: 6px; }
 
 /* =================================================================
-   兼容层：把现有组件里残留的 zinc / emerald / red / amber 类
-   重定向到新 token，这样组件代码不用全替换也能呈现新视觉。
+   兼容层：把旧 zinc / emerald / red / amber 类重定向到新 token
    ================================================================= */
 
 /* 背景 */
@@ -276,8 +403,8 @@ header, footer, section, button, [role="tab"] {
 .bg-zinc-700 { background-color: var(--color-bg-hi) !important; }
 
 .hover\:bg-zinc-800:hover { background-color: var(--color-bg-hi) !important; }
-.hover\:bg-zinc-700:hover { background-color: color-mix(in srgb, var(--color-bg-hi) 85%, var(--color-line-hi)) !important; }
-.active\:bg-zinc-600:active { background-color: color-mix(in srgb, var(--color-bg-hi) 70%, var(--color-line-hi)) !important; }
+.hover\:bg-zinc-700:hover { background-color: color-mix(in srgb, var(--color-bg-hi) 70%, var(--color-line-hi)) !important; }
+.active\:bg-zinc-600:active { background-color: color-mix(in srgb, var(--color-bg-hi) 60%, var(--color-line-hi)) !important; }
 .active\:bg-zinc-700:active { background-color: color-mix(in srgb, var(--color-bg-hi) 80%, var(--color-line-hi)) !important; }
 
 /* 文字 */
@@ -302,7 +429,10 @@ header, footer, section, button, [role="tab"] {
 .border-zinc-600 { border-color: var(--color-line-hi) !important; }
 .border-zinc-900\/50 { border-color: color-mix(in srgb, var(--color-line) 50%, transparent) !important; }
 
-/* 强调色（emerald → accent 橙） */
+/* emerald 系 → 现在 accent 是 GitHub 绿，但 emerald 类用于"链接 / 选中 / 焦点"语义时偏蓝更合适
+   现在做映射时把 bg-emerald 当成主按钮（绿），text-emerald 当成链接（蓝） */
+
+/* 主按钮场景：bg-emerald-* → 绿色 */
 .bg-emerald-500 { background-color: var(--color-accent) !important; }
 .bg-emerald-600 { background-color: var(--color-accent) !important; }
 .bg-emerald-700 { background-color: var(--color-accent-hi) !important; }
@@ -310,41 +440,42 @@ header, footer, section, button, [role="tab"] {
 .hover\:bg-emerald-600:hover { background-color: var(--color-accent-hi) !important; }
 .active\:bg-emerald-700:active { background-color: var(--color-accent-hi) !important; }
 
-.bg-emerald-900\/30 { background-color: color-mix(in srgb, var(--color-accent) 18%, transparent) !important; }
-.bg-emerald-900\/50 { background-color: color-mix(in srgb, var(--color-accent) 26%, transparent) !important; }
-.bg-emerald-950\/30 { background-color: color-mix(in srgb, var(--color-accent) 14%, transparent) !important; }
-.hover\:bg-emerald-900\/50:hover { background-color: color-mix(in srgb, var(--color-accent) 26%, transparent) !important; }
-.active\:bg-emerald-900\/70:active { background-color: color-mix(in srgb, var(--color-accent) 34%, transparent) !important; }
+.bg-emerald-900\/30 { background-color: color-mix(in srgb, var(--color-link) 18%, transparent) !important; }
+.bg-emerald-900\/50 { background-color: color-mix(in srgb, var(--color-link) 26%, transparent) !important; }
+.bg-emerald-950\/30 { background-color: color-mix(in srgb, var(--color-link) 14%, transparent) !important; }
+.hover\:bg-emerald-900\/50:hover { background-color: color-mix(in srgb, var(--color-link) 26%, transparent) !important; }
+.active\:bg-emerald-900\/70:active { background-color: color-mix(in srgb, var(--color-link) 34%, transparent) !important; }
 
-.text-emerald-200 { color: var(--color-accent-hi) !important; }
-.text-emerald-300 { color: var(--color-accent-hi) !important; }
-.text-emerald-400 { color: var(--color-accent) !important; }
-.hover\:text-emerald-300:hover { color: var(--color-accent-hi) !important; }
+/* 文本 / 边框场景：text-emerald / border-emerald → 蓝（链接色） */
+.text-emerald-200 { color: var(--color-link-hi) !important; }
+.text-emerald-300 { color: var(--color-link-hi) !important; }
+.text-emerald-400 { color: var(--color-link) !important; }
+.hover\:text-emerald-300:hover { color: var(--color-link-hi) !important; }
 
-.border-emerald-700 { border-color: color-mix(in srgb, var(--color-accent) 60%, transparent) !important; }
-.border-emerald-800\/40 { border-color: color-mix(in srgb, var(--color-accent) 30%, transparent) !important; }
-.border-emerald-800\/50 { border-color: color-mix(in srgb, var(--color-accent) 40%, transparent) !important; }
+.border-emerald-700 { border-color: color-mix(in srgb, var(--color-link) 60%, transparent) !important; }
+.border-emerald-800\/40 { border-color: color-mix(in srgb, var(--color-link) 30%, transparent) !important; }
+.border-emerald-800\/50 { border-color: color-mix(in srgb, var(--color-link) 40%, transparent) !important; }
 
-.focus\:border-emerald-500:focus { border-color: var(--color-accent) !important; }
-.focus\:ring-emerald-500\/30:focus { --tw-ring-color: color-mix(in srgb, var(--color-accent) 30%, transparent) !important; }
-.accent-emerald-500 { accent-color: var(--color-accent); }
+.focus\:border-emerald-500:focus { border-color: var(--color-link) !important; }
+.focus\:ring-emerald-500\/30:focus { --tw-ring-color: color-mix(in srgb, var(--color-link) 30%, transparent) !important; }
+.accent-emerald-500 { accent-color: var(--color-link); }
 
 .shadow-\[0_0_8px_rgba\(16\,185\,129\,0\.6\)\] {
-    box-shadow: 0 0 8px color-mix(in srgb, var(--color-accent) 60%, transparent) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-link) 30%, transparent) !important;
 }
 
 /* 禁用态 */
 .disabled\:bg-zinc-700:disabled { background-color: var(--color-bg-hi) !important; }
 .disabled\:text-zinc-500:disabled { color: var(--color-faint) !important; }
 
-/* 终端容器背景（bg-black 映射到主底色） */
-.bg-black { background-color: var(--color-bg) !important; }
+/* 终端容器背景 */
+.bg-black { background-color: var(--c-terminal-bg) !important; }
 
 /* 半透明覆盖层 */
-.bg-black\/60 { background-color: rgba(0, 0, 0, 0.55) !important; }
-.bg-black\/70 { background-color: rgba(0, 0, 0, 0.65) !important; }
+.bg-black\/60 { background-color: rgba(1, 4, 9, 0.65) !important; }
+.bg-black\/70 { background-color: rgba(1, 4, 9, 0.75) !important; }
 
-/* 危险色（删除等） */
+/* 危险色 */
 .bg-red-900\/40 { background-color: color-mix(in srgb, var(--color-bad) 18%, transparent) !important; }
 .bg-red-900\/30 { background-color: color-mix(in srgb, var(--color-bad) 14%, transparent) !important; }
 .bg-red-950\/30 { background-color: color-mix(in srgb, var(--color-bad) 14%, transparent) !important; }
@@ -364,15 +495,15 @@ header, footer, section, button, [role="tab"] {
 .border-red-900\/60 { border-color: color-mix(in srgb, var(--color-bad) 50%, transparent) !important; }
 .text-red-300\/70 { color: color-mix(in srgb, var(--color-bad) 70%, transparent) !important; }
 
-/* 警告色（统一成 accent 橙，暖调） */
-.bg-amber-900\/20 { background-color: color-mix(in srgb, var(--color-accent) 12%, transparent) !important; }
-.bg-amber-900\/60 { background-color: color-mix(in srgb, var(--color-accent) 30%, transparent) !important; }
-.bg-amber-950\/20 { background-color: color-mix(in srgb, var(--color-accent) 10%, transparent) !important; }
-.bg-amber-950\/30 { background-color: color-mix(in srgb, var(--color-accent) 14%, transparent) !important; }
-.hover\:bg-amber-900\/40:hover { background-color: color-mix(in srgb, var(--color-accent) 24%, transparent) !important; }
-.active\:bg-amber-900\/60:active { background-color: color-mix(in srgb, var(--color-accent) 36%, transparent) !important; }
-.text-amber-200 { color: var(--color-accent-hi) !important; }
-.text-amber-300\/70 { color: color-mix(in srgb, var(--color-accent) 70%, transparent) !important; }
-.border-amber-900\/40 { border-color: color-mix(in srgb, var(--color-accent) 30%, transparent) !important; }
-.border-amber-900\/60 { border-color: color-mix(in srgb, var(--color-accent) 45%, transparent) !important; }
-.bg-amber-400 { background-color: var(--color-accent) !important; }
+/* 警告色 → GitHub attention 黄 */
+.bg-amber-900\/20 { background-color: color-mix(in srgb, var(--color-warn) 12%, transparent) !important; }
+.bg-amber-900\/60 { background-color: color-mix(in srgb, var(--color-warn) 30%, transparent) !important; }
+.bg-amber-950\/20 { background-color: color-mix(in srgb, var(--color-warn) 10%, transparent) !important; }
+.bg-amber-950\/30 { background-color: color-mix(in srgb, var(--color-warn) 14%, transparent) !important; }
+.hover\:bg-amber-900\/40:hover { background-color: color-mix(in srgb, var(--color-warn) 24%, transparent) !important; }
+.active\:bg-amber-900\/60:active { background-color: color-mix(in srgb, var(--color-warn) 36%, transparent) !important; }
+.text-amber-200 { color: var(--color-warn) !important; }
+.text-amber-300\/70 { color: color-mix(in srgb, var(--color-warn) 70%, transparent) !important; }
+.border-amber-900\/40 { border-color: color-mix(in srgb, var(--color-warn) 30%, transparent) !important; }
+.border-amber-900\/60 { border-color: color-mix(in srgb, var(--color-warn) 45%, transparent) !important; }
+.bg-amber-400 { background-color: var(--color-warn) !important; }

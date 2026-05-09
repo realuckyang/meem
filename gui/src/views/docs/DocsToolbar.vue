@@ -10,6 +10,7 @@ const props = defineProps({
 const emit = defineEmits([
     'toggle-search',
     'refresh',
+    'copy-path',
     'create-doc',
     'create-folder',
     'update:filterText',
@@ -33,6 +34,10 @@ watch(() => props.showSearch, async (visible) => {
 
         <button @click="emit('refresh')" class="tb-btn" title="刷新">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>
+        </button>
+
+        <button @click="emit('copy-path')" class="tb-btn" title="复制路径">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         </button>
 
         <div class="w-px h-5 mx-1 bg-line"></div>

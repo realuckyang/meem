@@ -11,7 +11,7 @@ const ws = useWsStore();
 const route = useRoute();
 const router = useRouter();
 
-const showChrome = computed(() => route.name !== 'guard');
+const showChrome = computed(() => !route.meta?.bare && route.name !== 'guard');
 
 onMounted(() => {
     ws.init();
@@ -21,7 +21,7 @@ onMounted(() => {
 watch(
     () => [ws.requiresPassword, ws.authenticated],
     ([req, authed]) => {
-        if (req && !authed && route.name !== 'guard') {
+        if (req && !authed && !route.meta?.public && route.name !== 'guard') {
             router.replace({ path: '/guard' });
         }
     },
