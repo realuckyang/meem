@@ -55,15 +55,15 @@ npm start --prefix server
 启动后:
 
 ```
-http://127.0.0.1:9001
+http://127.0.0.1:9505
 ```
 
 要从手机或其他机器访问,在另一个终端起隧道:
 
 ```bash
-ngrok http 9001
+ngrok http 9505
 # 或
-cloudflared tunnel --url http://localhost:9001
+cloudflared tunnel --url http://localhost:9505
 ```
 
 ## 配置
@@ -73,7 +73,7 @@ cloudflared tunnel --url http://localhost:9001
 ```js
 export default {
     HTTP_HOST: '127.0.0.1',     // 服务监听地址
-    HTTP_PORT: '9001',          // 服务监听端口
+    HTTP_PORT: '9505',          // 服务监听端口
     SESSION_PASSWORD: '',       // 留空则不需要密码;非空则首次进入要输密码
     PLAYWRIGHT_BROWSER_CHANNEL: 'chrome',
     BROWSER_EXTENSION_HOST: '127.0.0.1',

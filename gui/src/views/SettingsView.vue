@@ -57,9 +57,9 @@ function setTheme(value) {
                         <div>
                             <div class="mb-1 font-medium text-ink">推荐步骤</div>
                             <ol class="list-decimal space-y-1 pl-4">
-                                <li>确认本机服务正在运行，默认地址是 <code class="rounded bg-bg px-1 py-0.5 font-mono text-accent">http://127.0.0.1:9001</code>。</li>
+                                <li>确认本机服务正在运行，默认地址是 <code class="rounded bg-bg px-1 py-0.5 font-mono text-accent">http://127.0.0.1:9505</code>。</li>
                                 <li>在 <code class="rounded bg-bg px-1 py-0.5 font-mono text-accent">server/config.js</code> 里设置 <code class="rounded bg-bg px-1 py-0.5 font-mono text-accent">SESSION_PASSWORD</code>，避免远程裸奔。</li>
-                                <li>使用隧道工具把 <code class="rounded bg-bg px-1 py-0.5 font-mono text-accent">9001</code> 端口暴露出去。</li>
+                                <li>使用隧道工具把 <code class="rounded bg-bg px-1 py-0.5 font-mono text-accent">9505</code> 端口暴露出去。</li>
                                 <li>在远程设备打开隧道地址，输入访问密码后使用。</li>
                             </ol>
                         </div>
@@ -67,10 +67,10 @@ function setTheme(value) {
                         <div>
                             <div class="mb-1 font-medium text-ink">示例命令</div>
                             <div class="rounded border border-line bg-bg px-3 py-2 font-mono text-[11px] text-ink">
-                                ngrok http 9001
+                                ngrok http 9505
                             </div>
                             <div class="mt-2 rounded border border-line bg-bg px-3 py-2 font-mono text-[11px] text-ink">
-                                cloudflared tunnel --url http://127.0.0.1:9001
+                                cloudflared tunnel --url http://127.0.0.1:9505
                             </div>
                         </div>
 

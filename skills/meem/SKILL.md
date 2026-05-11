@@ -25,7 +25,7 @@ Do NOT use this skill for:
 
 ## Connection
 
-- Base URL: `http://127.0.0.1:9001` (default; the user may have changed `HTTP_HOST` / `HTTP_PORT` in `server/config.js`)
+- Base URL: `http://127.0.0.1:9505` (default; the user may have changed `HTTP_HOST` / `HTTP_PORT` in `server/config.js`)
 - No auth header needed — Meem listens on localhost only
 - All request and response bodies are JSON unless noted
 
@@ -105,12 +105,12 @@ Operates on the local filesystem within the user's home directory (boundary enfo
 
 ```bash
 # Create folder
-FID=$(curl -s -X POST http://127.0.0.1:9001/api/docs/folders \
+FID=$(curl -s -X POST http://127.0.0.1:9505/api/docs/folders \
   -H "Content-Type: application/json" \
   -d '{"name":"Meeting notes 2026-05-08"}' | jq -r .id)
 
 # Add docs
-curl -s -X POST http://127.0.0.1:9001/api/docs \
+curl -s -X POST http://127.0.0.1:9505/api/docs \
   -H "Content-Type: application/json" \
   -d "{\"folder_id\":$FID,\"title\":\"Decisions\",\"content\":\"...\"}"
 ```
@@ -119,7 +119,7 @@ curl -s -X POST http://127.0.0.1:9001/api/docs \
 
 ```bash
 for t in "task A" "task B" "task C"; do
-  curl -s -X POST http://127.0.0.1:9001/api/todos \
+  curl -s -X POST http://127.0.0.1:9505/api/todos \
     -H "Content-Type: application/json" \
     -d "{\"title\":\"$t\"}"
 done

@@ -61,7 +61,7 @@ const configValues = await loadConfigFile();
 const dotEnvValues = loadDotEnvFile();
 
 const HTTP_HOST = String(resolveValue('HTTP_HOST', [dotEnvValues, configValues]) || '127.0.0.1').trim() || '127.0.0.1';
-const HTTP_PORT = Number.parseInt(String(resolveValue('HTTP_PORT', [dotEnvValues, configValues]) || '9001').trim(), 10) || 9001;
+const HTTP_PORT = Number.parseInt(String(resolveValue('HTTP_PORT', [dotEnvValues, configValues]) || '9505').trim(), 10) || 9505;
 const SESSION_ID = String(resolveValue('SESSION_ID', [dotEnvValues, configValues]) || 'local').trim() || 'local';
 const SESSION_PASSWORD = String(resolveValue('SESSION_PASSWORD', [dotEnvValues, configValues]) || '').trim();
 const PLAYWRIGHT_BROWSER_CHANNEL = String(resolveValue('PLAYWRIGHT_BROWSER_CHANNEL', [dotEnvValues, configValues]) || 'chrome').trim() || 'chrome';
