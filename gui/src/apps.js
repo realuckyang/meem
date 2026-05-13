@@ -13,6 +13,12 @@
 
 export const apps = [
   {
+    id: 'assistant', icon: '💬', label: '聊天',
+    path: '/assistant',
+    match: (p) => p === '/assistant',
+    component: () => import('./apps/assistant/Assistant.vue'),
+  },
+  {
     id: 'memos', icon: '💡', label: '想法',
     path: '/memos',
     match: (p) => p.startsWith('/memos'),
@@ -33,12 +39,6 @@ export const apps = [
       { path: '/notebook/:id', name: 'notebook', component: () => import('./apps/notes/Notebook.vue'), props: true },
       { path: '/note/:id',     name: 'note',     component: () => import('./apps/notes/Note.vue'),     props: true },
     ],
-  },
-  {
-    id: 'assistant', icon: '🤖', label: '助理',
-    path: '/assistant',
-    match: (p) => p === '/assistant',
-    component: () => import('./apps/assistant/Assistant.vue'),
   },
   {
     id: 'search', icon: '🔍', label: '搜索',
