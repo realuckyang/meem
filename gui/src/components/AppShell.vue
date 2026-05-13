@@ -25,7 +25,7 @@
         <div class="grid grid-cols-3 gap-1 p-1">
           <button
             v-for="app in apps"
-            :key="app.name"
+            :key="app.id"
             type="button"
             :class="[
               'flex flex-col items-center justify-center gap-1.5 rounded-md py-4 transition',
@@ -61,26 +61,17 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Popover from './Popover.vue'
 import { logout } from '@/composables/useAuth'
+import { launcherApps } from '@/apps.js'
 
-const route   = useRoute()
-const router  = useRouter()
+const route  = useRoute()
+const router = useRouter()
+const apps   = launcherApps
 
-const apps = [
-  { name: 'memos',     icon: '💡', label: '想法', to: { name: 'memos' },              match: (p) => p.startsWith('/memos') },
-  { name: 'todos',     icon: '✅', label: '待办', to: { name: 'todos' },              match: (p) => p.startsWith('/todos') },
-  { name: 'notes',     icon: '📚', label: '笔记', to: { name: 'home' },               match: (p) => p === '/' || p.startsWith('/notebook') || p.startsWith('/note') },
-  { name: 'assistant', icon: '🤖', label: '助理', to: { name: 'assistant' },          match: (p) => p === '/assistant' },
-  { name: 'search',    icon: '🔍', label: '搜索', to: { name: 'search' },             match: (p) => p.startsWith('/search') },
-  { name: 'settings',  icon: '⚙️', label: '设置', to: { name: 'assistant-settings' }, match: (p) => p.startsWith('/assistant/settings') || p.startsWith('/assistant/authorize') },
-]
-
-function isActive(app) {
-  return app.match(route.path)
-}
+const isActive = (app) => app.match(route.path)
 
 const currentApp = computed(() => {
   const a = apps.find(isActive)
-  return a || { icon: '🧠', label: 'MindBase' }
+  return a || { icon: '🧠', label: 'meem' }
 })
 
 const launcherBtn    = ref(null)
@@ -95,7 +86,7 @@ function toggleLauncher() {
 
 function goTo(app) {
   launcherOpen.value = false
-  router.push(app.to)
+  router.push(app.path)
 }
 
 async function onLogout() {

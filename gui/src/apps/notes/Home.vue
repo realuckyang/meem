@@ -86,7 +86,7 @@ import { useRouter } from 'vue-router'
 import Cover from '@/components/Cover.vue'
 import CoverPicker from '@/components/CoverPicker.vue'
 import EmojiPicker from '@/components/EmojiPicker.vue'
-import ItemList from '@/components/ItemList.vue'
+import ItemList from './ItemList.vue'
 import { apiRoot, apiNotebook, apiNote, apiItems } from '@/api/client'
 
 const router = useRouter()

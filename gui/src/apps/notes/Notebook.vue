@@ -104,11 +104,11 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import Breadcrumb from '@/components/Breadcrumb.vue'
+import Breadcrumb from './Breadcrumb.vue'
 import Cover from '@/components/Cover.vue'
 import CoverPicker from '@/components/CoverPicker.vue'
 import EmojiPicker from '@/components/EmojiPicker.vue'
-import ItemList from '@/components/ItemList.vue'
+import ItemList from './ItemList.vue'
 import Popover from '@/components/Popover.vue'
 import { apiNotebook, apiNote, apiItems } from '@/api/client'
 

@@ -1,19 +1,31 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { checkAuth, useAuth } from '@/composables/useAuth'
+import { apps } from '@/apps.js'
+
+// 系统级路由(不在应用宫格里)
+const systemRoutes = [
+  { path: '/welcome', name: 'welcome', component: () => import('@/views/Welcome.vue'), meta: { guestOnly: true } },
+  // 老链接兼容
+  { path: '/assistant/authorize', redirect: { name: 'settings', query: { tab: 'collab' } } },
+  { path: '/ai',                  redirect: { name: 'settings', query: { tab: 'collab' } } },
+]
+
+// 应用路由:每个 app 一个主路由(name = app.id),外加 subRoutes
+const appRoutes = apps.flatMap((app) => {
+  const main = { path: app.path, name: app.id, component: app.component }
+  // 笔记的 home 用 id='notes' 但 path='/' → 提供个 alias 名 'home' 兼容
+  const aliases = app.id === 'notes' ? [{ path: '/', name: 'home', component: app.component }] : []
+  const sub = (app.subRoutes || []).map((r) => ({ ...r }))
+  // 设置内部 tab 用 query,不需要专门子路由;但留个 name 兼容
+  if (app.id === 'settings') {
+    return [{ path: app.path, name: 'settings', component: app.component, alias: ['/assistant-settings'] }]
+  }
+  return [main, ...aliases, ...sub]
+})
 
 const routes = [
-  { path: '/welcome',       name: 'welcome',           component: () => import('@/views/Welcome.vue'),           meta: { guestOnly: true } },
-  { path: '/',              name: 'home',              component: () => import('@/views/Home.vue') },
-  { path: '/notebook/:id',  name: 'notebook',          component: () => import('@/views/Notebook.vue'),          props: true },
-  { path: '/note/:id',      name: 'note',              component: () => import('@/views/Note.vue'),              props: true },
-  { path: '/memos',         name: 'memos',             component: () => import('@/views/Memos.vue') },
-  { path: '/todos',         name: 'todos',             component: () => import('@/views/Todos.vue') },
-  { path: '/search',        name: 'search',            component: () => import('@/views/Search.vue') },
-  { path: '/assistant',     name: 'assistant',         component: () => import('@/views/Assistant.vue') },
-  { path: '/assistant/settings', name: 'assistant-settings', component: () => import('@/views/AssistantSettings.vue') },
-  // 老链接兼容:授权页并入设置的 tab
-  { path: '/assistant/authorize', redirect: { name: 'assistant-settings', query: { tab: 'collab' } } },
-  { path: '/ai', redirect: { name: 'assistant-settings', query: { tab: 'collab' } } },
+  ...systemRoutes,
+  ...appRoutes,
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 
@@ -30,7 +42,6 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   await checkAuth()
   const { isAuthenticated } = useAuth()
-
   if (to.meta.guestOnly && isAuthenticated.value) return { name: 'home' }
   if (!to.meta.guestOnly && !isAuthenticated.value) return { name: 'welcome' }
   return true
