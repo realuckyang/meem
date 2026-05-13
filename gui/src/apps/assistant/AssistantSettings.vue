@@ -342,10 +342,9 @@ server/
 │   │   ├── auth/           密码登录 / setup / 改密
 │   │   ├── settings/       KV 配置
 │   │   ├── chat/           SSE 助理(含 shell 工具)
-│   │   ├── search/         跨应用全文搜索
-│   │   └── tokens/         对外 API token(自用一般不用)
+│   │   └── search/         跨应用全文搜索
 │   ├── service/auth/       PBKDF2 + JWT cookie
-│   ├── repository/         系统表:settings / messages / tokens
+│   ├── repository/         系统表:settings / messages
 │   ├── ai/                 agent 循环 + 工具
 │   │   ├── handler.js      多轮循环
 │   │   ├── runner.js       并行跑工具
@@ -375,7 +374,7 @@ gui/src/
 # 关键约定
 
 1. **后端应用模块** 默认 export \`{ name, match, initDb, handleApi }\`,挂到 \`server/apps/registry.js\` 即生效。
-2. **应用表名前缀** \`apps_<name>\` (例:apps_memos / apps_todos / apps_notebooks / apps_notes)。系统表是 settings / messages / tokens,不带前缀。
+2. **应用表名前缀** \`apps_<name>\` (例:apps_memos / apps_todos / apps_notebooks / apps_notes)。系统表是 settings / messages,不带前缀。
 3. **API 路径**:内核 \`/api/*\`,应用 \`/apps/<name>/*\`(GUI 都连 9507,内核把 /apps/* 鉴权后转发到 9508)。
 4. **鉴权**:全局 cookie JWT;首次访问引导创建账号(\`/api/auth/status\` + \`/api/auth/setup\`)。
 5. **前端 apps.js 一条记录 = 一个应用**:含 id / icon / label / path / match / component(懒加载)/ subRoutes。AppShell 用它生成宫格,router 用它生成路由。
@@ -386,7 +385,6 @@ gui/src/
 系统(server/main):
 - settings(key, value, updated_at) — KV(包括 auth_username / auth_password_hash / auth_password_salt / ai_base_url / ai_api_key / ai_model / ai_context_rounds / ai_system_prompt / home_* / memos_*)
 - messages(id, conversation_id, message, memo, usage, meta, created_at) — 助理对话,conversation_id 当前硬编码 'main'
-- tokens(id, name, token, scope, created_at, last_used_at) — 对外授权(本机用基本闲置)
 
 应用(server/apps):
 - apps_memos(id, content, created_at, updated_at)

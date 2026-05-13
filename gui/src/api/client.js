@@ -54,13 +54,6 @@ export const apiSearch = {
   run: (q, limit = 30) => api.get(`/api/search?q=${encodeURIComponent(q)}&limit=${limit}`),
 }
 
-// === Tokens(内核;对外授权) ===
-export const apiTokens = {
-  list:   ()     => api.get('/api/tokens'),
-  create: (name) => api.post('/api/tokens', { name }),
-  remove: (id)   => api.delete(`/api/tokens/${id}`),
-}
-
 // === 想法应用 ===
 export const apiMemos = {
   list:   ({ offset = 0, limit = 30 } = {}) => api.get(`/apps/memos?offset=${offset}&limit=${limit}`),

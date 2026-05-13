@@ -2,7 +2,6 @@ import { handleAuthApi }     from './auth/index.js'
 import { handleSettingsApi } from './settings/index.js'
 import { handleChatApi }     from './chat/index.js'
 import { handleSearchApi }   from './search/index.js'
-import { handleTokensApi }   from './tokens/index.js'
 import { fail }              from '../../shared/http/json.js'
 import { isAuthenticated }   from '../service/auth/index.js'
 import http from 'node:http'
@@ -35,7 +34,6 @@ export const handleMainApi = async (req, res, path, url) => {
   if (path.startsWith('/api/settings')) return (await handleSettingsApi(req, res, path)) !== false
   if (path.startsWith('/api/chat'))     return (await handleChatApi(req, res, path, url))!== false
   if (path.startsWith('/api/search'))   return (await handleSearchApi(req, res, path, url))!== false
-  if (path.startsWith('/api/tokens'))   return (await handleTokensApi(req, res, path))   !== false
   if (path.startsWith('/api/apps/') || path.startsWith('/apps/')) {
     await proxyToApps(req, res, path, url)
     return true

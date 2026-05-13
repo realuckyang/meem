@@ -1,8 +1,6 @@
 // 轻量 HS256 JWT(不引入 jose 依赖,自带 crypto 够用)
-import { createHmac, timingSafeEqual } from 'node:crypto'
+import { createHmac, timingSafeEqual, randomBytes } from 'node:crypto'
 import { getSetting, setSetting } from '../../repository/settings.js'
-import { findTokenByValue, touchToken } from '../../repository/tokens.js'
-import { randomBytes } from 'node:crypto'
 
 export const TOKEN_COOKIE = 'meem_token'
 const TOKEN_MAX_AGE = 180 * 24 * 60 * 60  // 180 天
@@ -59,9 +57,9 @@ export const clearAuthCookie = ({ secure = false } = {}) => {
   return `${TOKEN_COOKIE}=; ${attrs.join('; ')}`
 }
 
-// 鉴权:成功返回 { source: 'cookie' | 'api_token' };失败返回 null
+// 鉴权:成功返回 { source: 'cookie' };失败返回 null。
+// meem 是本机自部署,只有 cookie JWT 一种鉴权;没有对外 API token。
 export const getAuth = (req) => {
-  // cookie
   const cookies = (() => {
     const out = {}
     for (const part of String(req.headers.cookie || '').split(';')) {
@@ -78,12 +76,6 @@ export const getAuth = (req) => {
   }
   if (!token) return null
 
-  if (token.startsWith('mb_')) {
-    const row = findTokenByValue(token)
-    if (!row) return null
-    try { touchToken(row.token_id) } catch {}
-    return { source: 'api_token', scope: row.scope }
-  }
   const payload = verifyJwt(token)
   return payload ? { source: 'cookie' } : null
 }
