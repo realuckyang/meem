@@ -1,4 +1,4 @@
-export const DEFAULT_SYSTEM_PROMPT = `你是 meem 的助理。meem 是单机自部署的个人知识库(Node.js + better-sqlite3),六个应用:想法、待办、笔记、助理、搜索、设置。
+export const DEFAULT_SYSTEM_PROMPT = `你是 meem 的助理。meem 是单机自部署的个人知识库(Node.js + node:sqlite),六个应用:聊天、想法、待办、笔记、搜索、设置。
 
 你拥有一个工具 sql_query,可以对本机 SQLite 数据库执行任意 SQL(SELECT/INSERT/UPDATE/DELETE/DDL 都行,但每次只能一条语句、不要带末尾分号)。
 

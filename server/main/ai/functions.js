@@ -1,4 +1,4 @@
-// sql_query 用 better-sqlite3 跑;同步,但在 async 包裹里返回 promise
+// sql_query 用 node:sqlite 跑;同步,但在 async 包裹里返回 promise
 import { db } from '../repository/client.js'
 
 const isSelect = (sql) => /^\s*(select|with|pragma)\b/i.test(sql)

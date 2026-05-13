@@ -1,9 +1,10 @@
 // 生产:只起 main(9507) + apps(9508),main 直接 serve gui/dist
 import { spawn } from 'node:child_process'
 
+const NF = ['--disable-warning=ExperimentalWarning']
 const procs = [
-  ['main', 'node', ['server/main/index.js', '--port=9507'], { MEEM_APPS_PORT: '9508', MEEM_SERVE_GUI: '1' }],
-  ['apps', 'node', ['server/apps/index.js', '--port=9508'], { MEEM_MAIN_PORT: '9507' }],
+  ['main', 'node', [...NF, 'server/main/index.js', '--port=9507'], { MEEM_APPS_PORT: '9508', MEEM_SERVE_GUI: '1' }],
+  ['apps', 'node', [...NF, 'server/apps/index.js', '--port=9508'], { MEEM_MAIN_PORT: '9507' }],
 ]
 
 const children = []

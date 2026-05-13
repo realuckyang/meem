@@ -2,9 +2,11 @@
 // vite 已经在 package.json 里配置 proxy 把 /api/* 打到 9507
 import { spawn } from 'node:child_process'
 
+// 屏蔽 node:sqlite 的 ExperimentalWarning(功能稳定,只是 Node 还没标 stable)
+const NF = ['--disable-warning=ExperimentalWarning']
 const procs = [
-  ['main', 'node', ['server/main/index.js', '--port=9507'], { MEEM_APPS_PORT: '9508' }],
-  ['apps', 'node', ['server/apps/index.js', '--port=9508'], { MEEM_MAIN_PORT: '9507' }],
+  ['main', 'node', [...NF, 'server/main/index.js', '--port=9507'], { MEEM_APPS_PORT: '9508' }],
+  ['apps', 'node', [...NF, 'server/apps/index.js', '--port=9508'], { MEEM_MAIN_PORT: '9507' }],
   ['gui',  'npx',  ['vite', '--config', 'gui/vite.config.js', 'gui'], {}],
 ]
 
