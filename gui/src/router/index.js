@@ -2,9 +2,12 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { checkAuth, useAuth } from '@/composables/useAuth'
 import { apps } from '@/apps.js'
 
-// 系统级路由(不在应用宫格里)
+const DEFAULT_PATH = '/assistant'  // 登录后默认进的应用
+
+// 系统级路由
 const systemRoutes = [
   { path: '/welcome', name: 'welcome', component: () => import('@/views/Welcome.vue'), meta: { guestOnly: true } },
+  { path: '/', redirect: DEFAULT_PATH },
   // 老链接兼容
   { path: '/assistant/authorize', redirect: { name: 'settings', query: { tab: 'collab' } } },
   { path: '/ai',                  redirect: { name: 'settings', query: { tab: 'collab' } } },
@@ -12,21 +15,22 @@ const systemRoutes = [
 
 // 应用路由:每个 app 一个主路由(name = app.id),外加 subRoutes
 const appRoutes = apps.flatMap((app) => {
-  const main = { path: app.path, name: app.id, component: app.component }
-  // 笔记的 home 用 id='notes' 但 path='/' → 提供个 alias 名 'home' 兼容
-  const aliases = app.id === 'notes' ? [{ path: '/', name: 'home', component: app.component }] : []
-  const sub = (app.subRoutes || []).map((r) => ({ ...r }))
-  // 设置内部 tab 用 query,不需要专门子路由;但留个 name 兼容
   if (app.id === 'settings') {
     return [{ path: app.path, name: 'settings', component: app.component, alias: ['/assistant-settings'] }]
   }
+  const main = { path: app.path, name: app.id, component: app.component }
+  // 兼容老 'home' 名字 → 等价于 notes
+  const aliases = app.id === 'notes'
+    ? [{ path: '/notes-home', name: 'home', component: app.component, redirect: app.path }]
+    : []
+  const sub = (app.subRoutes || []).map((r) => ({ ...r }))
   return [main, ...aliases, ...sub]
 })
 
 const routes = [
   ...systemRoutes,
   ...appRoutes,
-  { path: '/:pathMatch(.*)*', redirect: '/' },
+  { path: '/:pathMatch(.*)*', redirect: DEFAULT_PATH },
 ]
 
 const router = createRouter({
@@ -42,7 +46,7 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   await checkAuth()
   const { isAuthenticated } = useAuth()
-  if (to.meta.guestOnly && isAuthenticated.value) return { name: 'home' }
+  if (to.meta.guestOnly && isAuthenticated.value) return DEFAULT_PATH
   if (!to.meta.guestOnly && !isAuthenticated.value) return { name: 'welcome' }
   return true
 })

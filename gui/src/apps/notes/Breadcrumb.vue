@@ -2,7 +2,7 @@
   <nav class="flex flex-wrap items-center gap-0.5 text-sm text-nt-muted">
     <!-- 首页:可作为根级 drop target -->
     <router-link
-      :to="{ name: 'home' }"
+      :to="{ name: 'notes' }"
       data-mb-drop
       data-mb-drop-kind="home"
       class="rounded-sm px-1.5 py-0.5 transition-colors"

@@ -153,7 +153,7 @@ async function load() {
     notes.value      = data.notes
     nameInput.value  = data.notebook.name
   } catch (e) {
-    if (e.status === 404) router.replace({ name: 'home' })
+    if (e.status === 404) router.replace({ name: 'notes' })
     else error.value = e.message || '加载失败'
   } finally {
     loading.value = false

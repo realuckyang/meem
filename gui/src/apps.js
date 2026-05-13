@@ -32,8 +32,8 @@ export const apps = [
   },
   {
     id: 'notes', icon: '📚', label: '笔记',
-    path: '/',
-    match: (p) => p === '/' || p.startsWith('/notebook') || p.startsWith('/note'),
+    path: '/notes',
+    match: (p) => p.startsWith('/notes') || p.startsWith('/notebook') || p.startsWith('/note'),
     component: () => import('./apps/notes/Home.vue'),
     subRoutes: [
       { path: '/notebook/:id', name: 'notebook', component: () => import('./apps/notes/Notebook.vue'), props: true },
