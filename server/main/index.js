@@ -9,7 +9,7 @@ import { handleMainApi } from './api/index.js'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 const portArg = process.argv.find(a => a.startsWith('--port='))
-const PORT = portArg ? Number(portArg.slice('--port='.length)) : 9602
+const PORT = portArg ? Number(portArg.slice('--port='.length)) : 9507
 process.env.MEEM_MAIN_PORT = String(PORT)
 
 initSystemTables()

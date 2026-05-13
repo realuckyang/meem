@@ -1,10 +1,10 @@
-// 三进程开发:main(9602) + apps(9603) + vite(5173)
-// vite 已经在 package.json 里配置 proxy 把 /api/* 打到 9602
+// 三进程开发:main(9507) + apps(9508) + vite(5173)
+// vite 已经在 package.json 里配置 proxy 把 /api/* 打到 9507
 import { spawn } from 'node:child_process'
 
 const procs = [
-  ['main', 'node', ['server/main/index.js', '--port=9602'], { MEEM_APPS_PORT: '9603' }],
-  ['apps', 'node', ['server/apps/index.js', '--port=9603'], { MEEM_MAIN_PORT: '9602' }],
+  ['main', 'node', ['server/main/index.js', '--port=9507'], { MEEM_APPS_PORT: '9508' }],
+  ['apps', 'node', ['server/apps/index.js', '--port=9508'], { MEEM_MAIN_PORT: '9507' }],
   ['gui',  'npx',  ['vite', '--config', 'gui/vite.config.js', 'gui'], {}],
 ]
 

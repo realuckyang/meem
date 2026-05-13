@@ -5,7 +5,7 @@ import { initSystemTables } from '../main/repository/init.js'
 import { appLoaders } from './registry.js'
 
 const portArg = process.argv.find(a => a.startsWith('--port='))
-const PORT = portArg ? Number(portArg.slice('--port='.length)) : 9603
+const PORT = portArg ? Number(portArg.slice('--port='.length)) : 9508
 const HOST = '127.0.0.1'
 
 const moduleCache = new Map()

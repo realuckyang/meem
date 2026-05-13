@@ -7,7 +7,7 @@ import { fail }              from '../../shared/http/json.js'
 import { isAuthenticated }   from '../service/auth/index.js'
 import http from 'node:http'
 
-const APPS_PORT = Number(process.env.MEEM_APPS_PORT || 9603)
+const APPS_PORT = Number(process.env.MEEM_APPS_PORT || 9508)
 
 // 反代到 apps 进程
 const proxyToApps = (req, res, path, url) => new Promise((resolve) => {

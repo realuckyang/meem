@@ -1,9 +1,9 @@
-// 生产:只起 main(9602) + apps(9603),main 直接 serve gui/dist
+// 生产:只起 main(9507) + apps(9508),main 直接 serve gui/dist
 import { spawn } from 'node:child_process'
 
 const procs = [
-  ['main', 'node', ['server/main/index.js', '--port=9602'], { MEEM_APPS_PORT: '9603', MEEM_SERVE_GUI: '1' }],
-  ['apps', 'node', ['server/apps/index.js', '--port=9603'], { MEEM_MAIN_PORT: '9602' }],
+  ['main', 'node', ['server/main/index.js', '--port=9507'], { MEEM_APPS_PORT: '9508', MEEM_SERVE_GUI: '1' }],
+  ['apps', 'node', ['server/apps/index.js', '--port=9508'], { MEEM_MAIN_PORT: '9507' }],
 ]
 
 const children = []
