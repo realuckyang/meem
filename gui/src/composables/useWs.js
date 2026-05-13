@@ -4,16 +4,9 @@ import { ref, onUnmounted } from 'vue'
 
 let ws = null
 const listeners = new Map() // type → Set<cb>
-const taps = new Set()      // tap(cb) → cb({ dir, type, msg, t, bytes })
 const status = ref('idle')  // idle | connecting | open | closed
 let reconnectTimer = null
 let reconnectAttempt = 0
-
-const tap = (dir, msg, bytes) => {
-  if (!taps.size) return
-  const evt = { dir, type: msg?.type || '(?)', msg, t: performance.now(), bytes }
-  for (const cb of taps) { try { cb(evt) } catch (e) { console.error('ws tap', e) } }
-}
 
 const url = () => {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -37,7 +30,6 @@ const connect = () => {
   ws.onmessage = (e) => {
     let msg
     try { msg = JSON.parse(e.data) } catch { return }
-    tap('in', msg, typeof e.data === 'string' ? e.data.length : 0)
     dispatch(msg)
   }
   ws.onclose = () => {
@@ -51,13 +43,12 @@ const connect = () => {
 }
 
 const send = (obj) => {
-  const payload = JSON.stringify(obj)
   if (!ws || ws.readyState !== WebSocket.OPEN) {
     connect()
-    const off = on('_open', () => { off(); try { ws.send(payload); tap('out', obj, payload.length) } catch {} })
+    const off = on('_open', () => { off(); try { ws.send(JSON.stringify(obj)) } catch {} })
     return false
   }
-  try { ws.send(payload); tap('out', obj, payload.length); return true } catch { return false }
+  try { ws.send(JSON.stringify(obj)); return true } catch { return false }
 }
 
 const on = (type, cb) => {
@@ -85,9 +76,3 @@ export function useWs() {
 // 给非 Vue 模块用的裸 API
 export const wsSend = send
 export const wsOn   = on
-
-// 调试钩子:订阅所有进/出帧,返回取消函数
-export const wsTap = (cb) => {
-  taps.add(cb)
-  return () => taps.delete(cb)
-}
