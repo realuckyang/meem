@@ -46,7 +46,6 @@ export const apiChat = {
     p.set('limit', String(limit))
     return api.get(`/api/chat/messages?${p}`)
   },
-  sendUrl: () => '/api/chat/send',
 }
 
 // === Search(内核) ===

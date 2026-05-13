@@ -5,6 +5,9 @@ import { fileURLToPath, URL as NodeURL } from 'node:url'
 import { fail, json } from '../shared/http/json.js'
 import { initSystemTables } from './repository/init.js'
 import { handleMainApi } from './api/index.js'
+import { setupWebSocket } from './service/runtime/ws.js'
+// 注册所有 WS 消息处理器(import 时执行 registerHandler 副作用)
+import './api/chat/ws.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -73,7 +76,10 @@ const server = createServer(async (req, res) => {
   }
 })
 
+setupWebSocket(server)
+
 server.listen(PORT, () => {
   console.log(`🌱  meem main`)
   console.log(`🌐  http://localhost:${PORT}`)
+  console.log(`🔌  ws://localhost:${PORT}/ws`)
 })

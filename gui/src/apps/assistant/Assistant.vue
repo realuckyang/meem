@@ -115,6 +115,9 @@ import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { apiChat, apiSettings } from '@/api/client'
+import { useWs } from '@/composables/useWs'
+
+const ws = useWs()
 
 marked.setOptions({ breaks: true, gfm: true })
 function renderMd(text) {
@@ -319,6 +322,15 @@ async function loadOlder() {
   }
 }
 
+// 当前正在 streaming 的 assistant bubble(模块级,被 ws 各事件共享)
+let currentAssistant = null
+function ensureAssistant() {
+  if (currentAssistant && turns.value.includes(currentAssistant)) return currentAssistant
+  currentAssistant = { kind: 'assistant', content: '', streaming: true }
+  turns.value.push(currentAssistant)
+  return currentAssistant
+}
+
 async function ask(preset) {
   const content = (preset ?? draft.value).trim()
   if (!content || streaming.value || !aiReady.value) return
@@ -327,106 +339,11 @@ async function ask(preset) {
   draft.value = ''
   if (inputEl.value) inputEl.value.style.height = 'auto'
 
-  // 当前正在 streaming 的 assistant bubble(如果存在)
-  let currentAssistant = null
-  const ensureAssistant = () => {
-    if (currentAssistant && turns.value.includes(currentAssistant)) return currentAssistant
-    currentAssistant = { kind: 'assistant', content: '', streaming: true }
-    turns.value.push(currentAssistant)
-    return currentAssistant
-  }
-
   streaming.value = true
-  // 用户主动发送:强制粘底
   stickToBottom.value = true
   scrollBottom(true)
 
-  try {
-    const resp = await fetch(apiChat.sendUrl(), {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content }),
-    })
-
-    if (!resp.ok || !resp.body) {
-      let msg = `http_${resp.status}`
-      try { const j = await resp.json(); if (j?.message) msg = j.message } catch {}
-      const a = ensureAssistant()
-      a.content = `[错误] ${msg}`
-      a.streaming = false
-      streaming.value = false
-      return
-    }
-
-    const reader = resp.body.getReader()
-    const decoder = new TextDecoder()
-    let buf = ''
-    while (true) {
-      const { value, done } = await reader.read()
-      if (done) break
-      buf += decoder.decode(value, { stream: true })
-      let idx
-      while ((idx = buf.indexOf('\n\n')) >= 0) {
-        const block = buf.slice(0, idx)
-        buf = buf.slice(idx + 2)
-        for (const line of block.split('\n')) {
-          if (!line.startsWith('data:')) continue
-          const payload = line.slice(5).trim()
-          if (payload === '[DONE]') continue
-          let evt
-          try { evt = JSON.parse(payload) } catch { continue }
-
-          if (evt.type === 'delta' && typeof evt.delta === 'string') {
-            const a = ensureAssistant()
-            a.content += evt.delta
-            scrollBottom()
-          } else if (evt.type === 'assistant_tool_calls' && evt.message?.tool_calls) {
-            // 收到这条意味着该 assistant 文本段结束(模型转去调工具),
-            // 给所有 tool_calls 创建占位卡片
-            if (currentAssistant) currentAssistant.streaming = false
-            currentAssistant = null
-            for (const tc of evt.message.tool_calls) {
-              let argsObj = {}
-              try { argsObj = JSON.parse(tc.function?.arguments || '{}') } catch {}
-              const turn = {
-                kind: 'tool',
-                id: tc.id,
-                name: tc.function?.name || 'tool',
-                args: formatArgs(argsObj),
-                reason: argsObj.reason || '',
-                result: undefined,
-                status: 'running',
-                open: false,
-              }
-              turns.value.push(turn)
-              toolMap.set(tc.id, turn)
-            }
-          } else if (evt.type === 'tool_result' && evt.message?.tool_call_id) {
-            const turn = toolMap.get(evt.message.tool_call_id)
-            if (turn) {
-              turn.result = evt.message.content
-              const isError = /^tool error:|^\[?error\]?:/i.test(String(evt.message.content || '').trim())
-              turn.status = isError ? 'error' : 'done'
-            }
-          } else if (evt.type === 'done') {
-            if (currentAssistant) currentAssistant.streaming = false
-          } else if (evt.type === 'error') {
-            const a = ensureAssistant()
-            a.content += `\n[错误] ${evt.message}`
-            a.streaming = false
-          }
-        }
-      }
-    }
-  } catch (e) {
-    const a = ensureAssistant()
-    a.content += `\n[网络错误] ${e?.message || ''}`
-  } finally {
-    if (currentAssistant) currentAssistant.streaming = false
-    streaming.value = false
-    scrollBottom()
-  }
+  ws.send({ type: 'chat.send', content })
 }
 
 onMounted(async () => {
@@ -437,6 +354,58 @@ onMounted(async () => {
     })
     resizeObserver.observe(contentEl.value)
   }
+
+  // === WS:订阅 chat.* 事件 ===
+  ws.on('chat.delta', (msg) => {
+    const a = ensureAssistant()
+    a.content += msg.delta || ''
+  })
+  ws.on('chat.assistant_tool_calls', (msg) => {
+    if (currentAssistant) currentAssistant.streaming = false
+    currentAssistant = null
+    for (const tc of msg.message?.tool_calls || []) {
+      let argsObj = {}
+      try { argsObj = JSON.parse(tc.function?.arguments || '{}') } catch {}
+      const turn = {
+        kind: 'tool',
+        id: tc.id,
+        name: tc.function?.name || 'tool',
+        args: formatArgs(argsObj),
+        reason: argsObj.reason || '',
+        result: undefined,
+        status: 'running',
+        open: false,
+      }
+      turns.value.push(turn)
+      toolMap.set(tc.id, turn)
+    }
+  })
+  ws.on('chat.tool_result', (msg) => {
+    const turn = toolMap.get(msg.message?.tool_call_id)
+    if (turn) {
+      turn.result = msg.message.content
+      const isError = /^tool error:|^\[?error\]?:/i.test(String(msg.message.content || '').trim())
+      turn.status = isError ? 'error' : 'done'
+    }
+  })
+  ws.on('chat.done', () => {
+    if (currentAssistant) currentAssistant.streaming = false
+    currentAssistant = null
+    streaming.value = false
+  })
+  ws.on('chat.error', (msg) => {
+    const a = ensureAssistant()
+    a.content += `\n[错误] ${msg.message || ''}`
+    a.streaming = false
+    currentAssistant = null
+    streaming.value = false
+  })
+  ws.on('chat.aborted', () => {
+    if (currentAssistant) currentAssistant.streaming = false
+    currentAssistant = null
+    streaming.value = false
+  })
+
   await checkAi()
   await loadInitial()
   // 注意先加载完初始内容、scroll 到底之后,再装顶部 sentinel 观察器,

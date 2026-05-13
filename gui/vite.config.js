@@ -25,6 +25,7 @@ export default defineConfig({
     proxy: {
       '/api':  { target: 'http://localhost:9507', changeOrigin: true, configure: noDelayConfigure },
       '/apps': { target: 'http://localhost:9507', changeOrigin: true, configure: noDelayConfigure },
+      '/ws':   { target: 'ws://localhost:9507',   changeOrigin: true, ws: true },
     },
   },
   build: {
