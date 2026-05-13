@@ -1,10 +1,9 @@
-node_modules/
+node_modules
+database
+files
+dist
+gui/dist
 .DS_Store
 *.log
-
-# build artifacts
-gui/dist/
-
-# 本地私密配置 — 从 server/config.example.js 复制后填值
-server/config.js
-server/.env
+.env
+.env.local
