@@ -2,6 +2,10 @@ import { handleAuthApi }     from './auth/index.js'
 import { handleSettingsApi } from './settings/index.js'
 import { handleChatApi }     from './chat/index.js'
 import { handleSearchApi }   from './search/index.js'
+import { handleMemoryApi }   from './memory/index.js'
+import { handleFsApi }       from './fs/index.js'
+import { handleLlmApi }      from './llm/index.js'
+import { handleTaskApi }     from './task/index.js'
 import { fail }              from '../../shared/http/json.js'
 import { isAuthenticated }   from '../service/auth/index.js'
 import http from 'node:http'
@@ -30,10 +34,15 @@ const proxyToApps = (req, res, path, url) => new Promise((resolve) => {
 })
 
 export const handleMainApi = async (req, res, path, url) => {
-  if (path.startsWith('/api/auth'))     return (await handleAuthApi(req, res, path))     !== false
-  if (path.startsWith('/api/settings')) return (await handleSettingsApi(req, res, path)) !== false
-  if (path.startsWith('/api/chat'))     return (await handleChatApi(req, res, path, url))!== false
-  if (path.startsWith('/api/search'))   return (await handleSearchApi(req, res, path, url))!== false
+  if (path.startsWith('/api/auth'))     return (await handleAuthApi(req, res, path))           !== false
+  if (path.startsWith('/api/settings')) return (await handleSettingsApi(req, res, path))       !== false
+  if (path.startsWith('/api/chat'))     return (await handleChatApi(req, res, path, url))      !== false
+  if (path.startsWith('/api/search'))   return (await handleSearchApi(req, res, path, url))    !== false
+  if (path.startsWith('/api/memory'))   return (await handleMemoryApi(req, res, path, url))    !== false
+  if (path === '/api/fs' || path.startsWith('/api/fs/'))
+                                        return (await handleFsApi(req, res, path, url))        !== false
+  if (path.startsWith('/api/llm'))      return (await handleLlmApi(req, res, path))            !== false
+  if (path.startsWith('/api/task'))     return (await handleTaskApi(req, res, path, url))      !== false
   if (path.startsWith('/api/apps/') || path.startsWith('/apps/')) {
     await proxyToApps(req, res, path, url)
     return true
