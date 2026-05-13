@@ -146,44 +146,22 @@
       </section>
 
       <!-- 协作 -->
-      <section v-else-if="tab === 'collab'" class="mt-6">
-        <div v-if="authLoading" class="py-6 text-sm text-nt-soft">加载中…</div>
+      <section v-else-if="tab === 'collab'" class="mt-6 space-y-3">
+        <p class="text-sm text-nt-muted">
+          把下面这段直接发给 Codex / Claude / 别的 AI,让它先理解 meem 的目录与约定,再开始改代码。
+        </p>
 
-        <div v-else-if="!current">
-          <p class="text-sm text-nt-muted">为外部 AI 工具(ChatGPT / Claude 等)开一把 token,可读写本机所有数据。</p>
-          <button
-            type="button"
-            :disabled="authBusy"
-            class="mt-4 rounded-md bg-nt px-5 py-2.5 text-sm text-white hover:bg-black disabled:opacity-50"
-            @click="onEnable"
-          >{{ authBusy ? '开启中…' : '开启协作' }}</button>
-        </div>
-
-        <template v-else>
-          <div class="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
-            <span>⚠️</span>
-            <span>泄漏即丢号,谨慎复制。</span>
-          </div>
-
-          <section class="mt-4 rounded-md border border-nt-divider p-4">
-            <h2 class="text-sm font-medium text-nt">💬 快捷消息</h2>
-            <pre class="mt-3 max-h-72 overflow-y-auto whitespace-pre-wrap break-all rounded-md bg-nt-hover p-3 font-mono text-xs leading-relaxed text-nt">{{ aiMessage }}</pre>
+        <section class="rounded-md border border-nt-divider">
+          <div class="flex items-center justify-between border-b border-nt-divider px-3 py-2">
+            <h2 class="text-sm font-medium text-nt">📝 上下文提示词</h2>
             <button
               type="button"
-              class="mt-3 rounded-md bg-nt px-4 py-2 text-sm text-white hover:bg-black"
-              @click="copy(aiMessage)"
+              class="rounded bg-nt px-3 py-1 text-xs text-white hover:bg-black"
+              @click="copy(collabPrompt)"
             >{{ copied ? '✓ 已复制' : '复制' }}</button>
-          </section>
-
-          <div class="mt-6">
-            <button
-              type="button"
-              :disabled="authBusy"
-              class="rounded-md border border-nt-divider px-3 py-1.5 text-xs text-nt-muted hover:bg-nt-danger-bg hover:text-nt-danger disabled:opacity-50"
-              @click="onDisable"
-            >{{ authBusy ? '关闭中…' : '关闭协作' }}</button>
           </div>
-        </template>
+          <pre class="max-h-[28rem] overflow-auto whitespace-pre-wrap break-words bg-nt-hover/30 p-3 font-mono text-[12px] leading-relaxed text-nt">{{ collabPrompt }}</pre>
+        </section>
       </section>
 
       <!-- 技能 -->
@@ -239,7 +217,7 @@
 <script setup>
 import { computed, reactive, ref, onMounted, h } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { apiSettings, apiTokens, apiUser } from '@/api/client'
+import { apiSettings, apiUser } from '@/api/client'
 
 const Field = (props, { slots }) => h('label', { class: 'block' }, [
   h('div', { class: 'mb-1 text-sm font-medium text-nt' }, props.label),
@@ -357,52 +335,106 @@ async function onSaveContext() {
   } finally { contextBusy.value = false }
 }
 
-// === 协作 ===
-const authLoading = ref(true)
-const authBusy = ref(false)
-const current  = ref(null)
-const copied   = ref(false)
+// === 协作:给外部 AI 看的项目上下文 ===
+const copied = ref(false)
+const collabPrompt = `你将协作开发 meem ── 一个单机自部署的个人知识库。
 
-const schemaUrl = computed(() => `${window.location.origin}/api/ai/openapi.json`)
-const aiMessage = computed(() => current.value
-  ? `这是我 MindBase 的 OpenAPI schema 和 token,你可以读写我的数据。
+# 一句话
 
-Schema: ${schemaUrl.value}
-Authorization: Bearer ${current.value.token}
+本机跑的 Node.js + node:sqlite 应用,UI Notion 风,目前有 6 个应用:聊天 / 想法 / 待办 / 笔记 / 搜索 / 设置。所有用户数据在 database/meem.db 一个 SQLite 文件里,完全在本地,没有云。
 
-先 fetch schema 看可用接口,再按需操作。`
-  : ''
-)
+# 运行
 
-async function loadAuth() {
-  authLoading.value = true
-  try {
-    const { tokens } = await apiTokens.list()
-    current.value = tokens[0] || null
-  } catch {} finally {
-    authLoading.value = false
-  }
-}
+- 开发:\`npm run dev\` → 三进程:main 9507 + apps 9508 + vite 5173
+- 生产:\`npm run start\` → 两进程,main 直接 serve gui/dist
+- 数据库:database/meem.db(WAL 模式)
+- 节点:Node >= 22.5(用 node:sqlite,无原生编译依赖)
 
-async function onEnable() {
-  authBusy.value = true
-  try {
-    const { token } = await apiTokens.create('AI')
-    current.value = token
-  } catch (e) { alert(e?.message || '开启失败') }
-  finally { authBusy.value = false }
-}
+# 架构(参照 AIOS 风格,内核与应用分进程)
 
-async function onDisable() {
-  if (!current.value) return
-  if (!window.confirm('关闭协作?当前 token 立即失效。')) return
-  authBusy.value = true
-  try {
-    await apiTokens.remove(current.value.id)
-    current.value = null
-  } catch (e) { alert(e?.message || '关闭失败') }
-  finally { authBusy.value = false }
-}
+\`\`\`
+server/
+├── shared/http/            通用 http 工具(json/readBody)
+├── main/                   内核(9507),对外唯一入口
+│   ├── api/                路由分发
+│   │   ├── auth/           密码登录 / setup / 改密
+│   │   ├── settings/       KV 配置
+│   │   ├── chat/           SSE 助理(含 sql_query 工具)
+│   │   ├── search/         跨应用全文搜索
+│   │   └── tokens/         对外 API token(自用一般不用)
+│   ├── service/auth/       PBKDF2 + JWT cookie
+│   ├── repository/         系统表:settings / messages / tokens
+│   ├── ai/                 agent 循环 + 工具
+│   │   ├── handler.js      多轮循环
+│   │   ├── runner.js       并行跑工具
+│   │   ├── tools.js        工具 schema
+│   │   ├── functions.js    工具实现(sql_query)
+│   │   └── system-prompt.js DEFAULT_SYSTEM_PROMPT
+│   └── llm/                OpenAI 兼容 provider 适配 + 流式
+└── apps/                   用户应用(9508,只接 9507 转发)
+    ├── index.js            dispatcher
+    ├── registry.js         应用注册
+    ├── memos/              想法
+    ├── todos/              待办
+    └── notes/              笔记本 + 笔记
+
+apps/<name>/APP.md          给 AI 看的应用元数据(表名、API)
+
+gui/src/
+├── apps.js                 应用注册表(单一事实源)
+├── apps/<name>/            每个应用的 Vue 组件
+├── components/             跨应用通用(AppShell/Popover/Cover/EmojiPicker)
+├── views/Welcome.vue       系统页(创建账号/登录)
+├── router/index.js         从 apps.js 自动生成路由
+├── api/client.js           前端 API client
+└── assets/main.css         Tailwind v4 + Notion 风主题色(--color-nt-*)
+\`\`\`
+
+# 关键约定
+
+1. **后端应用模块** 默认 export \`{ name, match, initDb, handleApi }\`,挂到 \`server/apps/registry.js\` 即生效。
+2. **应用表名前缀** \`apps_<name>\` (例:apps_memos / apps_todos / apps_notebooks / apps_notes)。系统表是 settings / messages / tokens,不带前缀。
+3. **API 路径**:内核 \`/api/*\`,应用 \`/apps/<name>/*\`(GUI 都连 9507,内核把 /apps/* 鉴权后转发到 9508)。
+4. **鉴权**:全局 cookie JWT;首次访问引导创建账号(\`/api/auth/status\` + \`/api/auth/setup\`)。
+5. **前端 apps.js 一条记录 = 一个应用**:含 id / icon / label / path / match / component(懒加载)/ subRoutes。AppShell 用它生成宫格,router 用它生成路由。
+6. **SSE 必须 setNoDelay**:server 内核已经做了,vite proxy 也做了,生产环境一条腿,不需要 vite 那段。
+
+# 数据库表
+
+系统(server/main):
+- settings(key, value, updated_at) — KV(包括 auth_username / auth_password_hash / auth_password_salt / ai_base_url / ai_api_key / ai_model / ai_context_rounds / ai_system_prompt / home_* / memos_*)
+- messages(id, conversation_id, message, memo, usage, meta, created_at) — 助理对话,conversation_id 当前硬编码 'main'
+- tokens(id, name, token, scope, created_at, last_used_at) — 对外授权(本机用基本闲置)
+
+应用(server/apps):
+- apps_memos(id, content, created_at, updated_at)
+- apps_todos(id, title, done, sort_order, created_at, updated_at)
+- apps_notebooks(id, parent_id, name, icon, cover, sort_order, created_at, updated_at)
+- apps_notes(id, notebook_id, title, content, icon, cover, sort_order, created_at, updated_at)
+
+# 加一个应用要做什么
+
+1. 后端:\`server/apps/<name>/{index.js, api/index.js, repository/init.js}\`,index.js 默认 export \`{ name, match, initDb, handleApi }\`。
+2. 注册:\`server/apps/registry.js\` 加一行 \`() => import('./<name>/index.js')\`。
+3. 文档:\`apps/<name>/APP.md\`(说明:表名、API、用途)。
+4. 前端:\`gui/src/apps/<name>/<Main>.vue\`。
+5. 注册:\`gui/src/apps.js\` 数组里加一条。
+6. 完事。router 和应用宫格自动生效。
+
+# 风格
+
+- 前端 Tailwind v4(\`@theme\` 写在 src/assets/main.css),主题色用 \`--color-nt-*\`(Notion 风)。
+- 中文 UI,简洁直接,不要过度文案。
+- 助手消息走 markdown 渲染(marked + DOMPurify)。
+- 写代码:复用现有组件,Pinia 不强求,大部分用 \`ref\` + composables 就够。
+
+# 你要怎么改
+
+- 顺着上面约定走,别引入新依赖除非真的必要。
+- 改完直接说改了哪些文件 + 为什么,不要废话。
+- 如果不确定某处怎么改,问我或先 grep 现有代码找类似的写法。
+- 数据库改 schema 要给迁移脚本(放 migrations/ 目录,文件名带日期)。
+`
 
 // === 账户:改密码 ===
 const pwdForm = reactive({ old: '', next: '', next2: '' })
@@ -443,7 +475,7 @@ async function copy(text) {
   } catch {}
 }
 
-onMounted(() => { loadSettings(); loadAuth() })
+onMounted(() => { loadSettings() })
 </script>
 
 <style scoped>
