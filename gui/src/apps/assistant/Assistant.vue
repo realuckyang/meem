@@ -107,6 +107,45 @@
       </div>
     </div>
 
+    <!-- WS 调试浮窗 -->
+    <button
+      type="button"
+      class="fixed bottom-3 right-3 z-30 rounded-full border border-nt-divider bg-white px-2.5 py-1 text-[11px] text-nt-soft shadow-sm hover:bg-nt-hover hover:text-nt"
+      :title="debugOpen ? '关闭调试' : '打开 WS 调试'"
+      @click="toggleDebug"
+    >{{ debugOpen ? '×' : '⌁' }} ws</button>
+
+    <div
+      v-if="debugOpen"
+      class="fixed bottom-12 right-3 z-30 flex h-[60vh] w-[420px] max-w-[92vw] flex-col rounded-md border border-nt-divider bg-white shadow-lg"
+    >
+      <div class="flex items-center gap-2 border-b border-nt-divider px-2 py-1.5 text-xs">
+        <span class="font-medium text-nt">WS 帧 · {{ debugLog.length }}</span>
+        <span class="ml-2 text-nt-soft tabular-nums">最慢间隔 {{ debugMaxGap.toFixed(0) }} ms</span>
+        <button
+          type="button"
+          class="ml-auto rounded px-1.5 py-0.5 text-nt-soft hover:bg-nt-hover hover:text-nt"
+          @click="clearDebug"
+        >清空</button>
+        <label class="inline-flex items-center gap-1 text-nt-soft">
+          <input type="checkbox" v-model="debugAutoScroll" class="accent-nt-accent" />
+          跟随
+        </label>
+      </div>
+      <div ref="debugListEl" class="flex-1 overflow-y-auto px-2 py-1 font-mono text-[11px] leading-snug">
+        <div v-for="(r, i) in debugLog" :key="i" class="flex items-baseline gap-1.5">
+          <span
+            class="w-12 shrink-0 tabular-nums text-right"
+            :class="r.gap > 200 ? 'text-nt-danger font-semibold' : r.gap > 80 ? 'text-amber-600' : 'text-nt-hint'"
+          >+{{ r.gap.toFixed(0) }}</span>
+          <span :class="r.dir === 'in' ? 'text-emerald-600' : 'text-sky-600'">{{ r.dir === 'in' ? '⇣' : '⇡' }}</span>
+          <span class="shrink-0 text-nt">{{ r.type }}</span>
+          <span v-if="r.preview" class="truncate text-nt-soft">{{ r.preview }}</span>
+          <span class="ml-auto shrink-0 text-nt-hint tabular-nums">{{ r.bytes }}B</span>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -115,7 +154,7 @@ import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { apiChat, apiSettings } from '@/api/client'
-import { useWs } from '@/composables/useWs'
+import { useWs, wsTap } from '@/composables/useWs'
 
 const ws = useWs()
 
@@ -422,5 +461,60 @@ onMounted(async () => {
 onUnmounted(() => {
   resizeObserver?.disconnect(); resizeObserver = null
   topObserver?.disconnect();    topObserver = null
+  stopDebug?.()
 })
+
+// === WS 调试浮窗 ===
+const debugOpen   = ref(false)
+const debugLog    = ref([])          // [{ dir, type, gap, bytes, preview }]
+const debugMaxGap = ref(0)
+const debugAutoScroll = ref(true)
+const debugListEl = ref(null)
+const DEBUG_CAP   = 500
+let lastFrameT = 0
+let stopDebug  = null
+
+const previewOf = (msg) => {
+  if (!msg || typeof msg !== 'object') return ''
+  if (typeof msg.content === 'string') return msg.content.slice(0, 60)
+  if (msg.message?.content && typeof msg.message.content === 'string') return msg.message.content.slice(0, 60)
+  if (msg.delta && typeof msg.delta === 'string') return msg.delta.slice(0, 60)
+  if (msg.data && typeof msg.data === 'object') {
+    if (typeof msg.data.delta === 'string') return msg.data.delta.slice(0, 60)
+    if (typeof msg.data.text  === 'string') return msg.data.text.slice(0, 60)
+  }
+  return ''
+}
+
+const toggleDebug = () => {
+  debugOpen.value = !debugOpen.value
+  if (debugOpen.value && !stopDebug) {
+    lastFrameT = performance.now()
+    stopDebug = wsTap((evt) => {
+      const gap = lastFrameT ? evt.t - lastFrameT : 0
+      lastFrameT = evt.t
+      if (gap > debugMaxGap.value) debugMaxGap.value = gap
+      debugLog.value.push({
+        dir: evt.dir,
+        type: evt.type,
+        gap,
+        bytes: evt.bytes,
+        preview: previewOf(evt.msg),
+      })
+      if (debugLog.value.length > DEBUG_CAP) debugLog.value.splice(0, debugLog.value.length - DEBUG_CAP)
+      if (debugAutoScroll.value) {
+        nextTick(() => {
+          const el = debugListEl.value
+          if (el) el.scrollTop = el.scrollHeight
+        })
+      }
+    })
+  }
+}
+
+const clearDebug = () => {
+  debugLog.value = []
+  debugMaxGap.value = 0
+  lastFrameT = performance.now()
+}
 </script>

@@ -73,7 +73,8 @@ const initWsAppsOnce = async () => {
   }
 }
 
-const wss = new WebSocketServer({ noServer: true })
+// perMessageDeflate=false:聊天是小帧流,zlib 会攒帧导致"吐两个字→卡→一次吐完"。
+const wss = new WebSocketServer({ noServer: true, perMessageDeflate: false })
 
 wss.on('connection', (ws, req) => {
   const clientId = randomUUID()
@@ -136,6 +137,7 @@ export const setupWebSocket = (httpServer) => {
         socket.destroy()
         return
       }
+      try { socket.setNoDelay(true) } catch {}
       wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req))
     } catch (err) {
       console.error('[ws-upgrade]', err?.message)
