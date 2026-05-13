@@ -111,7 +111,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { marked } from 'marked'
 import { apiChat, apiSettings } from '@/api/client'
 import { useWs } from '@/composables/useWs'
@@ -213,18 +213,7 @@ function pushFromMessage(msg, dest) {
     if (Array.isArray(msg.tool_calls) && msg.tool_calls.length) {
       if (msg.content) out.push({ kind: 'assistant', content: String(msg.content) })
       for (const tc of msg.tool_calls) {
-        let argsObj = {}
-        try { argsObj = JSON.parse(tc.function?.arguments || '{}') } catch {}
-        const turn = {
-          kind: 'tool',
-          id: tc.id,
-          name: tc.function?.name || 'tool',
-          args: formatArgs(argsObj),
-          reason: argsObj.reason || '',
-          result: undefined,
-          status: 'done',
-          open: false,
-        }
+        const turn = createToolTurn(tc, 'done')
         out.push(turn)
         toolMap.set(tc.id, turn)
       }
@@ -245,6 +234,21 @@ function formatArgs(obj) {
   if (obj?.command) return String(obj.command)
   if (obj?.sql)     return String(obj.sql)
   try { return JSON.stringify(obj, null, 2) } catch { return String(obj) }
+}
+
+function createToolTurn(tc, status = 'running') {
+  let argsObj = {}
+  try { argsObj = JSON.parse(tc.function?.arguments || '{}') } catch {}
+  return reactive({
+    kind: 'tool',
+    id: tc.id,
+    name: tc.function?.name || 'tool',
+    args: formatArgs(argsObj),
+    reason: argsObj.reason || '',
+    result: undefined,
+    status,
+    open: false,
+  })
 }
 
 // 分页加载历史:初次拿最新 30 条;上滑触发更早 30 条
@@ -298,7 +302,7 @@ async function loadOlder() {
 let currentAssistant = null
 function ensureAssistant() {
   if (currentAssistant && turns.value.includes(currentAssistant)) return currentAssistant
-  currentAssistant = { kind: 'assistant', content: '', streaming: true }
+  currentAssistant = reactive({ kind: 'assistant', content: '', streaming: true })
   turns.value.push(currentAssistant)
   return currentAssistant
 }
@@ -327,18 +331,7 @@ onMounted(async () => {
     if (currentAssistant) currentAssistant.streaming = false
     currentAssistant = null
     for (const tc of msg.message?.tool_calls || []) {
-      let argsObj = {}
-      try { argsObj = JSON.parse(tc.function?.arguments || '{}') } catch {}
-      const turn = {
-        kind: 'tool',
-        id: tc.id,
-        name: tc.function?.name || 'tool',
-        args: formatArgs(argsObj),
-        reason: argsObj.reason || '',
-        result: undefined,
-        status: 'running',
-        open: false,
-      }
+      const turn = createToolTurn(tc)
       turns.value.push(turn)
       toolMap.set(tc.id, turn)
     }
