@@ -4,7 +4,6 @@ import { isAuthenticated } from '../../service/auth/index.js'
 import { getAllSettings } from '../../repository/settings.js'
 import { insertMessage, listMessagesAll, listMessagesPage } from '../../repository/messages.js'
 import { chat } from '../../ai/handler.js'
-import { DEFAULT_SYSTEM_PROMPT } from '../../ai/system-prompt.js'
 
 const CONVERSATION_ID = 'main'
 
@@ -70,9 +69,9 @@ export const handleChatApi = async (req, res, path, url) => {
     const userMsg = { role: 'user', content }
     insertMessage({ conversationId: CONVERSATION_ID, message: userMsg })
 
-    const systemPrompt = String(settings.ai_system_prompt || '').trim() || DEFAULT_SYSTEM_PROMPT
+    const systemPrompt = String(settings.ai_system_prompt || '').trim()
     const messages = [
-      { role: 'system', content: systemPrompt },
+      ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
       ...history,
       userMsg,
     ]

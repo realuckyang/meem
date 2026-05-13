@@ -260,8 +260,9 @@ function pushFromMessage(msg, dest) {
 }
 
 function formatArgs(obj) {
-  // sql_query 的话直接显示 sql,其它工具显示 JSON
-  if (obj?.sql) return String(obj.sql)
+  // shell 直接显示 command,其它工具显示 JSON
+  if (obj?.command) return String(obj.command)
+  if (obj?.sql)     return String(obj.sql)
   try { return JSON.stringify(obj, null, 2) } catch { return String(obj) }
 }
 

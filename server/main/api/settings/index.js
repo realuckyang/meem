@@ -2,7 +2,6 @@ import { readBody } from '../../../shared/http/readBody.js'
 import { ok, fail } from '../../../shared/http/json.js'
 import { isAuthenticated } from '../../service/auth/index.js'
 import { getAllSettings, setSetting } from '../../repository/settings.js'
-import { DEFAULT_SYSTEM_PROMPT } from '../../ai/system-prompt.js'
 
 const ROUND_CHOICES = [30, 100, 500]
 const DEFAULT_ROUNDS = 100
@@ -29,7 +28,6 @@ const serialize = (all) => ({
   ai_model:                 all.ai_model    || '',
   ai_context_rounds:        normalizeRounds(all.ai_context_rounds),
   ai_system_prompt:         all.ai_system_prompt || '',
-  ai_system_prompt_default: DEFAULT_SYSTEM_PROMPT,
   memos_icon:               all.memos_icon  || '',
   memos_cover:              all.memos_cover || '',
   home_name:                all.home_name   || '',

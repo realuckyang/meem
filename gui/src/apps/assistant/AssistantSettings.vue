@@ -96,28 +96,14 @@
       <section v-else-if="tab === 'prompt'" class="mt-6 space-y-5">
         <div v-if="loading" class="py-6 text-sm text-nt-soft">加载中…</div>
         <template v-else>
-          <Field label="System Prompt" hint="留空使用默认。你可以加入个人偏好、领域知识、回答风格等。">
+          <Field label="System Prompt">
             <textarea
               v-model="form.ai_system_prompt"
-              rows="14"
-              :placeholder="defaultSystemPrompt"
+              rows="16"
               class="mb-input font-mono text-[13px] leading-relaxed"
             ></textarea>
           </Field>
-          <div class="flex items-center gap-3">
-            <SaveBar :busy="promptBusy" :saved="promptSaved" :error="promptError" @save="onSavePrompt" />
-            <button
-              type="button"
-              class="rounded px-3 py-1 text-xs text-nt-soft hover:bg-nt-hover hover:text-nt"
-              @click="onUseDefault"
-            >填入默认</button>
-            <button
-              v-if="form.ai_system_prompt"
-              type="button"
-              class="rounded px-3 py-1 text-xs text-nt-soft hover:bg-nt-hover hover:text-nt-danger"
-              @click="onClearPrompt"
-            >清空(用默认)</button>
-          </div>
+          <SaveBar :busy="promptBusy" :saved="promptSaved" :error="promptError" @save="onSavePrompt" />
         </template>
       </section>
 
@@ -190,7 +176,7 @@
         <p class="text-sm leading-relaxed text-nt-muted">
           MindBase 是一个开源的个人知识库工具,设计目标是单人单机自部署。
           基于 Cloudflare Workers + D1 + R2,部署成本接近零。
-          数据完全握在自己手里,助理通过 sql_query 工具直接读写本地数据库,无需任何向量化或第三方服务。
+          数据完全握在自己手里,助理通过 shell 工具在本机执行任意命令(读写数据库 / 文件 / 网络等),不依赖任何第三方服务。
         </p>
 
         <div class="rounded-md border border-nt-divider p-4">
@@ -267,7 +253,6 @@ const form = reactive({
   ai_context_rounds: 100,
   ai_system_prompt: '',
 })
-const defaultSystemPrompt = ref('')
 
 async function loadSettings() {
   loading.value = true
@@ -278,7 +263,6 @@ async function loadSettings() {
     form.ai_model    = settings.ai_model
     form.ai_context_rounds = settings.ai_context_rounds || 100
     form.ai_system_prompt  = settings.ai_system_prompt || ''
-    defaultSystemPrompt.value = settings.ai_system_prompt_default || ''
   } catch {} finally {
     loading.value = false
   }
@@ -317,8 +301,6 @@ async function onSavePrompt() {
     promptError.value = e?.message || '保存失败'
   } finally { promptBusy.value = false }
 }
-function onUseDefault() { form.ai_system_prompt = defaultSystemPrompt.value }
-function onClearPrompt() { form.ai_system_prompt = '' }
 
 const contextBusy = ref(false), contextSaved = ref(false), contextError = ref('')
 async function onSaveContext() {
@@ -359,7 +341,7 @@ server/
 │   ├── api/                路由分发
 │   │   ├── auth/           密码登录 / setup / 改密
 │   │   ├── settings/       KV 配置
-│   │   ├── chat/           SSE 助理(含 sql_query 工具)
+│   │   ├── chat/           SSE 助理(含 shell 工具)
 │   │   ├── search/         跨应用全文搜索
 │   │   └── tokens/         对外 API token(自用一般不用)
 │   ├── service/auth/       PBKDF2 + JWT cookie
@@ -368,7 +350,7 @@ server/
 │   │   ├── handler.js      多轮循环
 │   │   ├── runner.js       并行跑工具
 │   │   ├── tools.js        工具 schema
-│   │   ├── functions.js    工具实现(sql_query)
+│   │   ├── functions.js    工具实现(shell:对齐 AIOS)
 │   │   └── system-prompt.js DEFAULT_SYSTEM_PROMPT
 │   └── llm/                OpenAI 兼容 provider 适配 + 流式
 └── apps/                   用户应用(9508,只接 9507 转发)
