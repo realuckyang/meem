@@ -1,7 +1,7 @@
 node_modules
-database
-files
-dist
+/database
+/files
+/dist
 gui/dist
 .DS_Store
 *.log
