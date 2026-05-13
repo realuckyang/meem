@@ -77,6 +77,10 @@ export const handleChatApi = async (req, res, path, url) => {
       userMsg,
     ]
 
+    // 关 Nagle:SSE 每个 delta 都是小包,Nagle 默认会等更多数据或 200ms
+    // 才发,导致前端看起来"挤一下停一下"。SSE/WebSocket 场景下必须关
+    res.socket?.setNoDelay(true)
+
     res.writeHead(200, {
       'Content-Type': 'text/event-stream; charset=utf-8',
       'Cache-Control': 'no-cache, no-transform',
