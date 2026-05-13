@@ -47,6 +47,18 @@ export const apps = [
     component: () => import('./apps/search/Search.vue'),
   },
   {
+    id: 'files', icon: '📁', label: '文件',
+    path: '/files',
+    match: (p) => p.startsWith('/files'),
+    component: () => import('./apps/files/Files.vue'),
+  },
+  {
+    id: 'terminal', icon: '💻', label: '终端',
+    path: '/terminal',
+    match: (p) => p.startsWith('/terminal'),
+    component: () => import('./apps/terminal/Terminal.vue'),
+  },
+  {
     id: 'settings', icon: '⚙️', label: '设置',
     path: '/assistant/settings',
     match: (p) => p.startsWith('/assistant/settings') || p.startsWith('/assistant/authorize'),
