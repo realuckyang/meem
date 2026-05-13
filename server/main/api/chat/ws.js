@@ -4,7 +4,7 @@
 //   { type: 'chat.delta', delta }
 //   { type: 'chat.assistant_tool_calls', message }
 //   { type: 'chat.tool_result', message }
-//   { type: 'chat.done', message }
+//   { type: 'chat.done' }
 //   { type: 'chat.error', message }
 
 import { registerHandler } from '../../service/runtime/ws.js'
@@ -80,7 +80,7 @@ registerHandler('chat.send', async (msg, { send, clientId }) => {
         send({ type: 'chat.tool_result', message: evt.message })
         insertMessage({ conversationId: CONVERSATION_ID, message: evt.message })
       } else if (evt.type === 'done' && evt.message) {
-        send({ type: 'chat.done', message: evt.message })
+        send({ type: 'chat.done' })
         insertMessage({ conversationId: CONVERSATION_ID, message: evt.message, meta: { model } })
       }
     } catch (e) { console.error('chat onEvent failed', e?.message) }
