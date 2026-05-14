@@ -19,16 +19,35 @@ export const apps = [
     component: () => import('./apps/assistant/Assistant.vue'),
   },
   {
-    id: 'memos', icon: '💡', label: '想法',
-    path: '/memos',
-    match: (p) => p.startsWith('/memos'),
-    component: () => import('./apps/memos/Memos.vue'),
+    id: 'tasks', icon: '📋', label: '任务',
+    path: '/tasks',
+    match: (p) => p.startsWith('/tasks') || p.startsWith('/task/'),
+    component: () => import('./apps/tasks/Tasks.vue'),
+    subRoutes: [
+      { path: '/task/:id', name: 'task', component: () => import('./apps/tasks/TaskDetail.vue'), props: true },
+    ],
+  },
+  {
+    id: 'memory', icon: '🧠', label: '记忆',
+    path: '/memory',
+    match: (p) => p.startsWith('/memory'),
+    component: () => import('./apps/memory/Memory.vue'),
+    subRoutes: [
+      { path: '/memory/new', name: 'memory-new',  component: () => import('./apps/memory/MemoryEdit.vue') },
+      { path: '/memory/:id', name: 'memory-edit', component: () => import('./apps/memory/MemoryEdit.vue'), props: true },
+    ],
   },
   {
     id: 'todos', icon: '✅', label: '待办',
     path: '/todos',
     match: (p) => p.startsWith('/todos'),
     component: () => import('./apps/todos/Todos.vue'),
+  },
+  {
+    id: 'memos', icon: '💡', label: '想法',
+    path: '/memos',
+    match: (p) => p.startsWith('/memos'),
+    component: () => import('./apps/memos/Memos.vue'),
   },
   {
     id: 'notes', icon: '📚', label: '笔记',
@@ -38,21 +57,6 @@ export const apps = [
     subRoutes: [
       { path: '/notebook/:id', name: 'notebook', component: () => import('./apps/notes/Notebook.vue'), props: true },
       { path: '/note/:id',     name: 'note',     component: () => import('./apps/notes/Note.vue'),     props: true },
-    ],
-  },
-  {
-    id: 'memory', icon: '🧠', label: '记忆',
-    path: '/memory',
-    match: (p) => p.startsWith('/memory'),
-    component: () => import('./apps/memory/Memory.vue'),
-  },
-  {
-    id: 'tasks', icon: '📋', label: '任务',
-    path: '/tasks',
-    match: (p) => p.startsWith('/tasks') || p.startsWith('/task/'),
-    component: () => import('./apps/tasks/Tasks.vue'),
-    subRoutes: [
-      { path: '/task/:id', name: 'task', component: () => import('./apps/tasks/TaskDetail.vue'), props: true },
     ],
   },
   {

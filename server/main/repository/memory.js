@@ -19,11 +19,14 @@ const rowToMemory = (row) => row && {
 const normVisibility = (v) =>
   VISIBILITIES.includes(String(v)) ? String(v) : 'full'
 
+// 排序:必读(full)→ 摘要(summary)→ 已存(count),同档内按 id 倒序
 export const listMemories = () => {
   const rows = db.prepare(`
     SELECT id, title, description, content, visibility, created_at
       FROM memories
-     ORDER BY id DESC
+     ORDER BY
+       CASE visibility WHEN 'full' THEN 0 WHEN 'summary' THEN 1 WHEN 'count' THEN 2 ELSE 3 END,
+       id DESC
   `).all()
   return rows.map(rowToMemory)
 }

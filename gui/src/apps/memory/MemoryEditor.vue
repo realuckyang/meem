@@ -4,19 +4,19 @@
       v-model="form.title"
       type="text"
       placeholder="标题(必填,例:我的口味偏好)"
-      class="w-full rounded border border-nt-divider bg-white px-2 py-1.5 text-sm text-nt outline-none focus:border-nt-accent"
+      class="w-full rounded border border-nt-divider bg-white px-2 py-1.5 text-sm text-nt outline-none placeholder:text-nt-hint focus:border-nt-accent"
     />
     <input
       v-model="form.description"
       type="text"
       placeholder="摘要(一句话概括,summary 档会注入这条)"
-      class="w-full rounded border border-nt-divider bg-white px-2 py-1.5 text-sm text-nt-muted outline-none focus:border-nt-accent"
+      class="w-full rounded border border-nt-divider bg-white px-2 py-1.5 text-sm text-nt outline-none placeholder:text-nt-hint focus:border-nt-accent"
     />
     <textarea
       v-model="form.content"
       rows="6"
       placeholder="内容(必填,仅 full 档助理才能读到原文)"
-      class="w-full resize-y rounded border border-nt-divider bg-white px-2 py-1.5 text-sm text-nt outline-none focus:border-nt-accent"
+      class="w-full resize-y rounded border border-nt-divider bg-white px-2 py-1.5 text-sm text-nt outline-none placeholder:text-nt-hint focus:border-nt-accent"
     ></textarea>
 
     <!-- visibility 三档 -->
@@ -64,9 +64,9 @@
 import { reactive, watch } from 'vue'
 
 const VIS_OPTIONS = [
-  { value: 'count',   label: '仅数量', hint: '助理只知道有这条' },
+  { value: 'count',   label: '已存',  hint: '助理只知道有这条' },
   { value: 'summary', label: '摘要',  hint: '标题 + 描述可见' },
-  { value: 'full',    label: '全部',  hint: '内容也注入' },
+  { value: 'full',    label: '必读',  hint: '内容也注入' },
 ]
 
 const props = defineProps({
