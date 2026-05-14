@@ -15,7 +15,8 @@
         <span class="text-[13px] leading-none">▶</span>
         <span class="max-w-[140px] truncate">{{ t.title || t.id }}</span>
         <span
-          class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded text-nt-soft opacity-0 group-hover:opacity-100 hover:bg-nt-hover-strong hover:text-nt-danger"
+          class="ml-1 inline-flex h-6 w-6 items-center justify-center rounded text-nt-soft hover:bg-nt-hover-strong hover:text-nt-danger md:h-4 md:w-4"
+          aria-label="关闭终端"
           title="关闭"
           @click.stop="closeTab(t.id)"
         >✕</span>
