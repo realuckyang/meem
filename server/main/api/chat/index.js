@@ -10,7 +10,6 @@ const serialize = (row) => ({
   id:              row.id,
   conversation_id: row.conversation_id,
   message:         safeParse(row.message, { role: 'assistant', content: row.message }),
-  remark:          row.remark || null,
   meta:            safeParse(row.meta, null),
   created_at:      row.created_at,
 })
