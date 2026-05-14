@@ -18,7 +18,7 @@ npm run dev      # 三进程:main(9507) + apps(9508) + vite(5173)
 在 Ubuntu / Debian 服务器上执行:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/yanglongyun/meem/main/install-linux.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/realuckyang/meem/main/install-linux.sh | sudo bash
 ```
 
 脚本会自动安装 `git`、Node.js 22、nginx,把代码部署到 `/opt/meem`,构建前端,写入 `meem.service`,并把 nginx 反代到 meem。安装后访问服务器 IP 即可打开。
@@ -26,7 +26,7 @@ curl -fsSL https://raw.githubusercontent.com/yanglongyun/meem/main/install-linux
 可选环境变量:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/yanglongyun/meem/main/install-linux.sh \
+curl -fsSL https://raw.githubusercontent.com/realuckyang/meem/main/install-linux.sh \
   | sudo env MEEM_SERVER_NAME=example.com MEEM_DIR=/opt/meem bash
 ```
 

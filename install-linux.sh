@@ -2,7 +2,7 @@
 set -euo pipefail
 
 APP_NAME="meem"
-REPO_URL="${MEEM_REPO:-https://github.com/yanglongyun/meem.git}"
+REPO_URL="${MEEM_REPO:-https://github.com/realuckyang/meem.git}"
 REPO_BRANCH="${MEEM_BRANCH:-main}"
 APP_DIR="${MEEM_DIR:-/opt/meem}"
 APP_USER="${MEEM_USER:-meem}"
@@ -28,7 +28,7 @@ fail() {
 
 require_root() {
   if [ "$(id -u)" -ne 0 ]; then
-    fail "Run this installer as root, for example: curl -fsSL https://raw.githubusercontent.com/yanglongyun/meem/main/install-linux.sh | sudo bash"
+    fail "Run this installer as root, for example: curl -fsSL https://raw.githubusercontent.com/realuckyang/meem/main/install-linux.sh | sudo bash"
   fi
 }
 
