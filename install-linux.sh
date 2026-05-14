@@ -149,6 +149,7 @@ Environment=NODE_ENV=production
 Environment=MEEM_MAIN_PORT=$MAIN_PORT
 Environment=MEEM_APPS_PORT=$APPS_PORT
 Environment=MEEM_SERVE_GUI=1
+Environment=MEEM_FILES_DIR=$APP_DIR/files
 ExecStart=$npm_bin run start
 Restart=always
 RestartSec=3

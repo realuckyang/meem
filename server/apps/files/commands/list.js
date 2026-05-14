@@ -1,10 +1,10 @@
-const os = require('os');
 const path = require('path');
 const fsp = require('fs').promises;
 const response = require('../core/response');
+const { getDefaultDirectory } = require('../core/defaultDirectory');
 
 async function list(reqId, p, showHidden) {
-    const abs = p || os.homedir();
+    const abs = p || getDefaultDirectory();
     const entries = await fsp.readdir(abs, { withFileTypes: true });
     const items = await Promise.all(entries
         .filter((e) => showHidden || !e.name.startsWith('.'))
