@@ -9,25 +9,39 @@
     <input
       v-model="form.description"
       type="text"
-      placeholder="摘要(可选,一句话概括)"
+      placeholder="摘要(一句话概括,summary 档会注入这条)"
       class="w-full rounded border border-nt-divider bg-white px-2 py-1.5 text-sm text-nt-muted outline-none focus:border-nt-accent"
     />
     <textarea
       v-model="form.content"
       rows="6"
-      placeholder="内容(必填,助理会原文读到)"
+      placeholder="内容(必填,仅 full 档助理才能读到原文)"
       class="w-full resize-y rounded border border-nt-divider bg-white px-2 py-1.5 text-sm text-nt outline-none focus:border-nt-accent"
     ></textarea>
-    <div class="flex items-center gap-3 pt-1 text-xs">
-      <label class="inline-flex items-center gap-1 text-nt-soft">
-        <input type="checkbox" v-model="form.enabled" class="accent-nt-accent" /> 启用
-      </label>
-      <label class="inline-flex items-center gap-1 text-nt-soft">
-        <input type="checkbox" v-model="form.pinned" class="accent-nt-accent" /> 置顶
-      </label>
+
+    <!-- visibility 三档 -->
+    <div class="rounded border border-nt-divider bg-nt-hover/40 p-2 text-xs">
+      <div class="mb-1 text-nt-soft">助理可见性</div>
+      <div class="grid grid-cols-3 gap-1.5">
+        <label
+          v-for="opt in VIS_OPTIONS"
+          :key="opt.value"
+          class="cursor-pointer rounded border px-2 py-1.5 text-center transition"
+          :class="form.visibility === opt.value
+            ? 'border-nt bg-white text-nt'
+            : 'border-transparent text-nt-soft hover:bg-white'"
+        >
+          <input v-model="form.visibility" type="radio" :value="opt.value" class="sr-only" />
+          <div class="font-medium">{{ opt.label }}</div>
+          <div class="mt-0.5 text-[10px] text-nt-soft">{{ opt.hint }}</div>
+        </label>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 pt-1 text-xs">
       <button
         type="button"
-        class="ml-auto rounded px-2 py-1 text-nt-soft hover:bg-nt-hover hover:text-nt"
+        class="rounded px-2 py-1 text-nt-soft hover:bg-nt-hover hover:text-nt"
         @click="$emit('cancel')"
       >取消</button>
       <button
@@ -39,7 +53,7 @@
       <button
         type="button"
         :disabled="!form.title.trim() || !form.content.trim()"
-        class="rounded bg-nt px-3 py-1 text-white hover:bg-nt-strong disabled:opacity-50"
+        class="ml-auto rounded bg-nt px-3 py-1 text-white hover:bg-nt-strong disabled:opacity-50"
         @click="onSave"
       >保存</button>
     </div>
@@ -49,13 +63,19 @@
 <script setup>
 import { reactive, watch } from 'vue'
 
+const VIS_OPTIONS = [
+  { value: 'count',   label: '仅数量', hint: '助理只知道有这条' },
+  { value: 'summary', label: '摘要',  hint: '标题 + 描述可见' },
+  { value: 'full',    label: '全部',  hint: '内容也注入' },
+]
+
 const props = defineProps({
   modelValue: { type: Object, required: true },
   isEdit:     { type: Boolean, default: false },
 })
 const emit = defineEmits(['save', 'cancel', 'delete'])
 
-const form = reactive({ ...props.modelValue })
+const form = reactive({ ...props.modelValue, visibility: props.modelValue.visibility || 'full' })
 watch(() => props.modelValue, (v) => Object.assign(form, v))
 
 const onSave = () => {
@@ -63,8 +83,7 @@ const onSave = () => {
     title:       form.title.trim(),
     description: form.description.trim(),
     content:     form.content.trim(),
-    enabled:     !!form.enabled,
-    pinned:      !!form.pinned,
+    visibility:  form.visibility || 'full',
   })
 }
 </script>

@@ -28,8 +28,7 @@ export const handleMemoryApi = async (req, res, path, url) => {
       title,
       description: body.description || '',
       content,
-      enabled: body.enabled !== false,
-      pinned:  !!body.pinned,
+      visibility:  body.visibility || 'full',
     })
     return ok(res, { item })
   }
@@ -42,8 +41,7 @@ export const handleMemoryApi = async (req, res, path, url) => {
       title:       body.title,
       description: body.description,
       content:     body.content,
-      enabled:     body.enabled,
-      pinned:      body.pinned,
+      visibility:  body.visibility,
     })
     return ok(res, { item })
   }

@@ -4,7 +4,7 @@
       <div class="flex items-end justify-between gap-4">
         <div>
           <h1 class="text-3xl md:text-[40px] font-bold leading-tight tracking-tight text-nt">记忆</h1>
-          <p class="mt-1 text-sm text-nt-soft">写给助理看的长期上下文,启用的条目会进系统提示。</p>
+          <p class="mt-1 text-sm text-nt-soft">写给助理看的长期上下文,三档可见性控制注入程度。</p>
         </div>
         <button
           type="button"
@@ -38,7 +38,6 @@
           v-for="m in items"
           :key="m.id"
           class="rounded-md border border-nt-divider bg-white px-4 py-3"
-          :class="m.enabled ? '' : 'opacity-60'"
         >
           <!-- 编辑态 -->
           <MemoryEditor
@@ -52,12 +51,11 @@
           <!-- 浏览态 -->
           <div v-else @click="beginEdit(m)" class="cursor-pointer">
             <div class="flex items-center gap-2">
-              <span v-if="m.pinned" class="text-amber-500" title="置顶">📌</span>
               <span class="truncate font-medium text-nt">{{ m.title || '无标题' }}</span>
               <span
                 class="ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[10px]"
-                :class="m.enabled ? 'bg-emerald-50 text-emerald-700' : 'bg-nt-hover text-nt-soft'"
-              >{{ m.enabled ? '启用' : '关闭' }}</span>
+                :class="visBadgeClass(m.visibility)"
+              >{{ visLabel(m.visibility) }}</span>
             </div>
             <p v-if="m.description" class="mt-1 truncate text-sm text-nt-soft">{{ m.description }}</p>
             <p v-else-if="m.content" class="mt-1 truncate text-sm text-nt-soft">{{ m.content.slice(0, 120) }}</p>
@@ -80,6 +78,16 @@ const draft     = ref(null)
 const editingId = ref(0)
 const editing   = ref(null)
 
+const visLabel = (v) => ({
+  count: '仅数量', summary: '摘要', full: '全部',
+}[v] || v)
+
+const visBadgeClass = (v) => ({
+  count:   'bg-nt-hover text-nt-soft',
+  summary: 'bg-amber-50 text-amber-700',
+  full:    'bg-emerald-50 text-emerald-700',
+}[v] || 'bg-nt-hover text-nt-soft')
+
 const refresh = async () => {
   loading.value = true
   error.value = ''
@@ -94,7 +102,7 @@ const refresh = async () => {
 }
 
 const newDraft = () => {
-  draft.value = { title: '', description: '', content: '', enabled: true, pinned: false }
+  draft.value = { title: '', description: '', content: '', visibility: 'full' }
 }
 
 const beginEdit = (m) => {
