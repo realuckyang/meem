@@ -41,6 +41,21 @@ export const apps = [
     ],
   },
   {
+    id: 'memory', icon: '🧠', label: '记忆',
+    path: '/memory',
+    match: (p) => p.startsWith('/memory'),
+    component: () => import('./apps/memory/Memory.vue'),
+  },
+  {
+    id: 'tasks', icon: '📋', label: '任务',
+    path: '/tasks',
+    match: (p) => p.startsWith('/tasks') || p.startsWith('/task/'),
+    component: () => import('./apps/tasks/Tasks.vue'),
+    subRoutes: [
+      { path: '/task/:id', name: 'task', component: () => import('./apps/tasks/TaskDetail.vue'), props: true },
+    ],
+  },
+  {
     id: 'search', icon: '🔍', label: '搜索',
     path: '/search',
     match: (p) => p.startsWith('/search'),

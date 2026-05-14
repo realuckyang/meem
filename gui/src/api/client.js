@@ -53,6 +53,23 @@ export const apiSearch = {
   run: (q, limit = 30) => api.get(`/api/search?q=${encodeURIComponent(q)}&limit=${limit}`),
 }
 
+// === 记忆(内核) ===
+export const apiMemory = {
+  list:   ()           => api.get('/api/memory/list'),
+  get:    (id)         => api.get(`/api/memory/get?id=${id}`),
+  create: (patch)      => api.post('/api/memory/create', patch),
+  update: (id, patch)  => api.post('/api/memory/update', { id, ...patch }),
+  remove: (id)         => api.post('/api/memory/delete', { id }),
+}
+
+// === 任务(内核) ===
+export const apiTask = {
+  list:     ({ limit = 20 } = {}) => api.get(`/api/task?limit=${limit}`),
+  detail:   (id)                  => api.get(`/api/task/detail?id=${id}`),
+  messages: (id)                  => api.get(`/api/task/messages?id=${id}`),
+  stop:     (id)                  => api.post('/api/task/stop', { id }),
+}
+
 // === 想法应用 ===
 export const apiMemos = {
   list:   ({ offset = 0, limit = 30 } = {}) => api.get(`/apps/memos?offset=${offset}&limit=${limit}`),

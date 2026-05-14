@@ -28,7 +28,10 @@ export const createTaskRun = async ({
   registerTaskExecution(taskId, abortController)
 
   const emitMessage = (message, metaValue = null) => {
-    if (message) saveTaskMessage(conversationId, message, metaValue)
+    if (!message) return
+    saveTaskMessage(conversationId, message, metaValue)
+    // 任务详情页订阅这个事件做实时增量,不用轮询
+    broadcast({ type: 'task_message_added', taskId, conversationId })
   }
 
   const exec = async () => {

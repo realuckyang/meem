@@ -11,6 +11,7 @@ import { registerHandler } from '../../service/runtime/ws.js'
 import { getAllSettings } from '../../repository/settings.js'
 import { insertMessage, listMessagesAll } from '../../repository/messages.js'
 import { chat } from '../../ai/handler.js'
+import { buildSystemPrompt } from '../../service/prompt/index.js'
 
 const CONVERSATION_ID = 'main'
 const safeParse = (s, fb = null) => { try { return JSON.parse(s) } catch { return fb } }
@@ -55,9 +56,8 @@ registerHandler('chat.send', async (msg, { send, clientId }) => {
   insertMessage({ conversationId: CONVERSATION_ID, message: userMsg })
   send({ type: 'chat.user_committed' })
 
-  const systemPrompt = String(settings.ai_system_prompt || '').trim()
   const messages = [
-    ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+    { role: 'system', content: buildSystemPrompt() },
     ...history,
     userMsg,
   ]
