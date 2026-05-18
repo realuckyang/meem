@@ -1,35 +1,15 @@
 {
   "name": "meem",
-  "version": "0.1.0",
-  "description": "个人知识库 · 想法 · 笔记 · 助理 · 待办",
-  "type": "module",
   "private": true,
-  "engines": {
-    "node": ">=22.5"
-  },
+  "version": "0.1.0",
+  "type": "module",
   "scripts": {
-    "postinstall": "node scripts/fix-node-pty.mjs",
-    "dev:main": "node server/main/index.js --port=9507",
-    "dev:apps": "MEEM_MAIN_PORT=9507 node server/apps/index.js --port=9508",
-    "dev:gui": "vite --config gui/vite.config.js gui",
-    "dev": "node scripts/dev.mjs",
-    "build": "vite build --config gui/vite.config.js gui",
-    "start": "node scripts/start.mjs"
-  },
-  "dependencies": {
-    "@tailwindcss/vite": "^4.1.18",
-    "@vitejs/plugin-vue": "^6.0.4",
-    "@xterm/addon-fit": "^0.11.0",
-    "@xterm/xterm": "^6.0.0",
-    "emojibase-data": "^17.0.0",
-    "marked": "^17.0.2",
-    "node-pty": "^1.1.0",
-    "pinia": "^3.0.4",
-    "tailwindcss": "^4.1.18",
-    "vite": "^7.3.1",
-    "vue": "^3.5.28",
-    "vue-router": "^4.6.4",
-    "vuedraggable": "^4.1.0",
-    "ws": "^8.20.1"
+    "server": "npm --prefix server start",
+    "worker:dev": "npm --prefix worker run dev",
+    "worker:deploy": "npm --prefix worker run deploy",
+    "gui:dev": "npm --prefix worker/gui run dev",
+    "gui:build": "npm --prefix worker/gui run build",
+    "browser:mcp": "npm --prefix browser-use run mcp",
+    "browser:check": "npm --prefix browser-use run check"
   }
 }

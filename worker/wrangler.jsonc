@@ -1,0 +1,39 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "meem",
+  "account_id": "366ace4eecf8ecbefd957d6c6cd733ad",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-05-01",
+  "routes": [
+    {
+      "pattern": "meem.chatnext.ai",
+      "custom_domain": true
+    }
+  ],
+  "assets": {
+    "directory": "./gui/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "meem",
+      "database_id": "3dd62569-52a4-4f88-a87b-8c60ab66b625"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "HUB",
+        "class_name": "Hub"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["Hub"]
+    }
+  ]
+}

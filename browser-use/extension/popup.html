@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Meem Browser Bridge</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+        --bg: #f7f5ef;
+        --panel: #fffdf8;
+        --ink: #171512;
+        --muted: #696157;
+        --line: #ded4c4;
+        --soft-line: #ece3d5;
+        --good-bg: #e8f5ec;
+        --good: #16724b;
+        --idle-bg: #f6efe4;
+        --idle: #8a5a12;
+        --bad-bg: #f8e9e7;
+        --bad: #a33125;
+        --code-bg: #22201d;
+        --code-ink: #f8f2e7;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        width: 360px;
+        background: var(--bg);
+        color: var(--ink);
+      }
+
+      .shell {
+        display: grid;
+        gap: 10px;
+        padding: 14px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 15px;
+        letter-spacing: 0;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.55;
+      }
+
+      .panel {
+        display: grid;
+        gap: 9px;
+        padding: 11px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .section-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 22px;
+        padding: 3px 9px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .pill.ready {
+        color: var(--good);
+        background: var(--good-bg);
+      }
+
+      .pill.idle {
+        color: var(--idle);
+        background: var(--idle-bg);
+      }
+
+      .pill.error {
+        color: var(--bad);
+        background: var(--bad-bg);
+      }
+
+      .address {
+        padding: 8px;
+        border: 1px solid var(--soft-line);
+        border-radius: 6px;
+        background: #faf7f0;
+        color: var(--ink);
+        font-size: 11px;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+      }
+
+      .rows {
+        display: grid;
+        gap: 5px;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 78px 1fr;
+        gap: 8px;
+        font-size: 11px;
+        line-height: 1.45;
+      }
+
+      .label {
+        color: var(--muted);
+      }
+
+      .value {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .health-line {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      button,
+      a.button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 28px;
+        padding: 0 10px;
+        border: 1px solid #cbbda9;
+        border-radius: 7px;
+        background: #fffaf2;
+        color: var(--ink);
+        font: inherit;
+        font-size: 11px;
+        font-weight: 700;
+        text-decoration: none;
+        cursor: pointer;
+      }
+
+      button:hover,
+      a.button:hover {
+        background: #f3ebde;
+      }
+
+      .code {
+        padding: 9px;
+        border-radius: 6px;
+        background: var(--code-bg);
+        color: var(--code-ink);
+        font-size: 10.5px;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .actions .button {
+        flex: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <div class="topbar">
+        <h1>Meem Browser Bridge</h1>
+        <span class="pill ready">Extension ready</span>
+      </div>
+
+      <section class="panel">
+        <div class="section-title">MCP Address</div>
+        <div id="mcp-address" class="address">Loading...</div>
+        <p>The extension waits for a local MCP server. Your MCP client starts it when browser tools are used.</p>
+      </section>
+
+      <section class="panel">
+        <div class="section-title">
+          <span>Health Check</span>
+          <button id="health-check" type="button">Check</button>
+        </div>
+        <div class="health-line">
+          <span id="health-status" class="pill idle">Not checked</span>
+          <span id="health-detail" class="value">Bridge may be offline until MCP starts.</span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-title">Codex Setup</div>
+        <div class="code">codex mcp add meem-browser-bridge -- node /Users/woodchange/Desktop/meem/browser-use/mcp/server.js</div>
+        <p>Restart Codex after adding the MCP server so the browser tools appear.</p>
+      </section>
+
+      <section class="panel">
+        <div class="section-title">Current Tab</div>
+        <div id="tab-status" class="rows">
+          <div class="row">
+            <span class="label">Status</span>
+            <span class="value">Loading...</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="actions">
+        <a class="button" href="https://github.com/realuckyang/meem-browser-bridge" target="_blank" rel="noreferrer">GitHub</a>
+        <a class="button" href="https://github.com/realuckyang/meem-browser-bridge#install" target="_blank" rel="noreferrer">Install Guide</a>
+      </div>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>
