@@ -1,21 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { req, type InboxMessage, type InboxThread, type Session } from '../api';
+import { req, type Message, type Conversation, type Session } from '../api';
 import Composer from '../components/Composer';
 import Avatar from '../components/Avatar';
 import { fmtClock } from '../lib/time';
 import { pushToast } from '../components/Toast';
-import InboxAgentBlock from './InboxAgentBlock';
+import MessageAgentBlock from './MessageAgentBlock';
 
-export default function InboxThreadView({
-  threadId,
+export default function ConversationView({
+  conversationId,
   onClose,
 }: {
-  threadId: string;
+  conversationId: string;
   processSessionId?: string;
   onClose: () => void;
 }) {
-  const [thread, setThread] = useState<InboxThread | null>(null);
-  const [messages, setMessages] = useState<InboxMessage[]>([]);
+  const [conversation, setThread] = useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [composer, setComposer] = useState('');
   const [busy, setBusy] = useState(false);
@@ -23,14 +23,14 @@ export default function InboxThreadView({
   const [confirm, setConfirm] = useState<null | 'delete'>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
-  const refresh = () => req<{ thread: InboxThread; messages: InboxMessage[] }>(`/api/messages/threads/${threadId}`)
+  const refresh = () => req<{ conversation: Conversation; messages: Message[] }>(`/api/messages/conversations/${conversationId}`)
     .then((body) => {
-      setThread(body.thread);
+      setThread(body.conversation);
       setMessages(body.messages);
     })
     .catch(() => {});
   const refreshSessions = () => req<Session[]>(
-    `/api/sessions?kind=inbox_reply&inbox_thread_id=${encodeURIComponent(threadId)}`,
+    `/api/sessions?kind=message_agent&conversation_id=${encodeURIComponent(conversationId)}`,
   ).then(setSessions).catch(() => {});
 
   useEffect(() => {
@@ -38,11 +38,11 @@ export default function InboxThreadView({
     refreshSessions();
     const onFrame = (event: Event) => {
       const frame = (event as CustomEvent).detail;
-      if ((frame?.type === 'inbox-message' && frame.thread?.id === threadId) ||
-          (frame?.type === 'inbox-reply' && frame.thread_id === threadId)) {
+      if ((frame?.type === 'conversation-message' && frame.conversation?.id === conversationId) ||
+          (frame?.type === 'conversation-message' && frame.conversation_id === conversationId)) {
         refresh();
       }
-      if ((frame?.type === 'session-started' && frame.session?.inbox_thread_id === threadId) ||
+      if ((frame?.type === 'session-started' && frame.session?.conversation_id === conversationId) ||
           frame?.type === 'session-status') {
         refreshSessions();
       }
@@ -58,7 +58,7 @@ export default function InboxThreadView({
       window.removeEventListener('meem:frame', onFrame as EventListener);
       window.removeEventListener('meem:adopt-as-reply', onAdopt as EventListener);
     };
-  }, [threadId]);
+  }, [conversationId]);
 
   // 点空白关菜单
   useEffect(() => {
@@ -78,10 +78,10 @@ export default function InboxThreadView({
   const sessionsByMessage = useMemo(() => {
     const map = new Map<string, Session[]>();
     for (const session of sessions) {
-      if (!session.trigger_msg_id) continue;
-      const list = map.get(session.trigger_msg_id) ?? [];
+      if (!session.trigger_message_id) continue;
+      const list = map.get(session.trigger_message_id) ?? [];
       list.push(session);
-      map.set(session.trigger_msg_id, list);
+      map.set(session.trigger_message_id, list);
     }
     return map;
   }, [sessions]);
@@ -92,7 +92,7 @@ export default function InboxThreadView({
     setBusy(true);
     setComposer('');
     try {
-      const { message } = await req<{ message: InboxMessage }>(`/api/messages/threads/${threadId}/reply`, {
+      const { message } = await req<{ message: Message }>(`/api/messages/conversations/${conversationId}/reply`, {
         method: 'POST',
         body: JSON.stringify({ text }),
       });
@@ -106,7 +106,7 @@ export default function InboxThreadView({
 
   async function processMessage(messageId: string) {
     try {
-      await req(`/api/messages/threads/${threadId}/process`, {
+      await req(`/api/messages/conversations/${conversationId}/process`, {
         method: 'POST',
         body: JSON.stringify({ message_id: messageId }),
       });
@@ -117,7 +117,7 @@ export default function InboxThreadView({
   async function archive() {
     setMenuOpen(false);
     try {
-      await req(`/api/messages/threads/${threadId}`, {
+      await req(`/api/messages/conversations/${conversationId}`, {
         method: 'PATCH',
         body: JSON.stringify({ status: 'archived' }),
       });
@@ -128,21 +128,21 @@ export default function InboxThreadView({
 
   async function copyAddress() {
     setMenuOpen(false);
-    if (!thread?.contact_address) return;
-    await navigator.clipboard.writeText(thread.contact_address).catch(() => {});
+    if (!conversation?.contact_address) return;
+    await navigator.clipboard.writeText(conversation.contact_address).catch(() => {});
     pushToast('已复制地址', 'success');
   }
 
   async function deleteThread() {
     setConfirm(null);
     try {
-      await req(`/api/messages/threads/${threadId}`, { method: 'DELETE' });
+      await req(`/api/messages/conversations/${conversationId}`, { method: 'DELETE' });
       onClose();
     } catch {}
   }
 
-  const contactName = thread?.contact_name || '联系人';
-  const contactAddress = thread?.contact_address || '';
+  const contactName = conversation?.contact_name || '联系人';
+  const contactAddress = conversation?.contact_address || '';
 
   return (
     <div className="absolute inset-0 z-40 flex flex-col bg-neutral-50">
@@ -196,7 +196,7 @@ export default function InboxThreadView({
                   time={fmtClock(message.created_at)}
                 />
                 {!outbound && (
-                  <InboxAgentBlock
+                  <MessageAgentBlock
                     session={activeSession}
                     onStart={() => processMessage(message.id)}
                   />

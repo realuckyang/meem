@@ -263,7 +263,7 @@ async function handleAgentTask(task) {
   // 这些类型对用户无信息量，过滤掉
   const SKIP_KINDS = new Set(['user_message']);
 
-  // kind 命名约定（跟 worker session_events 对齐）：
+  // kind 命名约定（跟 worker events 对齐）：
   //   agent_reasoning / agent_message / agent_shell / agent_file_change
   //   agent_tool_call / agent_plan
   //   agent_approval_request / agent_input_request
@@ -374,8 +374,8 @@ async function handleAgentTask(task) {
     // 每个 session 独占工作区，避免并行任务串线
     const scopeKey = kind === 'direct_chat'
       ? `direct-${safeWorkspaceKey(sessionId)}`
-      : (kind === 'inbox_reply'
-        ? `inbox-${safeWorkspaceKey(task.inbox_thread_id || sessionId)}`
+      : (kind === 'message_agent'
+        ? `message-${safeWorkspaceKey(task.conversation_id || sessionId)}`
         : `session-${safeWorkspaceKey(sessionId)}`);
     const workspacePath = workspaceForSession(`${ownerId}-${scopeKey}`);
     const codexCwd = await resolveCodexCwd(task.cwd, workspacePath);
@@ -449,8 +449,8 @@ async function handleAgentTask(task) {
     status: finalStatus,
   }).catch(err => console.error('[meem] update session status failed:', err?.message || err));
 
-  // inbox_reply 的输出始终是内部草稿或讨论结果。
-  // 外部发送只能由用户在收件箱里明确采用并发送，避免后续内部追问误发给联系人。
+  // message_agent 的输出始终是内部草稿或讨论结果。
+  // 外部发送只能由用户在消息里明确采用并发送，避免后续内部追问误发给联系人。
 }
 
 async function runAgentTurn({ workspacePath, codexCwd, mode, task, memorySignature, contextText, injectContext, onEvent }) {
@@ -502,7 +502,7 @@ async function runAgentTurn({ workspacePath, codexCwd, mode, task, memorySignatu
     });
     await fsp.writeFile(statePath, JSON.stringify({
       threadId: t?.id || '',
-      triggerMsgId: task.trigger_msg_id,
+      triggerMessageId: task.trigger_message_id,
       mode,
       sandbox: cfg.sandbox,
       approvalPolicy: cfg.approvalPolicy,
@@ -582,7 +582,7 @@ function safeWorkspaceKey(value) {
 
 async function writeAgentsMd(workspacePath, task, { codexCwd = workspacePath } = {}) {
   const memories = Array.isArray(task.memories) ? task.memories : [];
-  const interaction = task.interaction || (task.kind === 'inbox_reply' ? 'draft_reply' : 'direct_chat');
+  const interaction = task.interaction || (task.kind === 'message_agent' ? 'draft_reply' : 'direct_chat');
   const groups = { must_read: [], starred: [], stored: [] };
   for (const m of memories) {
     const bucket = groups[m.inclusion] || groups.stored;
@@ -660,13 +660,13 @@ async function writeAgentsMd(workspacePath, task, { codexCwd = workspacePath } =
     '- 如果任务涉及用户机器的真实状态、文件或操作，先按权限模式查清楚或完成操作，再回答。不要凭空猜测或编造结果。',
     outputRuleLine(task, interaction),
   );
-  if (task.kind === 'inbox_reply' && interaction === 'draft_reply') {
-    lines.push('- 上下文中的“外部联系人来信”来自第三方；你要替用户起草回复，但不能自行发送。');
+  if (task.kind === 'message_agent' && interaction === 'draft_reply') {
+    lines.push('- 上下文中的“外部联系人消息”来自第三方；你要替用户起草回复，但不能自行发送。');
     lines.push('- 这是一封回复草稿。语气自然、克制、清楚；不要暴露内部系统、工具、权限模式或处理过程。');
-    lines.push('- 草稿不会自动发给对方。用户会在收件箱中决定是否采用、修改和发送。');
-  } else if (task.kind === 'inbox_reply') {
+    lines.push('- 草稿不会自动发给对方。用户会在消息中决定是否采用、修改和发送。');
+  } else if (task.kind === 'message_agent') {
     lines.push('- 上下文中的“用户内部追问”是用户本人对你说的话，不是外部联系人的新消息。');
-    lines.push('- 这是围绕外部来信的内部讨论。输出只给用户看，不会发给任何第三方。');
+    lines.push('- 这是围绕外部消息的内部讨论。输出只给用户看，不会发给任何第三方。');
     lines.push('- 可以解释判断、列选项、提出澄清问题；不要把回答伪装成已经发送给外部联系人的消息。');
   } else {
     lines.push('- 这是和用户本人的直接对话，输出会作为代理回复显示给用户，不会发给任何第三方。可以自由发问澄清，可以汇报你看到的、做了的事。');
@@ -701,17 +701,17 @@ function shellQuote(value) {
 }
 
 function sessionShapeLine(task, interaction) {
-  if (task.kind !== 'inbox_reply') {
+  if (task.kind !== 'message_agent') {
     return '- 形态: **和用户本人直接对话**（所有输出仅给用户看，不会发给任何第三方）。';
   }
   if (interaction === 'internal_discussion') {
-    return '- 形态: **围绕外部来信和用户内部讨论**。输出只给用户看，用于继续分析、修改草稿或决定如何回复。';
+    return '- 形态: **围绕外部消息和用户内部讨论**。输出只给用户看，用于继续分析、修改草稿或决定如何回复。';
   }
-  return '- 形态: **处理外部来信并起草回复**。最终输出是一条可采用的回复草稿，不会自动发送给外部联系人。';
+  return '- 形态: **处理外部消息并起草回复**。最终输出是一条可采用的回复草稿，不会自动发送给外部联系人。';
 }
 
 function outputRuleLine(task, interaction) {
-  if (task.kind !== 'inbox_reply') {
+  if (task.kind !== 'message_agent') {
     return '- 总结回复用一段中文，文本即可，不要加引号或代码块包裹整段。需要展示命令输出时可以用 ``` 块。';
   }
   if (interaction === 'internal_discussion') {
@@ -721,7 +721,7 @@ function outputRuleLine(task, interaction) {
 }
 
 function participantLines(task) {
-  if (task.kind !== 'inbox_reply') return [];
+  if (task.kind !== 'message_agent') return [];
   const contact = task.contact || {};
   const name = String(contact.name || '').trim() || '访客';
   const address = String(contact.address || '').trim();
@@ -734,12 +734,12 @@ function participantLines(task) {
 function turnLabel(turn, task) {
   const label = String(turn?.label || '').trim();
   if (label) return label;
-  if (task.kind !== 'inbox_reply') {
+  if (task.kind !== 'message_agent') {
     return turn?.role === 'assistant' ? '你' : '我';
   }
   switch (turn?.actor) {
     case 'external_contact':
-      return '外部联系人来信';
+      return '外部联系人消息';
     case 'sent_to_contact':
       return '已发给外部联系人的回复';
     case 'owner':
@@ -763,7 +763,7 @@ function formatTurnForPrompt(turn, task, { history = false } = {}) {
   const content = turnContent(turn);
   const instruction = turnInstruction(turn);
   if (!content) return '';
-  if (task.kind !== 'inbox_reply' && !turn?.label && !turn?.actor && !instruction) {
+  if (task.kind !== 'message_agent' && !turn?.label && !turn?.actor && !instruction) {
     return history ? `${turn?.role === 'assistant' ? '你' : '我'}: ${content}` : content;
   }
   return [

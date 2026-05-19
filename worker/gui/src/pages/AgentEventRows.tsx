@@ -1,10 +1,10 @@
-import type { SessionEvent } from '../api';
+import type { AgentEvent } from '../api';
 import OpenAIIcon from '../components/OpenAIIcon';
 import { fmtClock } from '../lib/time';
 
 const initial = (value: string) => (value || '?').slice(0, 1).toUpperCase();
 
-export function EventRow({ event }: { event: SessionEvent }) {
+export function EventRow({ event }: { event: AgentEvent }) {
   const payload = event.payload || {};
   if (event.kind === 'user_message') {
     return <ChatRow who="你" body={payload.text || ''} time={fmtClock(event.created_at)} />;
@@ -82,7 +82,7 @@ export function LivePartialRow({ live }: { live: any }) {
   );
 }
 
-function AuxRow({ event }: { event: SessionEvent }) {
+function AuxRow({ event }: { event: AgentEvent }) {
   const meta = kindMeta(event.kind);
   const payload = event.payload || {};
   let body: React.ReactNode = null;

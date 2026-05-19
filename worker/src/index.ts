@@ -30,14 +30,14 @@ type SendMessageInput = {
   contact_name?: string;
   text?: string;
 };
-type SessionKind = 'direct_chat' | 'inbox_reply';
+type SessionKind = 'direct_chat' | 'message_agent';
 type DispatchSession = {
   id: string;
   user_id: string;
   kind: SessionKind;
   title: string | null;
-  inbox_thread_id: string | null;
-  trigger_msg_id: string | null;
+  conversation_id: string | null;
+  trigger_message_id: string | null;
   cwd?: string | null;
 };
 
@@ -143,13 +143,13 @@ async function notifyHub(env: Env, userId: string, frame: unknown) {
 
 async function loadSettings(env: Env, userId: string) {
   const row = await env.DB.prepare(
-    'SELECT prompt, inbox_enabled, mode_direct, mode_inbox FROM settings WHERE user_id = ?',
-  ).bind(userId).first<{ prompt: string; inbox_enabled: number; mode_direct: Mode; mode_inbox: Mode }>();
+    'SELECT prompt, public_messages_enabled, mode_direct, mode_message_agent FROM settings WHERE user_id = ?',
+  ).bind(userId).first<{ prompt: string; public_messages_enabled: number; mode_direct: Mode; mode_message_agent: Mode }>();
   return {
     prompt: row?.prompt || DEFAULT_PROMPT,
-    inbox_enabled: row?.inbox_enabled !== 0,
+    public_messages_enabled: row?.public_messages_enabled !== 0,
     mode_direct: row?.mode_direct || 'managed',
-    mode_inbox: row?.mode_inbox || 'managed',
+    mode_message_agent: row?.mode_message_agent || 'managed',
   };
 }
 
@@ -216,7 +216,7 @@ async function upsertContact(env: Env, userId: string, name: string, address: st
   return row?.id || id;
 }
 
-async function upsertMessageThread(
+async function upsertConversation(
   env: Env,
   userId: string,
   contactId: string,
@@ -226,14 +226,14 @@ async function upsertMessageThread(
   ts: number,
 ) {
   const existing = await env.DB.prepare(
-    `SELECT id, public_token FROM inbox_threads
+    `SELECT id, public_token FROM conversations
      WHERE user_id = ? AND contact_id = ? AND status != 'archived'
      ORDER BY updated_at DESC LIMIT 1`,
   ).bind(userId, contactId).first<{ id: string; public_token: string }>();
 
   if (existing) {
     await env.DB.prepare(
-      `UPDATE inbox_threads SET status = ?, unread_count = CASE WHEN ? THEN unread_count + 1 ELSE 0 END,
+      `UPDATE conversations SET status = ?, unread_count = CASE WHEN ? THEN unread_count + 1 ELSE 0 END,
          last_message_preview = ?, updated_at = ?
        WHERE id = ? AND user_id = ?`,
     ).bind(incoming ? 'open' : 'replied', incoming ? 1 : 0, preview, ts, existing.id, userId).run();
@@ -243,25 +243,25 @@ async function upsertMessageThread(
   const id = newId();
   const publicToken = randomHex(24);
   await env.DB.prepare(
-    `INSERT INTO inbox_threads (id, user_id, public_token, contact_id, title, status, unread_count, last_message_preview, created_at, updated_at)
+    `INSERT INTO conversations (id, user_id, public_token, contact_id, title, status, unread_count, last_message_preview, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).bind(id, userId, publicToken, contactId, title, incoming ? 'open' : 'replied', incoming ? 1 : 0, preview, ts, ts).run();
   return { id, public_token: publicToken };
 }
 
-async function loadInboxThread(env: Env, userId: string, threadId: string) {
+async function loadConversation(env: Env, userId: string, conversationId: string) {
   return env.DB.prepare(
     `SELECT t.id, t.public_token, t.contact_id, t.title, t.status, t.unread_count, t.last_message_preview,
             t.created_at, t.updated_at, c.name AS contact_name, c.address AS contact_address
-     FROM inbox_threads t LEFT JOIN contacts c ON c.id = t.contact_id
+     FROM conversations t LEFT JOIN contacts c ON c.id = t.contact_id
      WHERE t.id = ? AND t.user_id = ?`,
-  ).bind(threadId, userId).first();
+  ).bind(conversationId, userId).first();
 }
 
-async function insertInboxMessage(
+async function insertMessage(
   env: Env,
   userId: string,
-  threadId: string,
+  conversationId: string,
   contactId: string,
   direction: 'inbound' | 'outbound',
   senderName: string,
@@ -271,18 +271,18 @@ async function insertInboxMessage(
 ) {
   const id = newId();
   await env.DB.prepare(
-    `INSERT INTO inbox_messages (id, user_id, thread_id, contact_id, direction, sender_name, sender_address, body, created_at)
+    `INSERT INTO messages (id, user_id, conversation_id, contact_id, direction, sender_name, sender_address, body, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).bind(id, userId, threadId, contactId, direction, senderName, senderAddress, body, ts).run();
+  ).bind(id, userId, conversationId, contactId, direction, senderName, senderAddress, body, ts).run();
   return env.DB.prepare(
-    `SELECT id, thread_id, contact_id, direction, sender_name, sender_address, body, created_at
-     FROM inbox_messages WHERE id = ? AND user_id = ?`,
+    `SELECT id, conversation_id, contact_id, direction, sender_name, sender_address, body, created_at
+     FROM messages WHERE id = ? AND user_id = ?`,
   ).bind(id, userId).first();
 }
 
 async function nextEventSeq(env: Env, sessionId: string) {
   const row = await env.DB.prepare(
-    'SELECT COALESCE(MAX(seq), 0) AS max_seq FROM session_events WHERE session_id = ?',
+    'SELECT COALESCE(MAX(seq), 0) AS max_seq FROM events WHERE session_id = ?',
   ).bind(sessionId).first<{ max_seq: number }>();
   return Number(row?.max_seq || 0) + 1;
 }
@@ -307,21 +307,21 @@ async function createUser(env: Env, handle: string, password: string) {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     ).bind(userId, handle, handle, salt, hash, secret, ts, ts),
     env.DB.prepare(
-      `INSERT INTO settings (user_id, prompt, inbox_enabled, mode_direct, mode_inbox, created_at, updated_at)
+      `INSERT INTO settings (user_id, prompt, public_messages_enabled, mode_direct, mode_message_agent, created_at, updated_at)
        VALUES (?, ?, 1, 'managed', 'managed', ?, ?)`,
     ).bind(userId, DEFAULT_PROMPT, ts, ts),
   ]);
   return user;
 }
 
-async function dispatchInboxAgentTask(env: Env, userId: string, threadId: string, messageId: string) {
+async function dispatchMessageAgentTask(env: Env, userId: string, conversationId: string, messageId: string) {
   const settings = await loadSettings(env, userId);
   const memories = await loadMemoriesForUser(env, userId);
-  const thread = await env.DB.prepare(
+  const conversation = await env.DB.prepare(
     `SELECT t.id, t.title, t.contact_id, c.name AS contact_name, c.address AS contact_address
-     FROM inbox_threads t LEFT JOIN contacts c ON c.id = t.contact_id
+     FROM conversations t LEFT JOIN contacts c ON c.id = t.contact_id
      WHERE t.id = ? AND t.user_id = ?`,
-  ).bind(threadId, userId).first<{
+  ).bind(conversationId, userId).first<{
     id: string;
     title: string;
     contact_id: string | null;
@@ -329,24 +329,24 @@ async function dispatchInboxAgentTask(env: Env, userId: string, threadId: string
     contact_address: string | null;
   }>();
   const message = await env.DB.prepare(
-    `SELECT id, thread_id, direction, sender_name, sender_address, body, created_at
-     FROM inbox_messages WHERE id = ? AND user_id = ? AND direction = 'inbound'`,
+    `SELECT id, conversation_id, direction, sender_name, sender_address, body, created_at
+     FROM messages WHERE id = ? AND user_id = ? AND direction = 'inbound'`,
   ).bind(messageId, userId).first<{
     id: string;
-    thread_id: string;
+    conversation_id: string;
     direction: 'inbound';
     sender_name: string;
     sender_address: string;
     body: string;
     created_at: number;
   }>();
-  if (!thread || !message) return;
+  if (!conversation || !message) return;
 
   const history = await env.DB.prepare(
     `SELECT id, direction, sender_name, body, created_at
-     FROM inbox_messages WHERE thread_id = ? AND user_id = ?
+     FROM messages WHERE conversation_id = ? AND user_id = ?
      ORDER BY created_at ASC, id ASC LIMIT 20`,
-  ).bind(threadId, userId).all<{
+  ).bind(conversationId, userId).all<{
     id: string;
     direction: 'inbound' | 'outbound';
     sender_name: string;
@@ -354,7 +354,7 @@ async function dispatchInboxAgentTask(env: Env, userId: string, threadId: string
     created_at: number;
   }>();
 
-  const contactName = thread.contact_name || message.sender_name || '访客';
+  const contactName = conversation.contact_name || message.sender_name || '访客';
   const turns: any[] = (history.results || [])
     .filter((item) => item.id !== message.id)
     .map((item) => ({
@@ -362,33 +362,33 @@ async function dispatchInboxAgentTask(env: Env, userId: string, threadId: string
       actor: item.direction === 'outbound' ? 'sent_to_contact' : 'external_contact',
       label: item.direction === 'outbound'
         ? '已发给外部联系人的回复'
-        : `外部联系人 ${item.sender_name || contactName} 的历史来信`,
+        : `外部联系人 ${item.sender_name || contactName} 的历史消息`,
       content: item.body,
     }));
   turns.push({
     role: 'user',
     actor: 'external_contact',
-    label: `外部联系人 ${contactName} 的当前来信`,
+    label: `外部联系人 ${contactName} 的当前消息`,
     content: message.body,
     instruction: '请代表用户生成一条可以直接发送给对方的回复。只输出回复正文。',
   });
 
   const sessionId = newId();
-  const title = messagePreview(message.body).slice(0, 80) || thread.title || '处理来信';
+  const title = messagePreview(message.body).slice(0, 80) || conversation.title || '处理消息';
   const ts = now();
   await env.DB.prepare(
-    `INSERT INTO sessions (id, user_id, kind, status, title, inbox_thread_id, trigger_msg_id, created_at, updated_at)
-     VALUES (?, ?, 'inbox_reply', 'thinking', ?, ?, ?, ?, ?)`,
-  ).bind(sessionId, userId, title, threadId, messageId, ts, ts).run();
+    `INSERT INTO sessions (id, user_id, kind, status, title, conversation_id, trigger_message_id, created_at, updated_at)
+     VALUES (?, ?, 'message_agent', 'thinking', ?, ?, ?, ?, ?)`,
+  ).bind(sessionId, userId, title, conversationId, messageId, ts, ts).run();
 
   await notifyHub(env, userId, { type: 'session-started', session: {
     id: sessionId,
     user_id: userId,
-    kind: 'inbox_reply',
+    kind: 'message_agent',
     status: 'thinking',
     title,
-    inbox_thread_id: threadId,
-    trigger_msg_id: messageId,
+    conversation_id: conversationId,
+    trigger_message_id: messageId,
     created_at: ts,
     updated_at: ts,
     finished_at: null,
@@ -398,19 +398,19 @@ async function dispatchInboxAgentTask(env: Env, userId: string, threadId: string
     type: 'agent-task',
     task: {
       session_id: sessionId,
-      kind: 'inbox_reply',
-      mode: settings.mode_inbox,
+      kind: 'message_agent',
+      mode: settings.mode_message_agent,
       owner_id: userId,
-      peer_id: thread.contact_id,
-      inbox_thread_id: threadId,
-      inbox_message_id: messageId,
+      peer_id: conversation.contact_id,
+      conversation_id: conversationId,
+      message_id: messageId,
       contact: {
         name: contactName,
-        address: thread.contact_address || message.sender_address || '',
+        address: conversation.contact_address || message.sender_address || '',
       },
       trigger: {
         content: message.body,
-        sender_id: thread.contact_id,
+        sender_id: conversation.contact_id,
         created_at: message.created_at,
       },
       prompt: settings.prompt,
@@ -418,8 +418,8 @@ async function dispatchInboxAgentTask(env: Env, userId: string, threadId: string
       interaction: 'draft_reply',
       history: history.results || [],
       turns,
-      trigger_msg_id: messageId,
-      title: thread.title,
+      trigger_message_id: messageId,
+      title: conversation.title,
     },
   });
 }
@@ -480,8 +480,8 @@ app.post('/api/public/messages', async (c) => {
     return c.json({ error: 'not found' }, 404);
   }
   const settings = await loadSettings(c.env, profile.id);
-  if (!settings.inbox_enabled) {
-    return c.json({ error: '收件箱暂未开放' }, 403);
+  if (!settings.public_messages_enabled) {
+    return c.json({ error: '消息暂未开放' }, 403);
   }
 
   const text = String(body.text || '').trim();
@@ -493,56 +493,56 @@ app.post('/api/public/messages', async (c) => {
   const senderName = normalizeName(body.sender_name);
   const anonymousId = newId();
   const senderAddress = normalizeAddress(body.sender_address) || `anonymous:${anonymousId}`;
-  const title = messagePreview(text).slice(0, 80) || '新的来信';
+  const title = messagePreview(text).slice(0, 80) || '新的消息';
   const preview = messagePreview(text);
 
   const contactId = await upsertContact(c.env, profile.id, senderName, senderAddress, ts);
-  const threadRef = await upsertMessageThread(c.env, profile.id, contactId, title, preview, true, ts);
-  const threadId = threadRef.id;
-  const message = await insertInboxMessage(
-    c.env, profile.id, threadId, contactId, 'inbound', senderName, senderAddress, text, ts,
+  const conversationRef = await upsertConversation(c.env, profile.id, contactId, title, preview, true, ts);
+  const conversationId = conversationRef.id;
+  const message = await insertMessage(
+    c.env, profile.id, conversationId, contactId, 'inbound', senderName, senderAddress, text, ts,
   );
-  const thread = await loadInboxThread(c.env, profile.id, threadId);
+  const conversation = await loadConversation(c.env, profile.id, conversationId);
 
   const broadcasts: Promise<unknown>[] = [
-    notifyHub(c.env, profile.id, { type: 'inbox-message', thread, message }),
-    dispatchInboxAgentTask(c.env, profile.id, threadId, (message as any).id),
+    notifyHub(c.env, profile.id, { type: 'conversation-message', conversation, message }),
+    dispatchMessageAgentTask(c.env, profile.id, conversationId, (message as any).id),
   ];
 
   const senderUser = await loadUserByPublicAddress(c.env, origin, senderAddress);
   if (senderUser && senderUser.id !== profile.id) {
     const senderContactId = await upsertContact(c.env, senderUser.id, profile.name, profile.address, ts);
-    const senderThreadRef = await upsertMessageThread(c.env, senderUser.id, senderContactId, title, preview, false, ts);
-    const senderMessage = await insertInboxMessage(
-      c.env, senderUser.id, senderThreadRef.id, senderContactId, 'outbound',
+    const senderConversationRef = await upsertConversation(c.env, senderUser.id, senderContactId, title, preview, false, ts);
+    const senderMessage = await insertMessage(
+      c.env, senderUser.id, senderConversationRef.id, senderContactId, 'outbound',
       senderName, profile.address, text, ts,
     );
-    const senderThread = await loadInboxThread(c.env, senderUser.id, senderThreadRef.id);
-    broadcasts.push(notifyHub(c.env, senderUser.id, { type: 'inbox-message', thread: senderThread, message: senderMessage }));
+    const senderThread = await loadConversation(c.env, senderUser.id, senderConversationRef.id);
+    broadcasts.push(notifyHub(c.env, senderUser.id, { type: 'conversation-message', conversation: senderThread, message: senderMessage }));
   }
 
   c.executionCtx.waitUntil(Promise.all(broadcasts));
   return c.json({
     ok: true,
-    thread_id: threadId,
+    conversation_id: conversationId,
     message_id: (message as any).id,
-    receipt_url: `${origin}/t/${threadRef.public_token}`,
+    receipt_url: `${origin}/t/${conversationRef.public_token}`,
   });
 });
 
-app.get('/api/public/threads/:token', async (c) => {
+app.get('/api/public/conversations/:token', async (c) => {
   const token = c.req.param('token');
-  const thread = await c.env.DB.prepare(
+  const conversation = await c.env.DB.prepare(
     `SELECT id, user_id, title, status, last_message_preview, created_at, updated_at
-     FROM inbox_threads WHERE public_token = ?`,
+     FROM conversations WHERE public_token = ?`,
   ).bind(token).first();
-  if (!thread) return c.json({ error: 'not found' }, 404);
+  if (!conversation) return c.json({ error: 'not found' }, 404);
   const messages = await c.env.DB.prepare(
     `SELECT id, direction, sender_name, body, created_at
-     FROM inbox_messages WHERE thread_id = ? AND user_id = ? ORDER BY created_at ASC, id ASC`,
-  ).bind((thread as any).id, (thread as any).user_id).all();
-  const { user_id: _userId, ...publicThread } = thread as any;
-  return c.json({ thread: publicThread, messages: messages.results });
+     FROM messages WHERE conversation_id = ? AND user_id = ? ORDER BY created_at ASC, id ASC`,
+  ).bind((conversation as any).id, (conversation as any).user_id).all();
+  const { user_id: _userId, ...publicThread } = conversation as any;
+  return c.json({ conversation: publicThread, messages: messages.results });
 });
 
 app.use('/api/*', requireAuth);
@@ -733,19 +733,19 @@ app.delete('/api/memories/:id', async (c) => {
   return c.json({ ok: true });
 });
 
-app.get('/api/messages/threads', async (c) => {
+app.get('/api/messages/conversations', async (c) => {
   const userId = c.get('userId');
   const rs = await c.env.DB.prepare(
     `SELECT t.id, t.public_token, t.contact_id, t.title, t.status, t.unread_count, t.last_message_preview,
             t.created_at, t.updated_at, c.name AS contact_name, c.address AS contact_address
-     FROM inbox_threads t LEFT JOIN contacts c ON c.id = t.contact_id
+     FROM conversations t LEFT JOIN contacts c ON c.id = t.contact_id
      WHERE t.user_id = ?
      ORDER BY t.updated_at DESC LIMIT 200`,
   ).bind(userId).all();
   return c.json(rs.results);
 });
 
-app.post('/api/messages/threads', async (c) => {
+app.post('/api/messages/conversations', async (c) => {
   const userId = c.get('userId');
   const body = await c.req.json<{ address?: string; contact_name?: string }>()
     .catch(() => ({} as { address?: string; contact_name?: string }));
@@ -757,14 +757,14 @@ app.post('/api/messages/threads', async (c) => {
   const ts = now();
   const contactId = await upsertContact(c.env, userId, name, address, ts);
   const existing = await c.env.DB.prepare(
-    `SELECT id FROM inbox_threads
+    `SELECT id FROM conversations
      WHERE user_id = ? AND contact_id = ? AND status != 'archived'
      ORDER BY updated_at DESC LIMIT 1`,
   ).bind(userId, contactId).first<{ id: string }>();
-  const threadRef = existing || await upsertMessageThread(c.env, userId, contactId, name, '', false, ts);
-  const thread = await loadInboxThread(c.env, userId, threadRef.id);
-  c.executionCtx.waitUntil(notifyHub(c.env, userId, { type: 'inbox-message', thread }));
-  return c.json({ thread });
+  const conversationRef = existing || await upsertConversation(c.env, userId, contactId, name, '', false, ts);
+  const conversation = await loadConversation(c.env, userId, conversationRef.id);
+  c.executionCtx.waitUntil(notifyHub(c.env, userId, { type: 'conversation-message', conversation }));
+  return c.json({ conversation });
 });
 
 app.post('/api/messages/send', async (c) => {
@@ -786,7 +786,7 @@ app.post('/api/messages/send', async (c) => {
   if (peer.id === userId) return c.json({ error: '不能发送给自己' }, 400);
 
   const peerSettings = await loadSettings(c.env, peer.id);
-  if (!peerSettings.inbox_enabled) {
+  if (!peerSettings.public_messages_enabled) {
     return c.json({ error: '对方暂未接收消息' }, 403);
   }
 
@@ -795,51 +795,51 @@ app.post('/api/messages/send', async (c) => {
   const peerProfile = await publicProfile(c.env, origin, peer.handle);
   const contactName = normalizeName(body.contact_name, peerProfile?.name || peer.handle);
   const senderContactId = await upsertContact(c.env, userId, contactName, address, ts);
-  const senderThreadRef = await upsertMessageThread(c.env, userId, senderContactId, contactName, preview, false, ts);
-  const senderMessage = await insertInboxMessage(
-    c.env, userId, senderThreadRef.id, senderContactId, 'outbound',
+  const senderConversationRef = await upsertConversation(c.env, userId, senderContactId, contactName, preview, false, ts);
+  const senderMessage = await insertMessage(
+    c.env, userId, senderConversationRef.id, senderContactId, 'outbound',
     ownerProfile.name, address, text, ts,
   );
-  const senderThread = await loadInboxThread(c.env, userId, senderThreadRef.id);
+  const senderThread = await loadConversation(c.env, userId, senderConversationRef.id);
 
   const peerContactId = await upsertContact(c.env, peer.id, ownerProfile.name, ownerProfile.address, ts);
-  const peerThreadRef = await upsertMessageThread(c.env, peer.id, peerContactId, ownerProfile.name, preview, true, ts);
-  const peerMessage = await insertInboxMessage(
-    c.env, peer.id, peerThreadRef.id, peerContactId, 'inbound',
+  const peerConversationRef = await upsertConversation(c.env, peer.id, peerContactId, ownerProfile.name, preview, true, ts);
+  const peerMessage = await insertMessage(
+    c.env, peer.id, peerConversationRef.id, peerContactId, 'inbound',
     ownerProfile.name, ownerProfile.address, text, ts,
   );
-  const peerThread = await loadInboxThread(c.env, peer.id, peerThreadRef.id);
+  const peerThread = await loadConversation(c.env, peer.id, peerConversationRef.id);
 
   c.executionCtx.waitUntil(Promise.all([
-    notifyHub(c.env, userId, { type: 'inbox-message', thread: senderThread, message: senderMessage }),
-    notifyHub(c.env, peer.id, { type: 'inbox-message', thread: peerThread, message: peerMessage }),
-    dispatchInboxAgentTask(c.env, peer.id, peerThreadRef.id, (peerMessage as any).id),
+    notifyHub(c.env, userId, { type: 'conversation-message', conversation: senderThread, message: senderMessage }),
+    notifyHub(c.env, peer.id, { type: 'conversation-message', conversation: peerThread, message: peerMessage }),
+    dispatchMessageAgentTask(c.env, peer.id, peerConversationRef.id, (peerMessage as any).id),
   ]));
 
-  return c.json({ thread: senderThread, message: senderMessage });
+  return c.json({ conversation: senderThread, message: senderMessage });
 });
 
-app.get('/api/messages/threads/:id', async (c) => {
+app.get('/api/messages/conversations/:id', async (c) => {
   const userId = c.get('userId');
   const id = c.req.param('id');
-  const thread = await c.env.DB.prepare(
+  const conversation = await c.env.DB.prepare(
     `SELECT t.id, t.public_token, t.contact_id, t.title, t.status, t.unread_count, t.last_message_preview,
             t.created_at, t.updated_at, c.name AS contact_name, c.address AS contact_address
-     FROM inbox_threads t LEFT JOIN contacts c ON c.id = t.contact_id
+     FROM conversations t LEFT JOIN contacts c ON c.id = t.contact_id
      WHERE t.id = ? AND t.user_id = ?`,
   ).bind(id, userId).first();
-  if (!thread) return c.json({ error: 'not found' }, 404);
+  if (!conversation) return c.json({ error: 'not found' }, 404);
   const messages = await c.env.DB.prepare(
-    `SELECT id, thread_id, contact_id, direction, sender_name, sender_address, body, created_at
-     FROM inbox_messages WHERE thread_id = ? AND user_id = ? ORDER BY created_at ASC, id ASC`,
+    `SELECT id, conversation_id, contact_id, direction, sender_name, sender_address, body, created_at
+     FROM messages WHERE conversation_id = ? AND user_id = ? ORDER BY created_at ASC, id ASC`,
   ).bind(id, userId).all();
   await c.env.DB.prepare(
-    `UPDATE inbox_threads SET unread_count = 0 WHERE id = ? AND user_id = ?`,
+    `UPDATE conversations SET unread_count = 0 WHERE id = ? AND user_id = ?`,
   ).bind(id, userId).run();
-  return c.json({ thread: { ...(thread as any), unread_count: 0 }, messages: messages.results });
+  return c.json({ conversation: { ...(conversation as any), unread_count: 0 }, messages: messages.results });
 });
 
-app.patch('/api/messages/threads/:id', async (c) => {
+app.patch('/api/messages/conversations/:id', async (c) => {
   const userId = c.get('userId');
   const id = c.req.param('id');
   const body = await c.req.json<{ status?: string }>()
@@ -850,53 +850,53 @@ app.patch('/api/messages/threads/:id', async (c) => {
   }
   const ts = now();
   const r = await c.env.DB.prepare(
-    `UPDATE inbox_threads SET status = ?, updated_at = ? WHERE id = ? AND user_id = ?`,
+    `UPDATE conversations SET status = ?, updated_at = ? WHERE id = ? AND user_id = ?`,
   ).bind(body.status, ts, id, userId).run();
   if (!r.meta?.changes) return c.json({ error: 'not found' }, 404);
-  c.executionCtx.waitUntil(notifyHub(c.env, userId, { type: 'inbox-thread-updated', id, status: body.status }));
+  c.executionCtx.waitUntil(notifyHub(c.env, userId, { type: 'conversation-updated', id, status: body.status }));
   return c.json({ ok: true, id, status: body.status });
 });
 
-app.delete('/api/messages/threads/:id', async (c) => {
+app.delete('/api/messages/conversations/:id', async (c) => {
   const userId = c.get('userId');
   const id = c.req.param('id');
   const r = await c.env.DB.batch([
-    c.env.DB.prepare('DELETE FROM inbox_messages WHERE thread_id = ? AND user_id = ?').bind(id, userId),
-    c.env.DB.prepare('DELETE FROM inbox_threads WHERE id = ? AND user_id = ?').bind(id, userId),
+    c.env.DB.prepare('DELETE FROM messages WHERE conversation_id = ? AND user_id = ?').bind(id, userId),
+    c.env.DB.prepare('DELETE FROM conversations WHERE id = ? AND user_id = ?').bind(id, userId),
   ]);
   if (!r[1]?.meta?.changes) return c.json({ error: 'not found' }, 404);
-  c.executionCtx.waitUntil(notifyHub(c.env, userId, { type: 'inbox-thread-deleted', id }));
+  c.executionCtx.waitUntil(notifyHub(c.env, userId, { type: 'conversation-deleted', id }));
   return c.json({ ok: true });
 });
 
-app.post('/api/messages/threads/:id/process', async (c) => {
+app.post('/api/messages/conversations/:id/process', async (c) => {
   const userId = c.get('userId');
   const id = c.req.param('id');
   const body = await c.req.json<{ message_id?: string }>().catch(() => ({} as { message_id?: string }));
   const message = body.message_id
     ? await c.env.DB.prepare(
-      `SELECT id FROM inbox_messages
-       WHERE id = ? AND thread_id = ? AND user_id = ? AND direction = 'inbound'`,
+      `SELECT id FROM messages
+       WHERE id = ? AND conversation_id = ? AND user_id = ? AND direction = 'inbound'`,
     ).bind(body.message_id, id, userId).first<{ id: string }>()
     : await c.env.DB.prepare(
-      `SELECT id FROM inbox_messages
-       WHERE thread_id = ? AND user_id = ? AND direction = 'inbound'
+      `SELECT id FROM messages
+       WHERE conversation_id = ? AND user_id = ? AND direction = 'inbound'
        ORDER BY created_at DESC, id DESC LIMIT 1`,
     ).bind(id, userId).first<{ id: string }>();
   if (!message) return c.json({ error: 'inbound message not found' }, 404);
-  await dispatchInboxAgentTask(c.env, userId, id, message.id);
+  await dispatchMessageAgentTask(c.env, userId, id, message.id);
   return c.json({ ok: true, message_id: message.id });
 });
 
-app.post('/api/messages/threads/:id/reply', async (c) => {
+app.post('/api/messages/conversations/:id/reply', async (c) => {
   const userId = c.get('userId');
   const id = c.req.param('id');
-  const thread = await c.env.DB.prepare(
+  const conversation = await c.env.DB.prepare(
     `SELECT t.id, t.contact_id, c.name AS contact_name, c.address AS contact_address
-     FROM inbox_threads t LEFT JOIN contacts c ON c.id = t.contact_id
+     FROM conversations t LEFT JOIN contacts c ON c.id = t.contact_id
      WHERE t.id = ? AND t.user_id = ?`,
   ).bind(id, userId).first<{ id: string; contact_id: string | null; contact_name: string | null; contact_address: string | null }>();
-  if (!thread) return c.json({ error: 'not found' }, 404);
+  if (!conversation) return c.json({ error: 'not found' }, 404);
   const body = await c.req.json<{ text?: string }>().catch(() => ({} as { text?: string }));
   const text = String(body.text || '').trim();
   if (!text) return c.json({ error: 'text required' }, 400);
@@ -909,34 +909,34 @@ app.post('/api/messages/threads/:id/reply', async (c) => {
   const ownerProfile = owner ? await publicProfile(c.env, origin, owner.handle) : null;
   await c.env.DB.batch([
     c.env.DB.prepare(
-      `INSERT INTO inbox_messages (id, user_id, thread_id, contact_id, direction, sender_name, sender_address, body, created_at)
+      `INSERT INTO messages (id, user_id, conversation_id, contact_id, direction, sender_name, sender_address, body, created_at)
        VALUES (?, ?, ?, ?, 'outbound', 'Meem', ?, ?, ?)`,
-    ).bind(messageId, userId, id, thread.contact_id, thread.contact_address || '', text, ts),
+    ).bind(messageId, userId, id, conversation.contact_id, conversation.contact_address || '', text, ts),
     c.env.DB.prepare(
-      `UPDATE inbox_threads SET status = 'replied', unread_count = 0, last_message_preview = ?, updated_at = ? WHERE id = ? AND user_id = ?`,
+      `UPDATE conversations SET status = 'replied', unread_count = 0, last_message_preview = ?, updated_at = ? WHERE id = ? AND user_id = ?`,
     ).bind(preview, ts, id, userId),
   ]);
   const message = await c.env.DB.prepare(
-    `SELECT id, thread_id, contact_id, direction, sender_name, sender_address, body, created_at
-     FROM inbox_messages WHERE id = ? AND user_id = ?`,
+    `SELECT id, conversation_id, contact_id, direction, sender_name, sender_address, body, created_at
+     FROM messages WHERE id = ? AND user_id = ?`,
   ).bind(messageId, userId).first();
   const broadcasts: Promise<unknown>[] = [
-    notifyHub(c.env, userId, { type: 'inbox-reply', thread_id: id, message }),
+    notifyHub(c.env, userId, { type: 'conversation-message', conversation_id: id, message }),
   ];
-  const peer = thread.contact_address
-    ? await loadUserByPublicAddress(c.env, origin, thread.contact_address)
+  const peer = conversation.contact_address
+    ? await loadUserByPublicAddress(c.env, origin, conversation.contact_address)
     : null;
   if (peer && ownerProfile && peer.id !== userId) {
     const peerContactId = await upsertContact(c.env, peer.id, ownerProfile.name, ownerProfile.address, ts);
-    const peerThreadRef = await upsertMessageThread(c.env, peer.id, peerContactId, preview.slice(0, 80) || '新的消息', preview, true, ts);
-    const peerMessage = await insertInboxMessage(
-      c.env, peer.id, peerThreadRef.id, peerContactId, 'inbound',
+    const peerConversationRef = await upsertConversation(c.env, peer.id, peerContactId, preview.slice(0, 80) || '新的消息', preview, true, ts);
+    const peerMessage = await insertMessage(
+      c.env, peer.id, peerConversationRef.id, peerContactId, 'inbound',
       ownerProfile.name, ownerProfile.address, text, ts,
     );
-    const peerThread = await loadInboxThread(c.env, peer.id, peerThreadRef.id);
+    const peerThread = await loadConversation(c.env, peer.id, peerConversationRef.id);
     broadcasts.push(
-      notifyHub(c.env, peer.id, { type: 'inbox-message', thread: peerThread, message: peerMessage }),
-      dispatchInboxAgentTask(c.env, peer.id, peerThreadRef.id, (peerMessage as any).id),
+      notifyHub(c.env, peer.id, { type: 'conversation-message', conversation: peerThread, message: peerMessage }),
+      dispatchMessageAgentTask(c.env, peer.id, peerConversationRef.id, (peerMessage as any).id),
     );
   }
   c.executionCtx.waitUntil(Promise.all(broadcasts));
@@ -949,36 +949,36 @@ app.get('/api/settings', async (c) => {
 
 app.put('/api/settings', async (c) => {
   const userId = c.get('userId');
-  const body = await c.req.json<{ prompt?: string; inbox_enabled?: boolean; mode_direct?: string; mode_inbox?: string }>()
-    .catch(() => ({} as { prompt?: string; inbox_enabled?: boolean; mode_direct?: string; mode_inbox?: string }));
+  const body = await c.req.json<{ prompt?: string; public_messages_enabled?: boolean; mode_direct?: string; mode_message_agent?: string }>()
+    .catch(() => ({} as { prompt?: string; public_messages_enabled?: boolean; mode_direct?: string; mode_message_agent?: string }));
   // partial update：只改提供的字段
   const current = await loadSettings(c.env, userId);
   const prompt = typeof body.prompt === 'string' ? body.prompt : current.prompt;
-  const inboxEnabled = typeof body.inbox_enabled === 'boolean'
-    ? body.inbox_enabled
-    : current.inbox_enabled;
+  const publicMessagesEnabled = typeof body.public_messages_enabled === 'boolean'
+    ? body.public_messages_enabled
+    : current.public_messages_enabled;
   const modeDirect = VALID_MODES.includes(body.mode_direct as Mode)
     ? (body.mode_direct as Mode)
     : current.mode_direct;
-  const modeInbox = VALID_MODES.includes(body.mode_inbox as Mode)
-    ? (body.mode_inbox as Mode)
-    : current.mode_inbox;
+  const messageAgentMode = VALID_MODES.includes(body.mode_message_agent as Mode)
+    ? (body.mode_message_agent as Mode)
+    : current.mode_message_agent;
   const ts = Math.floor(Date.now() / 1000);
   await c.env.DB.prepare(
-    `INSERT INTO settings (user_id, prompt, inbox_enabled, mode_direct, mode_inbox, created_at, updated_at)
+    `INSERT INTO settings (user_id, prompt, public_messages_enabled, mode_direct, mode_message_agent, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(user_id) DO UPDATE SET
        prompt = excluded.prompt,
-       inbox_enabled = excluded.inbox_enabled,
+       public_messages_enabled = excluded.public_messages_enabled,
        mode_direct = excluded.mode_direct,
-       mode_inbox = excluded.mode_inbox,
+       mode_message_agent = excluded.mode_message_agent,
        updated_at = excluded.updated_at`,
-  ).bind(userId, prompt, inboxEnabled ? 1 : 0, modeDirect, modeInbox, ts, ts).run();
+  ).bind(userId, prompt, publicMessagesEnabled ? 1 : 0, modeDirect, messageAgentMode, ts, ts).run();
   return c.json({
     prompt,
-    inbox_enabled: inboxEnabled,
+    public_messages_enabled: publicMessagesEnabled,
     mode_direct: modeDirect,
-    mode_inbox: modeInbox,
+    mode_message_agent: messageAgentMode,
     updated_at: ts,
   });
 });
@@ -991,19 +991,19 @@ app.get('/api/presence', async (c) => {
 app.get('/api/sessions', async (c) => {
   const userId = c.get('userId');
   const kind = c.req.query('kind') || '';
-  const inboxThreadId = c.req.query('inbox_thread_id') || '';
+  const conversationId = c.req.query('conversation_id') || '';
   const where: string[] = ['user_id = ?'];
   const binds: string[] = [userId];
   if (kind) {
     where.push('kind = ?');
     binds.push(kind);
   }
-  if (inboxThreadId) {
-    where.push('inbox_thread_id = ?');
-    binds.push(inboxThreadId);
+  if (conversationId) {
+    where.push('conversation_id = ?');
+    binds.push(conversationId);
   }
   const rs = await c.env.DB.prepare(
-    `SELECT id, kind, status, title, inbox_thread_id, trigger_msg_id, codex_thread_id, cwd, created_at, updated_at, finished_at
+    `SELECT id, kind, status, title, conversation_id, trigger_message_id, codex_thread_id, cwd, created_at, updated_at, finished_at
      FROM sessions ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
      ORDER BY updated_at DESC LIMIT 200`,
   ).bind(...binds).all();
@@ -1014,13 +1014,13 @@ app.get('/api/sessions/:id', async (c) => {
   const userId = c.get('userId');
   const id = c.req.param('id');
   const session = await c.env.DB.prepare(
-    `SELECT id, kind, status, title, inbox_thread_id, trigger_msg_id, codex_thread_id, cwd, created_at, updated_at, finished_at
+    `SELECT id, kind, status, title, conversation_id, trigger_message_id, codex_thread_id, cwd, created_at, updated_at, finished_at
      FROM sessions WHERE id = ? AND user_id = ?`,
   ).bind(id, userId).first();
   if (!session) return c.json({ error: 'not found' }, 404);
   const events = await c.env.DB.prepare(
     `SELECT id, session_id, seq, kind, payload_json, in_reply_to, created_at
-     FROM session_events WHERE session_id = ? AND user_id = ?
+     FROM events WHERE session_id = ? AND user_id = ?
      ORDER BY seq ASC, created_at ASC, id ASC`,
   ).bind(id, userId).all();
   return c.json({
@@ -1057,8 +1057,8 @@ app.post('/api/sessions/direct', async (c) => {
       user_id: userId,
       kind: 'direct_chat',
       title: text.slice(0, 80) || null,
-      inbox_thread_id: null,
-      trigger_msg_id: null,
+      conversation_id: null,
+      trigger_message_id: null,
       cwd,
     }, text);
   }
@@ -1069,7 +1069,7 @@ app.post('/api/sessions/:id/turn', async (c) => {
   const userId = c.get('userId');
   const sessionId = c.req.param('id');
   const session = await c.env.DB.prepare(
-    `SELECT id, user_id, kind, title, inbox_thread_id, trigger_msg_id, cwd
+    `SELECT id, user_id, kind, title, conversation_id, trigger_message_id, cwd
      FROM sessions WHERE id = ? AND user_id = ?`,
   ).bind(sessionId, userId).first<DispatchSession>();
   if (!session) return c.json({ error: 'not found' }, 404);
@@ -1091,7 +1091,7 @@ async function appendUserMessageAndDispatch(env: Env, session: DispatchSession, 
 
   // 先拉历史对话——在写入新 turn 之前，结果不包含本次
   const past = await env.DB.prepare(
-    `SELECT kind, payload_json FROM session_events
+    `SELECT kind, payload_json FROM events
      WHERE session_id = ? AND user_id = ?
        AND kind IN ('user_message','agent_message')
      ORDER BY seq ASC, created_at ASC, id ASC
@@ -1101,61 +1101,61 @@ async function appendUserMessageAndDispatch(env: Env, session: DispatchSession, 
     .map((row) => ({
       role: row.kind === 'agent_message' ? 'assistant' : 'user',
       actor: row.kind === 'agent_message'
-        ? (session.kind === 'inbox_reply' ? 'codex_internal' : 'codex')
-        : (session.kind === 'inbox_reply' ? 'owner' : 'user'),
+        ? (session.kind === 'message_agent' ? 'codex_internal' : 'codex')
+        : (session.kind === 'message_agent' ? 'owner' : 'user'),
       label: row.kind === 'agent_message'
-        ? (session.kind === 'inbox_reply' ? 'Codex 内部回复' : 'Codex')
-        : (session.kind === 'inbox_reply' ? '用户内部追问' : '用户'),
+        ? (session.kind === 'message_agent' ? 'Codex 内部回复' : 'Codex')
+        : (session.kind === 'message_agent' ? '用户内部追问' : '用户'),
       content: safeParse(row.payload_json).text || '',
     }))
     .filter((turn) => turn.content);
 
   let turns: any[] = [...pastTurns, { role: 'user', content: text }];
   let contact: { name: string; address: string } | undefined;
-  if (session.kind === 'inbox_reply' && session.inbox_thread_id) {
-    const thread = await env.DB.prepare(
+  if (session.kind === 'message_agent' && session.conversation_id) {
+    const conversation = await env.DB.prepare(
       `SELECT t.contact_id, c.name AS contact_name, c.address AS contact_address
-       FROM inbox_threads t LEFT JOIN contacts c ON c.id = t.contact_id
+       FROM conversations t LEFT JOIN contacts c ON c.id = t.contact_id
        WHERE t.id = ? AND t.user_id = ?`,
-    ).bind(session.inbox_thread_id, userId).first<{
+    ).bind(session.conversation_id, userId).first<{
       contact_id: string | null;
       contact_name: string | null;
       contact_address: string | null;
     }>();
-    const inboxHistory = await env.DB.prepare(
+    const conversationHistory = await env.DB.prepare(
       `SELECT direction, sender_name, sender_address, body, created_at
-       FROM inbox_messages WHERE thread_id = ? AND user_id = ?
+       FROM messages WHERE conversation_id = ? AND user_id = ?
        ORDER BY created_at ASC, id ASC LIMIT 20`,
-    ).bind(session.inbox_thread_id, userId).all<{
+    ).bind(session.conversation_id, userId).all<{
       direction: 'inbound' | 'outbound';
       sender_name: string;
       sender_address: string;
       body: string;
       created_at: number;
     }>();
-    const firstInbound = (inboxHistory.results || []).find((item) => item.direction === 'inbound');
-    const contactName = thread?.contact_name || firstInbound?.sender_name || '访客';
+    const firstInbound = (conversationHistory.results || []).find((item) => item.direction === 'inbound');
+    const contactName = conversation?.contact_name || firstInbound?.sender_name || '访客';
     contact = {
       name: contactName,
-      address: thread?.contact_address || firstInbound?.sender_address || '',
+      address: conversation?.contact_address || firstInbound?.sender_address || '',
     };
-    const inboxTurns = (inboxHistory.results || []).map((item) => ({
+    const conversationTurns = (conversationHistory.results || []).map((item) => ({
       role: item.direction === 'outbound' ? 'assistant' : 'user',
       actor: item.direction === 'outbound' ? 'sent_to_contact' : 'external_contact',
       label: item.direction === 'outbound'
         ? '已发给外部联系人的回复'
-        : `外部联系人 ${item.sender_name || contactName} 的来信`,
+        : `外部联系人 ${item.sender_name || contactName} 的消息`,
       content: item.body,
     }));
     turns = [
-      ...inboxTurns,
+      ...conversationTurns,
       ...pastTurns,
       {
         role: 'user',
         actor: 'owner',
         label: '用户当前内部追问',
         content: text,
-        instruction: '请围绕这封外部来信直接回答用户本人。这不是外部联系人的新消息，不要输出可直接发送给对方的回复，除非用户明确要求改写草稿。',
+        instruction: '请围绕这封外部消息直接回答用户本人。这不是外部联系人的新消息，不要输出可直接发送给对方的回复，除非用户明确要求改写草稿。',
       },
     ];
   }
@@ -1165,7 +1165,7 @@ async function appendUserMessageAndDispatch(env: Env, session: DispatchSession, 
       `UPDATE sessions SET status = 'thinking', title = COALESCE(title, ?), updated_at = ?, finished_at = NULL WHERE id = ? AND user_id = ?`,
     ).bind(text.slice(0, 80), ts, sessionId, userId),
     env.DB.prepare(
-      `INSERT INTO session_events (id, user_id, session_id, seq, kind, payload_json, created_at)
+      `INSERT INTO events (id, user_id, session_id, seq, kind, payload_json, created_at)
        VALUES (?, ?, ?, ?, 'user_message', ?, ?)`,
     ).bind(eventId, userId, sessionId, seq, JSON.stringify({ text }), ts),
   ]);
@@ -1177,8 +1177,8 @@ async function appendUserMessageAndDispatch(env: Env, session: DispatchSession, 
     payload: { text }, in_reply_to: null, created_at: ts,
   }});
 
-  const triggerMsgId = session.kind === 'inbox_reply'
-    ? (session.trigger_msg_id || eventId)
+  const triggerMessageId = session.kind === 'message_agent'
+    ? (session.trigger_message_id || eventId)
     : 'direct';
 
   await notifyHub(env, userId, {
@@ -1186,20 +1186,20 @@ async function appendUserMessageAndDispatch(env: Env, session: DispatchSession, 
     task: {
       session_id: sessionId,
       kind: session.kind,
-      mode: session.kind === 'inbox_reply' ? settings.mode_inbox : settings.mode_direct,
+      mode: session.kind === 'message_agent' ? settings.mode_message_agent : settings.mode_direct,
       owner_id: userId,
       peer_id: null,
-      inbox_thread_id: session.inbox_thread_id,
-      inbox_message_id: session.trigger_msg_id,
+      conversation_id: session.conversation_id,
+      message_id: session.trigger_message_id,
       cwd: session.cwd || null,
       contact,
       trigger: { content: text, sender_id: userId, created_at: ts },
       prompt: settings.prompt,
       memories,
-      interaction: session.kind === 'inbox_reply' ? 'internal_discussion' : 'direct_chat',
+      interaction: session.kind === 'message_agent' ? 'internal_discussion' : 'direct_chat',
       history: [],
       turns,
-      trigger_msg_id: triggerMsgId,
+      trigger_message_id: triggerMessageId,
       title,
     },
   });
@@ -1226,7 +1226,7 @@ app.post('/api/sessions/:id/events', async (c) => {
   for (const item of body.events) {
     const id = newId();
     stmts.push(c.env.DB.prepare(
-      `INSERT INTO session_events (id, user_id, session_id, seq, kind, payload_json, in_reply_to, created_at)
+      `INSERT INTO events (id, user_id, session_id, seq, kind, payload_json, in_reply_to, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     ).bind(id, userId, sessionId, seq, item.kind, JSON.stringify(item.payload ?? {}), item.in_reply_to ?? null, ts));
     newRows.push({
@@ -1246,7 +1246,7 @@ app.delete('/api/sessions/:id', async (c) => {
   const userId = c.get('userId');
   const sessionId = c.req.param('id');
   const r = await c.env.DB.batch([
-    c.env.DB.prepare('DELETE FROM session_events WHERE session_id = ? AND user_id = ?').bind(sessionId, userId),
+    c.env.DB.prepare('DELETE FROM events WHERE session_id = ? AND user_id = ?').bind(sessionId, userId),
     c.env.DB.prepare('DELETE FROM sessions WHERE id = ? AND user_id = ?').bind(sessionId, userId),
   ]);
   const deleted = r[1]?.meta?.changes || 0;

@@ -1,18 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { emitMeem, req, type Session, type SessionEvent } from '../api';
+import { emitMeem, req, type Session, type AgentEvent } from '../api';
 import OpenAIIcon from '../components/OpenAIIcon';
 import { fmtClock } from '../lib/time';
 import { pushToast } from '../components/Toast';
-import styles from './InboxAgentBlock.module.css';
+import styles from './MessageAgentBlock.module.css';
 
-export default function InboxAgentBlock({
+export default function MessageAgentBlock({
   session,
   onStart,
 }: {
   session?: Session;
   onStart: () => Promise<void>;
 }) {
-  const [events, setEvents] = useState<SessionEvent[]>([]);
+  const [events, setEvents] = useState<AgentEvent[]>([]);
   const [liveText, setLiveText] = useState('');
   const [starting, setStarting] = useState(false);
 
@@ -23,7 +23,7 @@ export default function InboxAgentBlock({
       return;
     }
 
-    req<{ session: Session; events: SessionEvent[] }>(`/api/sessions/${session.id}`)
+    req<{ session: Session; events: AgentEvent[] }>(`/api/sessions/${session.id}`)
       .then((body) => setEvents(body.events))
       .catch(() => {});
 
@@ -123,7 +123,7 @@ export default function InboxAgentBlock({
   );
 }
 
-function InlineEvent({ event }: { event: SessionEvent }) {
+function InlineEvent({ event }: { event: AgentEvent }) {
   const payload = event.payload || {};
   const text = payload.text || payload.message || '';
   const time = fmtClock(event.created_at);
@@ -222,7 +222,7 @@ function AgentMessage({
   );
 }
 
-function AuxEvent({ event, time }: { event: SessionEvent; time: string }) {
+function AuxEvent({ event, time }: { event: AgentEvent; time: string }) {
   const payload = event.payload || {};
   const meta = kindMeta(event.kind);
   return (

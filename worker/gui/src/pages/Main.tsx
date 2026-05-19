@@ -4,7 +4,7 @@ import TabButton from '../components/TabButton';
 import { navigate, PATH, useRoute } from '../lib/router';
 import Agent from './Agent';
 import Contacts from './Contacts';
-import Inbox from './Inbox';
+import Messages from './Messages';
 
 type WsStatus = 'connecting' | 'open' | 'closed';
 
@@ -56,18 +56,18 @@ export default function Main({ onLogout }: { onLogout: () => void }) {
 
   const hideTabs =
     (route.tab === 'codex' && route.overlay === 'session') ||
-    (route.tab === 'messages' && (route.overlay === 'inboxThread' || route.overlay === 'inboxProcess')) ||
+    (route.tab === 'messages' && (route.overlay === 'conversation' || route.overlay === 'conversationProcess')) ||
     (route.tab === 'contacts' && route.overlay !== null);
 
   return (
     <div className="relative h-full bg-neutral-50 flex flex-col">
       <div className="flex-1 overflow-hidden relative">
         {route.tab === 'messages' && (
-          <Inbox
-            threadId={route.threadId}
-            processSessionId={route.overlay === 'inboxProcess' ? route.processSessionId : undefined}
-            onOpenThread={(id) => navigate(PATH.messageThread(id))}
-            onCloseThread={() => navigate(PATH.messages())}
+          <Messages
+            conversationId={route.conversationId}
+            processSessionId={route.overlay === 'conversationProcess' ? route.processSessionId : undefined}
+            onOpenConversation={(id) => navigate(PATH.conversation(id))}
+            onCloseConversation={() => navigate(PATH.messages())}
           />
         )}
         {route.tab === 'contacts' && <Contacts route={route} />}

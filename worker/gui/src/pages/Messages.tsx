@@ -1,35 +1,35 @@
 import { useEffect, useState } from 'react';
-import { req, type InboxThread, type Me, type Mode, type Settings } from '../api';
+import { req, type Conversation, type Me, type Mode, type Settings } from '../api';
 import Avatar from '../components/Avatar';
 import { pushToast } from '../components/Toast';
 import { fmtTime } from '../lib/time';
-import InboxThreadView from './InboxThreadView';
+import ConversationView from './ConversationView';
 
-const INBOX_MODES: { key: Mode; label: string; desc: string }[] = [
+const MESSAGE_AGENT_MODES: { key: Mode; label: string; desc: string }[] = [
   { key: 'observe', label: '观察', desc: '只读上下文，生成回复草稿' },
   { key: 'approval', label: '审批', desc: '需要关键操作时等待确认' },
   { key: 'managed', label: '托管', desc: '按权限完整处理并给出草稿' },
 ];
 
-export default function Inbox({
-  threadId,
+export default function Messages({
+  conversationId,
   processSessionId,
-  onOpenThread,
-  onCloseThread,
+  onOpenConversation,
+  onCloseConversation,
 }: {
-  threadId?: string;
+  conversationId?: string;
   processSessionId?: string;
-  onOpenThread: (id: string) => void;
-  onCloseThread: () => void;
+  onOpenConversation: (id: string) => void;
+  onCloseConversation: () => void;
 }) {
-  const [threads, setThreads] = useState<InboxThread[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [address, setAddress] = useState('');
   const [settings, setSettings] = useState<Settings | null>(null);
   const [copied, setCopied] = useState(false);
   const [showAddress, setShowAddress] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const refresh = () => req<InboxThread[]>('/api/messages/threads').then(setThreads).catch(() => {});
+  const refresh = () => req<Conversation[]>('/api/messages/conversations').then(setConversations).catch(() => {});
   const loadSettings = () => req<Settings>('/api/settings').then(setSettings).catch(() => {});
 
   useEffect(() => {
@@ -39,10 +39,10 @@ export default function Inbox({
     const onFrame = (event: Event) => {
       const frame = (event as CustomEvent).detail;
       if (
-        frame?.type === 'inbox-message' ||
-        frame?.type === 'inbox-reply' ||
-        frame?.type === 'inbox-thread-updated' ||
-        frame?.type === 'inbox-thread-deleted'
+        frame?.type === 'conversation-message' ||
+        frame?.type === 'conversation-message' ||
+        frame?.type === 'conversation-updated' ||
+        frame?.type === 'conversation-deleted'
       ) refresh();
     };
     window.addEventListener('meem:frame', onFrame as EventListener);
@@ -53,11 +53,11 @@ export default function Inbox({
     if (!address) return;
     await navigator.clipboard.writeText(address).catch(() => {});
     setCopied(true);
-    pushToast('已复制收件地址', 'success');
+    pushToast('已复制消息地址', 'success');
     window.setTimeout(() => setCopied(false), 1200);
   }
 
-  async function saveInboxSettings(next: Partial<Pick<Settings, 'inbox_enabled' | 'mode_inbox'>>) {
+  async function saveMessageSettings(next: Partial<Pick<Settings, 'public_messages_enabled' | 'mode_message_agent'>>) {
     if (!settings || saving) return;
     const optimistic = { ...settings, ...next };
     setSettings(optimistic);
@@ -75,8 +75,8 @@ export default function Inbox({
     }
   }
 
-  const visible = threads.filter((t) => t.status !== 'archived');
-  const inboxEnabled = settings?.inbox_enabled !== false;
+  const visible = conversations.filter((t) => t.status !== 'archived');
+  const publicMessagesEnabled = settings?.public_messages_enabled !== false;
 
   return (
     <div className="h-full flex flex-col">
@@ -88,7 +88,7 @@ export default function Inbox({
         {address && (
           <button
             onClick={() => setShowAddress((value) => !value)}
-            title={showAddress ? '收起收件地址' : '查看 / 分享收件地址'}
+            title={showAddress ? '收起消息地址' : '查看 / 分享消息地址'}
             className={`w-9 h-9 rounded-full flex items-center justify-center ${
               showAddress ? 'text-neutral-900 bg-neutral-100' : 'text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100'
             }`}
@@ -121,20 +121,20 @@ export default function Inbox({
               <div className="min-w-0">
                 <div className="text-[13px] text-neutral-900">接收消息</div>
                 <div className="mt-0.5 text-[11px] text-neutral-400">
-                  {inboxEnabled ? '公开地址可以收到新消息' : '公开地址暂不接收新消息'}
+                  {publicMessagesEnabled ? '公开地址可以收到新消息' : '公开地址暂不接收新消息'}
                 </div>
               </div>
               <button
-                onClick={() => saveInboxSettings({ inbox_enabled: !inboxEnabled })}
+                onClick={() => saveMessageSettings({ public_messages_enabled: !publicMessagesEnabled })}
                 disabled={!settings || saving}
                 className={`relative h-6 w-11 shrink-0 rounded-full transition disabled:opacity-50 ${
-                  inboxEnabled ? 'bg-neutral-900' : 'bg-neutral-200'
+                  publicMessagesEnabled ? 'bg-neutral-900' : 'bg-neutral-200'
                 }`}
-                aria-pressed={inboxEnabled}
+                aria-pressed={publicMessagesEnabled}
               >
                 <span
                   className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition ${
-                    inboxEnabled ? 'left-5' : 'left-0.5'
+                    publicMessagesEnabled ? 'left-5' : 'left-0.5'
                   }`}
                 />
               </button>
@@ -142,12 +142,12 @@ export default function Inbox({
             <div className="mt-3">
               <div className="text-[11px] text-neutral-400">AI 处理模式</div>
               <div className="mt-1.5 grid grid-cols-3 gap-1.5">
-                {INBOX_MODES.map((mode) => {
-                  const active = settings?.mode_inbox === mode.key;
+                {MESSAGE_AGENT_MODES.map((mode) => {
+                  const active = settings?.mode_message_agent === mode.key;
                   return (
                     <button
                       key={mode.key}
-                      onClick={() => saveInboxSettings({ mode_inbox: mode.key })}
+                      onClick={() => saveMessageSettings({ mode_message_agent: mode.key })}
                       disabled={!settings || saving}
                       className={`rounded-md border px-2 py-1.5 text-[12px] transition disabled:opacity-50 ${
                         active
@@ -161,7 +161,7 @@ export default function Inbox({
                 })}
               </div>
               <div className="mt-1 text-[11px] text-neutral-400">
-                {INBOX_MODES.find((mode) => mode.key === settings?.mode_inbox)?.desc || '加载中'}
+                {MESSAGE_AGENT_MODES.find((mode) => mode.key === settings?.mode_message_agent)?.desc || '加载中'}
               </div>
             </div>
           </section>
@@ -176,12 +176,12 @@ export default function Inbox({
               </div>
             </div>
           )}
-          {visible.map((thread) => {
-            const display = thread.contact_name || '联系人';
+          {visible.map((conversation) => {
+            const display = conversation.contact_name || '联系人';
             return (
               <button
-                key={thread.id}
-                onClick={() => onOpenThread(thread.id)}
+                key={conversation.id}
+                onClick={() => onOpenConversation(conversation.id)}
                 className="w-full text-left px-4 py-3 border-b bg-white hover:bg-neutral-50 flex items-center gap-3"
               >
                 <Avatar seed={display} label={display} size={40} />
@@ -189,16 +189,16 @@ export default function Inbox({
                   <div className="flex items-baseline gap-2">
                     <span className="font-medium truncate">{display}</span>
                     <span className="text-xs text-neutral-400 ml-auto pl-2 shrink-0">
-                      {fmtTime(thread.updated_at)}
+                      {fmtTime(conversation.updated_at)}
                     </span>
                   </div>
                   <div className="text-sm text-neutral-500 truncate">
-                    {thread.last_message_preview || thread.title}
+                    {conversation.last_message_preview || conversation.title}
                   </div>
                 </div>
-                {thread.unread_count > 0 && (
+                {conversation.unread_count > 0 && (
                   <span className="text-xs bg-red-500 text-white rounded-full px-1.5 min-w-[18px] text-center font-semibold">
-                    {thread.unread_count}
+                    {conversation.unread_count}
                   </span>
                 )}
               </button>
@@ -207,12 +207,12 @@ export default function Inbox({
         </section>
       </div>
 
-      {threadId && (
-        <InboxThreadView
-          threadId={threadId}
+      {conversationId && (
+        <ConversationView
+          conversationId={conversationId}
           processSessionId={processSessionId}
           onClose={() => {
-            onCloseThread();
+            onCloseConversation();
             refresh();
           }}
         />

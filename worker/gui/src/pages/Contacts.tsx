@@ -69,7 +69,7 @@ export default function Contacts({ route }: { route: Route }) {
       if (
         frame?.type === 'contact-updated' ||
         frame?.type === 'contact-deleted' ||
-        frame?.type === 'inbox-message'
+        frame?.type === 'conversation-message'
       ) refresh();
     };
     window.addEventListener('meem:frame', onFrame as EventListener);
@@ -127,11 +127,11 @@ export default function Contacts({ route }: { route: Route }) {
     if (!address || busy) return;
     setBusy(true);
     try {
-      const { thread } = await req<{ thread: { id: string } }>('/api/messages/threads', {
+      const { conversation } = await req<{ conversation: { id: string } }>('/api/messages/conversations', {
         method: 'POST',
         body: JSON.stringify({ address, contact_name: contactName }),
       });
-      navigate(PATH.messageThread(thread.id));
+      navigate(PATH.conversation(conversation.id));
     } catch (err: any) {
       pushToast(err?.message || '无法打开会话', 'error');
     } finally {
@@ -395,7 +395,7 @@ function DomainUserDetail({
     if (!body || sending) return;
     setSending(true);
     try {
-      const { thread } = await req<{ thread: { id: string } }>('/api/messages/send', {
+      const { conversation } = await req<{ conversation: { id: string } }>('/api/messages/send', {
         method: 'POST',
         body: JSON.stringify({
           address: user.publicAddress,
@@ -406,7 +406,7 @@ function DomainUserDetail({
       pushToast('已送达', 'success');
       setText('');
       setComposing(false);
-      navigate(PATH.messageThread(thread.id));
+      navigate(PATH.conversation(conversation.id));
     } catch (err: any) {
       pushToast(err?.message || '发送失败', 'error');
     } finally {

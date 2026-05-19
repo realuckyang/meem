@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { req, type Session, type SessionEvent, type SessionStatus } from '../api';
+import { req, type Session, type AgentEvent, type SessionStatus } from '../api';
 import Composer from '../components/Composer';
 import OpenAIIcon from '../components/OpenAIIcon';
 import { pushToast } from '../components/Toast';
-import { EventRow, LivePartialRow, ThinkingRow } from './SessionEventRows';
+import { EventRow, LivePartialRow, ThinkingRow } from './AgentEventRows';
 
 type RenameState = { active: boolean; value: string };
 type Confirm = null | 'delete';
@@ -16,7 +16,7 @@ function compactPath(value?: string | null) {
 
 export default function SessionView({ sessionId, onClose }: { sessionId: string; onClose: () => void }) {
   const [session, setSession] = useState<Session | null>(null);
-  const [events, setEvents] = useState<SessionEvent[]>([]);
+  const [events, setEvents] = useState<AgentEvent[]>([]);
   const [livePartials, setLivePartials] = useState<Map<string, any>>(new Map());
   const [composer, setComposer] = useState('');
   const [busy, setBusy] = useState(false);
@@ -27,7 +27,7 @@ export default function SessionView({ sessionId, onClose }: { sessionId: string;
   const renameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    req<{ session: Session; events: SessionEvent[] }>(`/api/sessions/${sessionId}`)
+    req<{ session: Session; events: AgentEvent[] }>(`/api/sessions/${sessionId}`)
       .then((body) => {
         setSession(body.session);
         setEvents(body.events);

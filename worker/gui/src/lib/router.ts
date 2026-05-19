@@ -5,10 +5,10 @@ export interface Route {
   tab: Tab;
   overlay: Overlay;
   sessionId?: string;
-  threadId?: string;
+  conversationId?: string;
   contactId?: string;
   handle?: string;
-  /** /messages/thread/:tid/process/:sid 时的 sessionId */
+  /** /messages/conversation/:tid/process/:sid 时的 sessionId */
   processSessionId?: string;
   /** /codex/settings/memory/m/:id 时的 memoryId */
   memoryId?: string;
@@ -24,11 +24,11 @@ export function parseRoute(pathname: string): Route {
 
   // ---- /messages ----
   if (tab === 'messages') {
-    if (segs[1] === 'thread' && segs[2]) {
+    if (segs[1] === 'conversation' && segs[2]) {
       if (segs[3] === 'process' && segs[4]) {
-        return { tab, overlay: 'inboxProcess', threadId: segs[2], processSessionId: segs[4] };
+        return { tab, overlay: 'conversationProcess', conversationId: segs[2], processSessionId: segs[4] };
       }
-      return { tab, overlay: 'inboxThread', threadId: segs[2] };
+      return { tab, overlay: 'conversation', conversationId: segs[2] };
     }
     return { tab, overlay: null };
   }
@@ -74,9 +74,9 @@ export const PATH = {
   memoryEdit: (id: string) => `/codex/settings/memory/m/${encodeURIComponent(id)}`,
 
   messages: () => '/messages',
-  messageThread: (id: string) => `/messages/thread/${encodeURIComponent(id)}`,
-  inboxProcess: (threadId: string, sessionId: string) =>
-    `/messages/thread/${encodeURIComponent(threadId)}/process/${encodeURIComponent(sessionId)}`,
+  conversation: (id: string) => `/messages/conversation/${encodeURIComponent(id)}`,
+  conversationProcess: (conversationId: string, sessionId: string) =>
+    `/messages/conversation/${encodeURIComponent(conversationId)}/process/${encodeURIComponent(sessionId)}`,
 
   contacts: () => '/contacts',
   contactNew: () => '/contacts/new',

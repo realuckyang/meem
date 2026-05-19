@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { pub, type PublicThread as PublicThreadType } from '../api';
+import { pub, type PublicConversation as PublicConversationType } from '../api';
 import Avatar from '../components/Avatar';
 import { fmtClock } from '../lib/time';
 
@@ -8,14 +8,14 @@ function tokenFromPath() {
   return head === 't' ? decodeURIComponent(token || '') : '';
 }
 
-export default function PublicThread() {
+export default function PublicConversation() {
   const token = tokenFromPath();
-  const [data, setData] = useState<PublicThreadType | null>(null);
+  const [data, setData] = useState<PublicConversationType | null>(null);
   const [error, setError] = useState('');
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   const refresh = () =>
-    pub<PublicThreadType>(`/api/public/threads/${encodeURIComponent(token)}`)
+    pub<PublicConversationType>(`/api/public/conversations/${encodeURIComponent(token)}`)
       .then(setData)
       .catch(() => setError('这条会话暂时不可用。'));
 
@@ -59,7 +59,7 @@ export default function PublicThread() {
   return (
     <div className="h-full bg-neutral-50 flex flex-col">
       <header className="h-12 shrink-0 border-b bg-white/85 backdrop-blur px-4 flex items-center">
-        <div className="font-semibold text-[15px] truncate">{data?.thread.title || 'Meem 会话'}</div>
+        <div className="font-semibold text-[15px] truncate">{data?.conversation.title || 'Meem 会话'}</div>
       </header>
 
       <div ref={scrollerRef} className="flex-1 overflow-y-auto">

@@ -17,11 +17,11 @@ export type SessionStatus =
 
 export type Session = {
   id: string;
-  kind: 'direct_chat' | 'inbox_reply';
+  kind: 'direct_chat' | 'message_agent';
   status: SessionStatus;
   title: string | null;
-  inbox_thread_id?: string | null;
-  trigger_msg_id?: string | null;
+  conversation_id?: string | null;
+  trigger_message_id?: string | null;
   codex_thread_id?: string | null;
   cwd?: string | null;
   created_at: number;
@@ -29,7 +29,7 @@ export type Session = {
   finished_at: number | null;
 };
 
-export type SessionEvent = {
+export type AgentEvent = {
   id: string;
   session_id: string;
   seq?: number;
@@ -58,9 +58,9 @@ export type Presence = {
 
 export type Settings = {
   prompt: string;
-  inbox_enabled: boolean;
+  public_messages_enabled: boolean;
   mode_direct: Mode;
-  mode_inbox: Mode;
+  mode_message_agent: Mode;
   updated_at?: number;
 };
 
@@ -94,7 +94,7 @@ export type DomainUser = {
   updated_at: number;
 };
 
-export type InboxThread = {
+export type Conversation = {
   id: string;
   public_token?: string;
   contact_id: string | null;
@@ -108,9 +108,9 @@ export type InboxThread = {
   contact_address: string | null;
 };
 
-export type InboxMessage = {
+export type Message = {
   id: string;
-  thread_id: string;
+  conversation_id: string;
   contact_id: string | null;
   direction: 'inbound' | 'outbound';
   sender_name: string;
@@ -132,8 +132,8 @@ export type PublicProfile = {
   address: string;
 };
 
-export type PublicThread = {
-  thread: {
+export type PublicConversation = {
+  conversation: {
     id: string;
     title: string;
     status: 'open' | 'replied' | 'archived';

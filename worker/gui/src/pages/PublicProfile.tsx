@@ -41,7 +41,7 @@ export default function PublicProfile() {
     setBusy(true);
     setError('');
     try {
-      const result = await pub<{ ok: true; thread_id: string; message_id: string; receipt_url: string }>(
+      const result = await pub<{ ok: true; conversation_id: string; message_id: string; receipt_url: string }>(
         '/api/public/messages',
         {
           method: 'POST',

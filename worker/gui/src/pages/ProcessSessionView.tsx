@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { emitMeem, req, type InboxMessage, type Session, type SessionEvent, type SessionStatus } from '../api';
+import { emitMeem, req, type Message, type Session, type AgentEvent, type SessionStatus } from '../api';
 import Composer from '../components/Composer';
 import OpenAIIcon from '../components/OpenAIIcon';
 import { statusLabel, statusPillClass } from '../lib/sessionStatus';
 import { pushToast } from '../components/Toast';
-import { EventRow, LivePartialRow, ThinkingRow } from './SessionEventRows';
+import { EventRow, LivePartialRow, ThinkingRow } from './AgentEventRows';
 
 export default function ProcessSessionView({
   sessionId,
@@ -12,18 +12,18 @@ export default function ProcessSessionView({
   onClose,
 }: {
   sessionId: string;
-  triggerMessage?: InboxMessage | null;
+  triggerMessage?: Message | null;
   onClose: () => void;
 }) {
   const [session, setSession] = useState<Session | null>(null);
-  const [events, setEvents] = useState<SessionEvent[]>([]);
+  const [events, setEvents] = useState<AgentEvent[]>([]);
   const [livePartials, setLivePartials] = useState<Map<string, any>>(new Map());
   const [composer, setComposer] = useState('');
   const [busy, setBusy] = useState(false);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    req<{ session: Session; events: SessionEvent[] }>(`/api/sessions/${sessionId}`)
+    req<{ session: Session; events: AgentEvent[] }>(`/api/sessions/${sessionId}`)
       .then((body) => {
         setSession(body.session);
         setEvents(body.events);

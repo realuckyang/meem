@@ -1,7 +1,10 @@
 DROP TABLE IF EXISTS memories;
+DROP TABLE IF EXISTS events;
 DROP TABLE IF EXISTS session_events;
 DROP TABLE IF EXISTS sessions;
+DROP TABLE IF EXISTS messages;
 DROP TABLE IF EXISTS inbox_messages;
+DROP TABLE IF EXISTS conversations;
 DROP TABLE IF EXISTS inbox_threads;
 DROP TABLE IF EXISTS contacts;
 DROP TABLE IF EXISTS settings;
@@ -24,11 +27,11 @@ CREATE UNIQUE INDEX idx_users_handle
 CREATE TABLE settings (
   user_id TEXT PRIMARY KEY,
   prompt TEXT NOT NULL DEFAULT '',
-  inbox_enabled INTEGER NOT NULL DEFAULT 1,
+  public_messages_enabled INTEGER NOT NULL DEFAULT 1,
   mode_direct TEXT NOT NULL DEFAULT 'managed'
     CHECK(mode_direct IN ('observe','approval','managed')),
-  mode_inbox TEXT NOT NULL DEFAULT 'managed'
-    CHECK(mode_inbox IN ('observe','approval','managed')),
+  mode_message_agent TEXT NOT NULL DEFAULT 'managed'
+    CHECK(mode_message_agent IN ('observe','approval','managed')),
   created_at INTEGER NOT NULL DEFAULT (unixepoch()),
   updated_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
@@ -37,12 +40,12 @@ CREATE TABLE sessions (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
   kind TEXT NOT NULL DEFAULT 'direct_chat'
-    CHECK(kind IN ('direct_chat','inbox_reply')),
+    CHECK(kind IN ('direct_chat','message_agent')),
   status TEXT NOT NULL DEFAULT 'thinking'
     CHECK(status IN ('thinking','awaiting_approval','awaiting_input','done','cancelled','errored')),
   title TEXT,
-  inbox_thread_id TEXT,
-  trigger_msg_id TEXT,
+  conversation_id TEXT,
+  trigger_message_id TEXT,
   codex_thread_id TEXT,
   cwd TEXT,
   created_at INTEGER NOT NULL DEFAULT (unixepoch()),
@@ -53,10 +56,10 @@ CREATE TABLE sessions (
 CREATE INDEX idx_sessions_user_updated
   ON sessions(user_id, updated_at DESC);
 
-CREATE INDEX idx_sessions_user_inbox_thread
-  ON sessions(user_id, inbox_thread_id, updated_at DESC);
+CREATE INDEX idx_sessions_user_conversation
+  ON sessions(user_id, conversation_id, updated_at DESC);
 
-CREATE TABLE session_events (
+CREATE TABLE events (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
   session_id TEXT NOT NULL,
@@ -67,8 +70,8 @@ CREATE TABLE session_events (
   created_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
-CREATE INDEX idx_session_events_user_session_time
-  ON session_events(user_id, session_id, seq ASC);
+CREATE INDEX idx_events_user_session_time
+  ON events(user_id, session_id, seq ASC);
 
 CREATE TABLE contacts (
   id TEXT PRIMARY KEY,
@@ -87,7 +90,7 @@ CREATE UNIQUE INDEX idx_contacts_user_address
 CREATE INDEX idx_contacts_user_updated
   ON contacts(user_id, updated_at DESC);
 
-CREATE TABLE inbox_threads (
+CREATE TABLE conversations (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
   public_token TEXT NOT NULL,
@@ -101,16 +104,16 @@ CREATE TABLE inbox_threads (
   updated_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
-CREATE UNIQUE INDEX idx_inbox_threads_public_token
-  ON inbox_threads(public_token);
+CREATE UNIQUE INDEX idx_conversations_public_token
+  ON conversations(public_token);
 
-CREATE INDEX idx_inbox_threads_user_updated
-  ON inbox_threads(user_id, updated_at DESC);
+CREATE INDEX idx_conversations_user_updated
+  ON conversations(user_id, updated_at DESC);
 
-CREATE TABLE inbox_messages (
+CREATE TABLE messages (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
-  thread_id TEXT NOT NULL,
+  conversation_id TEXT NOT NULL,
   contact_id TEXT,
   direction TEXT NOT NULL
     CHECK(direction IN ('inbound','outbound')),
@@ -120,8 +123,8 @@ CREATE TABLE inbox_messages (
   created_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
-CREATE INDEX idx_inbox_messages_user_thread_time
-  ON inbox_messages(user_id, thread_id, created_at ASC);
+CREATE INDEX idx_messages_user_conversation_time
+  ON messages(user_id, conversation_id, created_at ASC);
 
 CREATE TABLE memories (
   id TEXT PRIMARY KEY,
