@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { pub, req, type Contact, type DomainUser, type Me } from '../api';
+import { req, type Contact, type DomainUser } from '../api';
 import Avatar from '../components/Avatar';
 import { pushToast } from '../components/Toast';
 import { fmtTime } from '../lib/time';
@@ -14,7 +14,6 @@ export default function Contacts({ route }: { route: Route }) {
   const [editing, setEditing] = useState<ContactDraft | null>(null);
   const [confirm, setConfirm] = useState<Contact | null>(null);
   const [busy, setBusy] = useState(false);
-  const [me, setMe] = useState<Me | null>(null);
 
   // 当前打开的详情来自 URL
   const openContact = route.overlay === 'contactDetail'
@@ -42,10 +41,6 @@ export default function Contacts({ route }: { route: Route }) {
     req<Contact[]>('/api/contacts').then(setContacts),
     req<DomainUser[]>('/api/users').then(setUsers),
   ]).catch(() => {});
-
-  useEffect(() => {
-    req<Me>('/api/me').then(setMe).catch(() => {});
-  }, []);
 
   const filteredContacts = useMemo(() => {
     const key = query.trim().toLowerCase();
@@ -126,6 +121,22 @@ export default function Contacts({ route }: { route: Route }) {
   async function copyText(text: string, msg = '已复制') {
     await navigator.clipboard.writeText(text).catch(() => {});
     pushToast(msg, 'success');
+  }
+
+  async function openMessage(address: string, contactName: string) {
+    if (!address || busy) return;
+    setBusy(true);
+    try {
+      const { thread } = await req<{ thread: { id: string } }>('/api/messages/threads', {
+        method: 'POST',
+        body: JSON.stringify({ address, contact_name: contactName }),
+      });
+      navigate(PATH.messageThread(thread.id));
+    } catch (err: any) {
+      pushToast(err?.message || '无法打开会话', 'error');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function addFromDomainUser(user: DomainUser) {
@@ -262,7 +273,6 @@ export default function Contacts({ route }: { route: Route }) {
       {openUser && !editing && (
         <DomainUserDetail
           user={openUser}
-          me={me}
           isContact={contacts.some((c) => c.address === openUser.publicAddress)}
           onClose={() => navigate(PATH.contacts())}
           onAddContact={async () => {
@@ -282,6 +292,7 @@ export default function Contacts({ route }: { route: Route }) {
           onEdit={() => navigate(PATH.contactEdit(openContact.id))}
           onDelete={() => setConfirm(openContact)}
           onCopy={() => copyText(openContact.address, '已复制地址')}
+          onMessage={() => openMessage(openContact.address, openContact.name)}
         />
       )}
 
@@ -315,13 +326,14 @@ function SectionTitle({ title }: { title: string }) {
 }
 
 function ContactDetail({
-  contact, onClose, onEdit, onDelete, onCopy,
+  contact, onClose, onEdit, onDelete, onCopy, onMessage,
 }: {
   contact: Contact;
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onCopy: () => void;
+  onMessage: () => void;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-neutral-50">
@@ -349,6 +361,12 @@ function ContactDetail({
           </div>
         )}
         <button
+          onClick={onMessage}
+          className="w-full bg-neutral-900 rounded-xl py-3 text-white font-medium hover:bg-black"
+        >
+          发消息
+        </button>
+        <button
           onClick={onDelete}
           className="w-full bg-white border border-neutral-200 rounded-xl py-3 text-red-500 font-medium hover:bg-red-50/40"
         >
@@ -360,10 +378,9 @@ function ContactDetail({
 }
 
 function DomainUserDetail({
-  user, me, isContact, onClose, onAddContact, onRemoveContact,
+  user, isContact, onClose, onAddContact, onRemoveContact,
 }: {
   user: DomainUser;
-  me: Me | null;
   isContact: boolean;
   onClose: () => void;
   onAddContact: () => Promise<void>;
@@ -372,29 +389,24 @@ function DomainUserDetail({
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [composing, setComposing] = useState(false);
-  const [sent, setSent] = useState<null | { receiptUrl: string }>(null);
 
   async function send() {
     const body = text.trim();
     if (!body || sending) return;
     setSending(true);
     try {
-      const result = await pub<{ ok: true; thread_id: string; message_id: string; receipt_url: string }>(
-        '/api/public/messages',
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            handle: user.handle,
-            sender_name: me?.name || 'Meem',
-            sender_address: me?.publicAddress || '',
-            text: body,
-          }),
-        },
-      );
+      const { thread } = await req<{ thread: { id: string } }>('/api/messages/send', {
+        method: 'POST',
+        body: JSON.stringify({
+          address: user.publicAddress,
+          contact_name: user.name || user.handle,
+          text: body,
+        }),
+      });
       pushToast('已送达', 'success');
-      setSent({ receiptUrl: result.receipt_url });
       setText('');
       setComposing(false);
+      navigate(PATH.messageThread(thread.id));
     } catch (err: any) {
       pushToast(err?.message || '发送失败', 'error');
     } finally {
@@ -423,25 +435,7 @@ function DomainUserDetail({
           </div>
         </div>
 
-        {sent ? (
-          <div className="rounded-2xl bg-white border border-neutral-200 p-4 space-y-2">
-            <div className="text-sm text-emerald-600">✓ 已送达</div>
-            <a
-              href={sent.receiptUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="block break-all rounded-xl bg-neutral-50 border border-neutral-200 px-3 py-2 text-[12px] text-neutral-700 hover:bg-neutral-100"
-            >
-              {sent.receiptUrl}
-            </a>
-            <button
-              onClick={() => setSent(null)}
-              className="w-full rounded-xl border border-neutral-200 bg-white py-2 text-sm text-neutral-700 hover:bg-neutral-50"
-            >
-              再发一条
-            </button>
-          </div>
-        ) : composing ? (
+        {composing ? (
           <div className="rounded-2xl bg-white border border-neutral-200 p-3 space-y-2">
             <textarea
               value={text}

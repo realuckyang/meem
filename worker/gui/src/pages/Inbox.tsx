@@ -29,7 +29,7 @@ export default function Inbox({
   const [showAddress, setShowAddress] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const refresh = () => req<InboxThread[]>('/api/inbox/threads').then(setThreads).catch(() => {});
+  const refresh = () => req<InboxThread[]>('/api/messages/threads').then(setThreads).catch(() => {});
   const loadSettings = () => req<Settings>('/api/settings').then(setSettings).catch(() => {});
 
   useEffect(() => {
@@ -105,7 +105,7 @@ export default function Inbox({
       <div className="flex-1 overflow-y-auto">
         {address && showAddress && (
           <section className="border-b bg-white px-4 py-3 meem-fade-enter">
-            <div className="text-[11px] text-neutral-400">收件地址 · 把它分享出去就能收到消息</div>
+            <div className="text-[11px] text-neutral-400">消息地址 · 把它分享出去就能收到新会话</div>
             <div className="mt-1.5 flex items-center gap-2">
               <div className="min-w-0 flex-1 truncate text-[13px] text-neutral-700">
                 {address}
@@ -119,7 +119,7 @@ export default function Inbox({
             </div>
             <div className="mt-3 flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <div className="text-[13px] text-neutral-900">接收来信</div>
+                <div className="text-[13px] text-neutral-900">接收消息</div>
                 <div className="mt-0.5 text-[11px] text-neutral-400">
                   {inboxEnabled ? '公开地址可以收到新消息' : '公开地址暂不接收新消息'}
                 </div>
@@ -177,7 +177,7 @@ export default function Inbox({
             </div>
           )}
           {visible.map((thread) => {
-            const display = thread.contact_name || '访客';
+            const display = thread.contact_name || '联系人';
             return (
               <button
                 key={thread.id}

@@ -23,7 +23,7 @@ export default function InboxThreadView({
   const [confirm, setConfirm] = useState<null | 'delete'>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
-  const refresh = () => req<{ thread: InboxThread; messages: InboxMessage[] }>(`/api/inbox/threads/${threadId}`)
+  const refresh = () => req<{ thread: InboxThread; messages: InboxMessage[] }>(`/api/messages/threads/${threadId}`)
     .then((body) => {
       setThread(body.thread);
       setMessages(body.messages);
@@ -92,7 +92,7 @@ export default function InboxThreadView({
     setBusy(true);
     setComposer('');
     try {
-      const { message } = await req<{ message: InboxMessage }>(`/api/inbox/threads/${threadId}/reply`, {
+      const { message } = await req<{ message: InboxMessage }>(`/api/messages/threads/${threadId}/reply`, {
         method: 'POST',
         body: JSON.stringify({ text }),
       });
@@ -106,7 +106,7 @@ export default function InboxThreadView({
 
   async function processMessage(messageId: string) {
     try {
-      await req(`/api/inbox/threads/${threadId}/process`, {
+      await req(`/api/messages/threads/${threadId}/process`, {
         method: 'POST',
         body: JSON.stringify({ message_id: messageId }),
       });
@@ -117,7 +117,7 @@ export default function InboxThreadView({
   async function archive() {
     setMenuOpen(false);
     try {
-      await req(`/api/inbox/threads/${threadId}`, {
+      await req(`/api/messages/threads/${threadId}`, {
         method: 'PATCH',
         body: JSON.stringify({ status: 'archived' }),
       });
@@ -130,18 +130,18 @@ export default function InboxThreadView({
     setMenuOpen(false);
     if (!thread?.contact_address) return;
     await navigator.clipboard.writeText(thread.contact_address).catch(() => {});
-    pushToast('已复制访客地址', 'success');
+    pushToast('已复制地址', 'success');
   }
 
   async function deleteThread() {
     setConfirm(null);
     try {
-      await req(`/api/inbox/threads/${threadId}`, { method: 'DELETE' });
+      await req(`/api/messages/threads/${threadId}`, { method: 'DELETE' });
       onClose();
     } catch {}
   }
 
-  const contactName = thread?.contact_name || '访客';
+  const contactName = thread?.contact_name || '联系人';
   const contactAddress = thread?.contact_address || '';
 
   return (
@@ -169,7 +169,7 @@ export default function InboxThreadView({
                  className="absolute right-0 top-8 z-50 w-40 overflow-hidden rounded-xl border bg-white py-1 text-sm shadow-lg meem-fade-enter">
               {contactAddress && (
                 <button onClick={copyAddress}
-                        className="block w-full px-3 py-2 text-left hover:bg-neutral-50">复制访客地址</button>
+                        className="block w-full px-3 py-2 text-left hover:bg-neutral-50">复制地址</button>
               )}
               <button onClick={archive}
                       className="block w-full px-3 py-2 text-left hover:bg-neutral-50">归档</button>
@@ -211,7 +211,7 @@ export default function InboxThreadView({
         value={composer}
         onChange={setComposer}
         onSubmit={send}
-        placeholder="回复这封来信... · 回车发送"
+        placeholder="发送消息... · 回车发送"
         disabled={busy}
       />
 

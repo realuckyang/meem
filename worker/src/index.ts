@@ -25,6 +25,11 @@ type PublicMessageInput = {
   sender_address?: string;
   text?: string;
 };
+type SendMessageInput = {
+  address?: string;
+  contact_name?: string;
+  text?: string;
+};
 type SessionKind = 'direct_chat' | 'inbox_reply';
 type DispatchSession = {
   id: string;
@@ -728,7 +733,7 @@ app.delete('/api/memories/:id', async (c) => {
   return c.json({ ok: true });
 });
 
-app.get('/api/inbox/threads', async (c) => {
+app.get('/api/messages/threads', async (c) => {
   const userId = c.get('userId');
   const rs = await c.env.DB.prepare(
     `SELECT t.id, t.public_token, t.contact_id, t.title, t.status, t.unread_count, t.last_message_preview,
@@ -740,7 +745,81 @@ app.get('/api/inbox/threads', async (c) => {
   return c.json(rs.results);
 });
 
-app.get('/api/inbox/threads/:id', async (c) => {
+app.post('/api/messages/threads', async (c) => {
+  const userId = c.get('userId');
+  const body = await c.req.json<{ address?: string; contact_name?: string }>()
+    .catch(() => ({} as { address?: string; contact_name?: string }));
+  const address = normalizeAddress(body.address);
+  if (!address) return c.json({ error: 'address required' }, 400);
+  const origin = new URL(c.req.url).origin;
+  const peer = await loadUserByPublicAddress(c.env, origin, address);
+  const name = normalizeName(body.contact_name, peer?.name || peer?.handle || '联系人');
+  const ts = now();
+  const contactId = await upsertContact(c.env, userId, name, address, ts);
+  const existing = await c.env.DB.prepare(
+    `SELECT id FROM inbox_threads
+     WHERE user_id = ? AND contact_id = ? AND status != 'archived'
+     ORDER BY updated_at DESC LIMIT 1`,
+  ).bind(userId, contactId).first<{ id: string }>();
+  const threadRef = existing || await upsertMessageThread(c.env, userId, contactId, name, '', false, ts);
+  const thread = await loadInboxThread(c.env, userId, threadRef.id);
+  c.executionCtx.waitUntil(notifyHub(c.env, userId, { type: 'inbox-message', thread }));
+  return c.json({ thread });
+});
+
+app.post('/api/messages/send', async (c) => {
+  const userId = c.get('userId');
+  const body = await c.req.json<SendMessageInput>().catch(() => ({} as SendMessageInput));
+  const address = normalizeAddress(body.address);
+  const text = String(body.text || '').trim();
+  if (!address) return c.json({ error: 'address required' }, 400);
+  if (!text) return c.json({ error: 'text required' }, 400);
+  if (text.length > 4000) return c.json({ error: 'text too long' }, 400);
+
+  const origin = new URL(c.req.url).origin;
+  const owner = await loadUserById(c.env, userId);
+  const ownerProfile = owner ? await publicProfile(c.env, origin, owner.handle) : null;
+  if (!ownerProfile) return c.json({ error: 'user not found' }, 404);
+
+  const peer = await loadUserByPublicAddress(c.env, origin, address);
+  if (!peer) return c.json({ error: '只能发送到 Meem 地址' }, 400);
+  if (peer.id === userId) return c.json({ error: '不能发送给自己' }, 400);
+
+  const peerSettings = await loadSettings(c.env, peer.id);
+  if (!peerSettings.inbox_enabled) {
+    return c.json({ error: '对方暂未接收消息' }, 403);
+  }
+
+  const ts = now();
+  const preview = messagePreview(text);
+  const peerProfile = await publicProfile(c.env, origin, peer.handle);
+  const contactName = normalizeName(body.contact_name, peerProfile?.name || peer.handle);
+  const senderContactId = await upsertContact(c.env, userId, contactName, address, ts);
+  const senderThreadRef = await upsertMessageThread(c.env, userId, senderContactId, contactName, preview, false, ts);
+  const senderMessage = await insertInboxMessage(
+    c.env, userId, senderThreadRef.id, senderContactId, 'outbound',
+    ownerProfile.name, address, text, ts,
+  );
+  const senderThread = await loadInboxThread(c.env, userId, senderThreadRef.id);
+
+  const peerContactId = await upsertContact(c.env, peer.id, ownerProfile.name, ownerProfile.address, ts);
+  const peerThreadRef = await upsertMessageThread(c.env, peer.id, peerContactId, ownerProfile.name, preview, true, ts);
+  const peerMessage = await insertInboxMessage(
+    c.env, peer.id, peerThreadRef.id, peerContactId, 'inbound',
+    ownerProfile.name, ownerProfile.address, text, ts,
+  );
+  const peerThread = await loadInboxThread(c.env, peer.id, peerThreadRef.id);
+
+  c.executionCtx.waitUntil(Promise.all([
+    notifyHub(c.env, userId, { type: 'inbox-message', thread: senderThread, message: senderMessage }),
+    notifyHub(c.env, peer.id, { type: 'inbox-message', thread: peerThread, message: peerMessage }),
+    dispatchInboxAgentTask(c.env, peer.id, peerThreadRef.id, (peerMessage as any).id),
+  ]));
+
+  return c.json({ thread: senderThread, message: senderMessage });
+});
+
+app.get('/api/messages/threads/:id', async (c) => {
   const userId = c.get('userId');
   const id = c.req.param('id');
   const thread = await c.env.DB.prepare(
@@ -760,7 +839,7 @@ app.get('/api/inbox/threads/:id', async (c) => {
   return c.json({ thread: { ...(thread as any), unread_count: 0 }, messages: messages.results });
 });
 
-app.patch('/api/inbox/threads/:id', async (c) => {
+app.patch('/api/messages/threads/:id', async (c) => {
   const userId = c.get('userId');
   const id = c.req.param('id');
   const body = await c.req.json<{ status?: string }>()
@@ -778,7 +857,7 @@ app.patch('/api/inbox/threads/:id', async (c) => {
   return c.json({ ok: true, id, status: body.status });
 });
 
-app.delete('/api/inbox/threads/:id', async (c) => {
+app.delete('/api/messages/threads/:id', async (c) => {
   const userId = c.get('userId');
   const id = c.req.param('id');
   const r = await c.env.DB.batch([
@@ -790,7 +869,7 @@ app.delete('/api/inbox/threads/:id', async (c) => {
   return c.json({ ok: true });
 });
 
-app.post('/api/inbox/threads/:id/process', async (c) => {
+app.post('/api/messages/threads/:id/process', async (c) => {
   const userId = c.get('userId');
   const id = c.req.param('id');
   const body = await c.req.json<{ message_id?: string }>().catch(() => ({} as { message_id?: string }));
@@ -809,7 +888,7 @@ app.post('/api/inbox/threads/:id/process', async (c) => {
   return c.json({ ok: true, message_id: message.id });
 });
 
-app.post('/api/inbox/threads/:id/reply', async (c) => {
+app.post('/api/messages/threads/:id/reply', async (c) => {
   const userId = c.get('userId');
   const id = c.req.param('id');
   const thread = await c.env.DB.prepare(
@@ -849,7 +928,7 @@ app.post('/api/inbox/threads/:id/reply', async (c) => {
     : null;
   if (peer && ownerProfile && peer.id !== userId) {
     const peerContactId = await upsertContact(c.env, peer.id, ownerProfile.name, ownerProfile.address, ts);
-    const peerThreadRef = await upsertMessageThread(c.env, peer.id, peerContactId, preview.slice(0, 80) || '新的来信', preview, true, ts);
+    const peerThreadRef = await upsertMessageThread(c.env, peer.id, peerContactId, preview.slice(0, 80) || '新的消息', preview, true, ts);
     const peerMessage = await insertInboxMessage(
       c.env, peer.id, peerThreadRef.id, peerContactId, 'inbound',
       ownerProfile.name, ownerProfile.address, text, ts,
