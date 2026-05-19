@@ -386,31 +386,24 @@ function DomainUserDetail({
   onAddContact: () => Promise<void>;
   onRemoveContact: () => Promise<void>;
 }) {
-  const [text, setText] = useState('');
-  const [sending, setSending] = useState(false);
-  const [composing, setComposing] = useState(false);
+  const [opening, setOpening] = useState(false);
 
-  async function send() {
-    const body = text.trim();
-    if (!body || sending) return;
-    setSending(true);
+  async function openConversation() {
+    if (opening) return;
+    setOpening(true);
     try {
-      const { conversation } = await req<{ conversation: { id: string } }>('/api/messages/send', {
+      const { conversation } = await req<{ conversation: { id: string } }>('/api/messages/conversations', {
         method: 'POST',
         body: JSON.stringify({
           address: user.publicAddress,
           contact_name: user.name || user.handle,
-          text: body,
         }),
       });
-      pushToast('已送达', 'success');
-      setText('');
-      setComposing(false);
       navigate(PATH.conversation(conversation.id));
     } catch (err: any) {
-      pushToast(err?.message || '发送失败', 'error');
+      pushToast(err?.message || '无法打开会话', 'error');
     } finally {
-      setSending(false);
+      setOpening(false);
     }
   }
 
@@ -435,39 +428,13 @@ function DomainUserDetail({
           </div>
         </div>
 
-        {composing ? (
-          <div className="rounded-2xl bg-white border border-neutral-200 p-3 space-y-2">
-            <textarea
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-              placeholder={`写给 ${user.name || user.handle}…`}
-              rows={5}
-              className="w-full resize-none rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm leading-6 outline-none focus:border-neutral-400 focus:bg-white"
-            />
-            <div className="flex gap-2">
-              <button
-                onClick={() => { setComposing(false); setText(''); }}
-                className="flex-1 rounded-xl border border-neutral-200 bg-white py-2 text-sm text-neutral-700 hover:bg-neutral-50"
-              >
-                取消
-              </button>
-              <button
-                onClick={send}
-                disabled={!text.trim() || sending}
-                className="flex-1 rounded-xl bg-neutral-900 py-2 text-sm text-white disabled:bg-neutral-200"
-              >
-                {sending ? '发送中…' : '发送'}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button
-            onClick={() => setComposing(true)}
-            className="w-full rounded-xl bg-neutral-900 py-2.5 text-sm font-medium text-white"
-          >
-            发送消息
-          </button>
-        )}
+        <button
+          onClick={openConversation}
+          disabled={opening}
+          className="w-full rounded-xl bg-neutral-900 py-2.5 text-sm font-medium text-white disabled:bg-neutral-200"
+        >
+          {opening ? '打开中…' : '发消息'}
+        </button>
 
         {isContact ? (
           <button
