@@ -53,8 +53,9 @@ export interface ChatSettings {
   apiUrl: string;
   apiKey: string;
   model: string;
-  meemBaseUrl: string;
-  meemToken: string;
+  avatarWorkerUrl: string;
+  avatarId: string;
+  avatarToken: string;
   avatarEnabled: boolean;
 }
 

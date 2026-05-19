@@ -9,130 +9,67 @@ export interface AvatarHandle {
 
 type StatusListener = (status: AvatarStatus, detail?: string) => void;
 
-interface AgentTaskFrame {
-  type: 'agent-task';
-  task?: AgentTask;
+interface AvatarMessageFrame {
+  type: 'avatar-message';
+  message?: AvatarMessage;
 }
 
-interface AgentCancelFrame {
-  type: 'agent-cancel';
-  session_id?: string;
+interface AvatarMessage {
+  id: string;
+  text: string;
+  senderName?: string;
+  createdAt?: number;
 }
 
-interface AgentTask {
-  session_id: string;
-  kind?: string;
-  conversation_id?: string | null;
-  message_id?: string | null;
-  title?: string | null;
-  prompt?: string | null;
-  memories?: Array<Record<string, unknown>>;
-  turns?: Array<{
-    role?: string;
-    label?: string;
-    content?: string;
-    instruction?: string;
-  }>;
-  contact?: {
-    name?: string;
-    address?: string;
-  } | null;
-  trigger?: {
-    content?: string;
-    created_at?: number;
-  };
-}
-
-function wsUrl(baseUrl: string, token: string) {
-  const url = new URL(baseUrl || 'https://meem.chatnext.ai');
-  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-  url.pathname = '/ws';
-  url.searchParams.set('token', token);
-  url.searchParams.set('avatar', '1');
-  return url.toString();
-}
-
-function apiUrl(baseUrl: string, path: string) {
-  const url = new URL(baseUrl || 'https://meem.chatnext.ai');
+function workerUrl(settings: ChatSettings, path: string) {
+  const url = new URL(settings.avatarWorkerUrl || 'https://meem-exetension.chatnext.ai');
   url.pathname = path;
   url.search = '';
   return url.toString();
 }
 
-async function api(settings: ChatSettings, method: string, path: string, body?: unknown) {
-  const response = await fetch(apiUrl(settings.meemBaseUrl, path), {
-    method,
-    headers: {
-      Authorization: `Bearer ${settings.meemToken}`,
-      'Content-Type': 'application/json'
-    },
-    body: body === undefined ? undefined : JSON.stringify(body)
+function wsUrl(settings: ChatSettings) {
+  const url = new URL(settings.avatarWorkerUrl || 'https://meem-exetension.chatnext.ai');
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+  url.pathname = `/api/avatar/${encodeURIComponent(settings.avatarId)}/ws`;
+  url.searchParams.set('token', settings.avatarToken);
+  return url.toString();
+}
+
+async function postReply(settings: ChatSettings, messageId: string, text: string) {
+  const response = await fetch(workerUrl(settings, `/api/avatar/${encodeURIComponent(settings.avatarId)}/reply`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      token: settings.avatarToken,
+      messageId,
+      text
+    })
   });
   if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    throw new Error(`worker ${response.status}: ${text || response.statusText}`);
+    const detail = await response.text().catch(() => '');
+    throw new Error(`worker ${response.status}: ${detail || response.statusText}`);
   }
-  return response.json().catch(() => ({}));
 }
 
-function memoryText(memories: AgentTask['memories']) {
-  if (!Array.isArray(memories) || memories.length === 0) return '';
-  return memories
-    .slice(0, 20)
-    .map((item, index) => `${index + 1}. ${JSON.stringify(item)}`)
-    .join('\n');
-}
-
-function taskToMessages(task: AgentTask): ChatMessage[] {
-  const system = [
-    '你是用户开启的 meem 分身。',
-    '你正在代表用户处理来自外部联系人的消息。',
-    '如果任务要求直接回复对方，只输出可以发送给对方的正文，不要添加解释。',
-    task.prompt ? `用户长期偏好：\n${task.prompt}` : '',
-    task.contact?.name ? `当前联系人：${task.contact.name}` : '',
-    memoryText(task.memories) ? `相关记忆：\n${memoryText(task.memories)}` : ''
-  ].filter(Boolean).join('\n\n');
-
-  const messages: ChatMessage[] = [{ role: 'system', content: system }];
-  const turns = Array.isArray(task.turns) ? task.turns : [];
-  for (const turn of turns) {
-    const role = turn.role === 'assistant' ? 'assistant' : 'user';
-    const parts = [
-      turn.label ? `【${turn.label}】` : '',
-      turn.content || '',
-      turn.instruction ? `\n要求：${turn.instruction}` : ''
-    ].filter(Boolean);
-    messages.push({ role, content: parts.join('\n') });
-  }
-
-  if (messages.length === 1 && task.trigger?.content) {
-    messages.push({ role: 'user', content: task.trigger.content });
-  }
-  return messages;
-}
-
-async function persistSessionResult(settings: ChatSettings, task: AgentTask, text: string, status = 'done') {
-  if (!task.session_id) return;
-  await api(settings, 'POST', `/api/sessions/${encodeURIComponent(task.session_id)}/events`, {
-    events: [
-      {
-        kind: 'agent_message',
-        payload: { text },
-        in_reply_to: task.message_id || task.trigger?.created_at || null
-      }
-    ]
-  });
-  await api(settings, 'PATCH', `/api/sessions/${encodeURIComponent(task.session_id)}`, {
-    status,
-    title: task.title || text.slice(0, 80)
-  });
-}
-
-async function replyToConversation(settings: ChatSettings, task: AgentTask, text: string) {
-  if (task.kind !== 'message_agent' || !task.conversation_id) return;
-  await api(settings, 'POST', `/api/messages/conversations/${encodeURIComponent(task.conversation_id)}/reply`, {
-    text
-  });
+function messageToChat(message: AvatarMessage): ChatMessage[] {
+  return [
+    {
+      role: 'system',
+      content: [
+        '你是用户开启的 meem 分身。',
+        '你正在代表用户回复外部访客。',
+        '只输出可以直接发给对方的回复正文，不要添加解释。'
+      ].join('\n')
+    },
+    {
+      role: 'user',
+      content: [
+        message.senderName ? `访客：${message.senderName}` : '访客',
+        message.text
+      ].join('\n\n')
+    }
+  ];
 }
 
 export function startAvatar(settings: ChatSettings, onStatus: StatusListener): AvatarHandle {
@@ -140,7 +77,6 @@ export function startAvatar(settings: ChatSettings, onStatus: StatusListener): A
   let socket: WebSocket | null = null;
   let reconnectTimer: number | null = null;
   let reconnectMs = 1000;
-  const cancelled = new Set<string>();
 
   const cleanupReconnect = () => {
     if (reconnectTimer !== null) {
@@ -159,71 +95,53 @@ export function startAvatar(settings: ChatSettings, onStatus: StatusListener): A
     }, wait);
   };
 
-  const sendHello = () => {
-    socket?.send(JSON.stringify({
-      type: 'hello',
-      capabilities: {
-        avatar: true,
-        client: false,
-        codex: false,
-        codexVersion: '',
-        codexLoggedIn: false,
-        bridgeVersion: 'extension',
-        bridgeStartedAt: Date.now(),
-        os: navigator.platform || '',
-        hostname: 'chrome-extension'
-      }
-    }));
-  };
-
-  const handleTask = async (task?: AgentTask) => {
-    if (!task?.session_id || cancelled.has(task.session_id)) return;
-    onStatus('working', task.title || task.kind || 'agent-task');
+  const handleMessage = async (message?: AvatarMessage) => {
+    if (!message?.id || !message.text) return;
+    onStatus('working', message.senderName || message.id);
     try {
-      const result = await chat(taskToMessages(task), {
+      const result = await chat(messageToChat(message), {
         ...settings,
         maxRounds: 30,
         onEvent: () => {}
       });
-      if (cancelled.has(task.session_id)) return;
-      const text = result.text.trim();
-      await persistSessionResult(settings, task, text, 'done');
-      await replyToConversation(settings, task, text);
+      await postReply(settings, message.id, result.text.trim());
       onStatus('online');
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      await persistSessionResult(settings, task, `分身处理失败：${message}`, 'errored').catch(() => {});
-      onStatus('error', message);
+      const detail = error instanceof Error ? error.message : String(error);
+      await postReply(settings, message.id, `分身处理失败：${detail}`).catch(() => {});
+      onStatus('error', detail);
     }
   };
 
   function connect() {
     if (closed) return;
-    if (!settings.meemToken.trim()) {
-      onStatus('error', '缺少 meem token');
+    if (!settings.avatarId.trim()) {
+      onStatus('error', '缺少分身 ID');
       return;
     }
+    if (!settings.avatarToken.trim()) {
+      onStatus('error', '缺少分身密钥');
+      return;
+    }
+
     onStatus('connecting');
     try {
       socket?.close();
-      socket = new WebSocket(wsUrl(settings.meemBaseUrl, settings.meemToken));
+      socket = new WebSocket(wsUrl(settings));
       socket.addEventListener('open', () => {
         reconnectMs = 1000;
         onStatus('online');
-        sendHello();
+        socket?.send(JSON.stringify({ type: 'hello' }));
       });
       socket.addEventListener('message', (event) => {
-        let frame: AgentTaskFrame | AgentCancelFrame | { type?: string };
+        let frame: AvatarMessageFrame | { type?: string };
         try {
           frame = JSON.parse(String(event.data));
         } catch {
           return;
         }
-        if (frame.type === 'agent-task') {
-          handleTask((frame as AgentTaskFrame).task);
-        }
-        if (frame.type === 'agent-cancel' && (frame as AgentCancelFrame).session_id) {
-          cancelled.add(String((frame as AgentCancelFrame).session_id));
+        if (frame.type === 'avatar-message') {
+          handleMessage((frame as AvatarMessageFrame).message);
         }
       });
       socket.addEventListener('close', () => {

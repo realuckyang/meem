@@ -102,20 +102,28 @@ function SettingsPanel({
         />
       </label>
       <label>
-        <span>meem URL</span>
+        <span>分身服务</span>
         <input
-          value={value.meemBaseUrl}
-          onChange={(event) => onChange({ ...value, meemBaseUrl: event.target.value })}
-          placeholder="https://meem.chatnext.ai"
+          value={value.avatarWorkerUrl}
+          onChange={(event) => onChange({ ...value, avatarWorkerUrl: event.target.value })}
+          placeholder="https://meem-exetension.chatnext.ai"
         />
       </label>
       <label>
-        <span>meem Token</span>
+        <span>分身 ID</span>
+        <input
+          value={value.avatarId}
+          onChange={(event) => onChange({ ...value, avatarId: event.target.value })}
+          placeholder="公开收信地址，例如 nickyang"
+        />
+      </label>
+      <label>
+        <span>分身密钥</span>
         <input
           type="password"
-          value={value.meemToken}
-          onChange={(event) => onChange({ ...value, meemToken: event.target.value })}
-          placeholder="用于连接 worker 的登录 token"
+          value={value.avatarToken}
+          onChange={(event) => onChange({ ...value, avatarToken: event.target.value })}
+          placeholder="插件连接分身服务的私密密钥"
         />
       </label>
     </section>
@@ -202,8 +210,9 @@ export default function App() {
     return () => handle.close();
   }, [
     settings?.avatarEnabled,
-    settings?.meemBaseUrl,
-    settings?.meemToken,
+    settings?.avatarWorkerUrl,
+    settings?.avatarId,
+    settings?.avatarToken,
     settings?.provider,
     settings?.apiUrl,
     settings?.apiKey,

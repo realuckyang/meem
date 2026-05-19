@@ -1,12 +1,12 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "meem",
-  "account_id": "366ace4eecf8ecbefd957d6c6cd733ad",
+  "account_id": "<cloudflare-account-id>",
   "main": "src/index.ts",
   "compatibility_date": "2025-05-01",
   "routes": [
     {
-      "pattern": "meem.chatnext.ai",
+      "pattern": "meem.example.com",
       "custom_domain": true
     }
   ],
@@ -19,7 +19,7 @@
     {
       "binding": "DB",
       "database_name": "meem",
-      "database_id": "3dd62569-52a4-4f88-a87b-8c60ab66b625"
+      "database_id": "<d1-database-id>"
     }
   ],
   "durable_objects": {

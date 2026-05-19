@@ -7,3 +7,5 @@ dist/
 client/tauri/target/
 client/tauri/binaries/
 server/token.json
+worker/wrangler.jsonc
+extension/worker/wrangler.jsonc

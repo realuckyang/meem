@@ -20,8 +20,10 @@
 
 ```bash
 npm --prefix extension install
+npm --prefix extension/worker install
 npm run extension:check
 npm run extension:build
+npm run extension:worker:check
 ```
 
 ## 加载扩展
@@ -36,6 +38,38 @@ npm run extension:build
 ```
 
 首次打开侧栏后，在设置里填入 API URL、模型和 API Key。
+
+## 分身服务
+
+插件分身不依赖主 `worker/` 和 Codex 本机服务。独立 Worker 位于：
+
+```text
+extension/worker/
+```
+
+部署配置：
+
+```text
+name: meem-exetension
+domain: meem-exetension.chatnext.ai
+```
+
+命令：
+
+```bash
+npm run extension:worker:dev
+npm run extension:worker:deploy
+```
+
+外部发消息：
+
+```bash
+curl -X POST "https://meem-exetension.chatnext.ai/api/avatar/<分身ID>/message?wait=1" \
+  -H "Content-Type: application/json" \
+  -d '{"senderName":"访客","text":"你好"}'
+```
+
+插件开启分身后，会连接独立 Worker，收到消息后用本地模型配置生成回复，再回传给 Worker。
 
 ## 结构
 

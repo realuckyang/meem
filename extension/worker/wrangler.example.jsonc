@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "meem-exetension",
+  "account_id": "<cloudflare-account-id>",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-05-01",
+  "routes": [
+    {
+      "pattern": "meem-exetension.example.com",
+      "custom_domain": true
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "AVATAR",
+        "class_name": "AvatarRoom"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["AvatarRoom"]
+    }
+  ]
+}

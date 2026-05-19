@@ -12,6 +12,9 @@
     "extension:dev": "npm --prefix extension run dev",
     "extension:build": "npm --prefix extension run build",
     "extension:check": "npm --prefix extension run check",
+    "extension:worker:dev": "npm --prefix extension/worker run dev",
+    "extension:worker:deploy": "npm --prefix extension/worker run deploy",
+    "extension:worker:check": "npm --prefix extension/worker run typecheck",
     "browser:mcp": "npm --prefix browser-use run mcp",
     "browser:check": "npm --prefix browser-use run check"
   }

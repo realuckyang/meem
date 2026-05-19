@@ -12,8 +12,9 @@ export const defaultSettings: ChatSettings = {
   apiUrl: providers.find((provider) => provider.id === 'openai')?.apiUrl || '',
   apiKey: '',
   model: providers.find((provider) => provider.id === 'openai')?.defaultModel || '',
-  meemBaseUrl: 'https://meem.chatnext.ai',
-  meemToken: '',
+  avatarWorkerUrl: 'https://meem-exetension.chatnext.ai',
+  avatarId: '',
+  avatarToken: '',
   avatarEnabled: false
 };
 
@@ -28,8 +29,9 @@ export function settingsForProvider(id: string, current: ChatSettings): ChatSett
     apiUrl: provider.apiUrl || current.apiUrl,
     apiKey: current.apiKey,
     model: provider.defaultModel || current.model,
-    meemBaseUrl: current.meemBaseUrl,
-    meemToken: current.meemToken,
+    avatarWorkerUrl: current.avatarWorkerUrl,
+    avatarId: current.avatarId,
+    avatarToken: current.avatarToken,
     avatarEnabled: current.avatarEnabled
   };
 }
