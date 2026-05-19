@@ -16,11 +16,11 @@ export default function Agent({
         sessionId={route.overlay === 'session' ? route.sessionId : undefined}
         onSettings={() => navigate(PATH.settings())}
         onOpenSession={(id) => navigate(PATH.session(id))}
-        onCloseSession={() => navigate(PATH.agent())}
+        onCloseSession={() => navigate(PATH.codex())}
       />
       {route.overlay && route.overlay !== 'session' && (
         <AgentSettings
-          onClose={() => navigate(PATH.agent())}
+          onClose={() => navigate(PATH.codex())}
           onLogout={onLogout}
           overlay={route.overlay}
         />

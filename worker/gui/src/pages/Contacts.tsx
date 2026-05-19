@@ -160,7 +160,7 @@ export default function Contacts({ route }: { route: Route }) {
       <header className="h-12 shrink-0 flex items-center px-4 border-b bg-white/85 backdrop-blur font-semibold">
         <span className="flex-1 flex items-center gap-1.5">
           <span className="text-lg leading-none">👥</span>
-          <span>通讯录</span>
+          <span>联系人</span>
         </span>
         <button
           onClick={() => navigate(PATH.contactNew())}

@@ -15,7 +15,7 @@ export default function Main({ onLogout }: { onLogout: () => void }) {
 
   useEffect(() => {
     if (window.location.pathname === '/' || window.location.pathname === '') {
-      navigate(PATH.agent(), { replace: true });
+      navigate(PATH.messages(), { replace: true });
     }
   }, []);
 
@@ -55,30 +55,30 @@ export default function Main({ onLogout }: { onLogout: () => void }) {
   }, []);
 
   const hideTabs =
-    (route.tab === 'agent' && route.overlay === 'session') ||
-    (route.tab === 'inbox' && (route.overlay === 'inboxThread' || route.overlay === 'inboxProcess')) ||
+    (route.tab === 'codex' && route.overlay === 'session') ||
+    (route.tab === 'messages' && (route.overlay === 'inboxThread' || route.overlay === 'inboxProcess')) ||
     (route.tab === 'contacts' && route.overlay !== null);
 
   return (
     <div className="relative h-full bg-neutral-50 flex flex-col">
       <div className="flex-1 overflow-hidden relative">
-        {route.tab === 'agent' && <Agent onLogout={onLogout} route={route} />}
-        {route.tab === 'inbox' && (
+        {route.tab === 'messages' && (
           <Inbox
             threadId={route.threadId}
             processSessionId={route.overlay === 'inboxProcess' ? route.processSessionId : undefined}
-            onOpenThread={(id) => navigate(PATH.inboxThread(id))}
-            onCloseThread={() => navigate(PATH.inbox())}
+            onOpenThread={(id) => navigate(PATH.messageThread(id))}
+            onCloseThread={() => navigate(PATH.messages())}
           />
         )}
         {route.tab === 'contacts' && <Contacts route={route} />}
+        {route.tab === 'codex' && <Agent onLogout={onLogout} route={route} />}
       </div>
 
       {!hideTabs && (
         <nav className="h-14 border-t bg-white/85 backdrop-blur flex">
-          <TabButton label="智能体" icon="🤖" active={route.tab === 'agent'} onClick={() => navigate(PATH.agent())} />
-          <TabButton label="收件箱" icon="📥" active={route.tab === 'inbox'} onClick={() => navigate(PATH.inbox())} />
-          <TabButton label="通讯录" icon="👥" active={route.tab === 'contacts'} onClick={() => navigate(PATH.contacts())} />
+          <TabButton label="消息" icon="💬" active={route.tab === 'messages'} onClick={() => navigate(PATH.messages())} />
+          <TabButton label="联系人" icon="👥" active={route.tab === 'contacts'} onClick={() => navigate(PATH.contacts())} />
+          <TabButton label="Codex" icon="⌘" active={route.tab === 'codex'} onClick={() => navigate(PATH.codex())} />
         </nav>
       )}
 

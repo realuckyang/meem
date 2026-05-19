@@ -228,7 +228,7 @@ async function upsertMessageThread(
 
   if (existing) {
     await env.DB.prepare(
-      `UPDATE inbox_threads SET status = ?, unread_count = unread_count + ?,
+      `UPDATE inbox_threads SET status = ?, unread_count = CASE WHEN ? THEN unread_count + 1 ELSE 0 END,
          last_message_preview = ?, updated_at = ?
        WHERE id = ? AND user_id = ?`,
     ).bind(incoming ? 'open' : 'replied', incoming ? 1 : 0, preview, ts, existing.id, userId).run();

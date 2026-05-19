@@ -8,22 +8,22 @@ export interface Route {
   threadId?: string;
   contactId?: string;
   handle?: string;
-  /** /inbox/thread/:tid/process/:sid 时的 sessionId */
+  /** /messages/thread/:tid/process/:sid 时的 sessionId */
   processSessionId?: string;
-  /** /agent/settings/memory/m/:id 时的 memoryId */
+  /** /codex/settings/memory/m/:id 时的 memoryId */
   memoryId?: string;
 }
 
-const TABS: Tab[] = ['agent', 'inbox', 'contacts'];
+const TABS: Tab[] = ['messages', 'contacts', 'codex'];
 const AGENT_SETTINGS_OVERLAYS: Overlay[] = ['prompt', 'mode', 'client', 'codex'];
 
 export function parseRoute(pathname: string): Route {
   const segs = pathname.split('/').filter(Boolean);
   const head = segs[0] as Tab | undefined;
-  const tab = head && TABS.includes(head) ? head : 'agent';
+  const tab = head && TABS.includes(head) ? head : 'messages';
 
-  // ---- /inbox ----
-  if (tab === 'inbox') {
+  // ---- /messages ----
+  if (tab === 'messages') {
     if (segs[1] === 'thread' && segs[2]) {
       if (segs[3] === 'process' && segs[4]) {
         return { tab, overlay: 'inboxProcess', threadId: segs[2], processSessionId: segs[4] };
@@ -46,7 +46,7 @@ export function parseRoute(pathname: string): Route {
     return { tab, overlay: null };
   }
 
-  // ---- /agent ----
+  // ---- /codex ----
   if (segs[1] === 'session' && segs[2]) {
     return { tab, overlay: 'session', sessionId: segs[2] };
   }
@@ -64,19 +64,19 @@ export function parseRoute(pathname: string): Route {
 }
 
 export const PATH = {
-  agent: () => '/agent',
-  session: (id: string) => `/agent/session/${encodeURIComponent(id)}`,
-  settings: () => '/agent/settings',
+  codex: () => '/codex',
+  session: (id: string) => `/codex/session/${encodeURIComponent(id)}`,
+  settings: () => '/codex/settings',
   settingsSub: (overlay: 'prompt' | 'mode' | 'client' | 'codex') =>
-    `/agent/settings/${overlay}`,
-  memoryList: () => '/agent/settings/memory',
-  memoryNew: () => '/agent/settings/memory/new',
-  memoryEdit: (id: string) => `/agent/settings/memory/m/${encodeURIComponent(id)}`,
+    `/codex/settings/${overlay}`,
+  memoryList: () => '/codex/settings/memory',
+  memoryNew: () => '/codex/settings/memory/new',
+  memoryEdit: (id: string) => `/codex/settings/memory/m/${encodeURIComponent(id)}`,
 
-  inbox: () => '/inbox',
-  inboxThread: (id: string) => `/inbox/thread/${encodeURIComponent(id)}`,
+  messages: () => '/messages',
+  messageThread: (id: string) => `/messages/thread/${encodeURIComponent(id)}`,
   inboxProcess: (threadId: string, sessionId: string) =>
-    `/inbox/thread/${encodeURIComponent(threadId)}/process/${encodeURIComponent(sessionId)}`,
+    `/messages/thread/${encodeURIComponent(threadId)}/process/${encodeURIComponent(sessionId)}`,
 
   contacts: () => '/contacts',
   contactNew: () => '/contacts/new',
