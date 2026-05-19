@@ -2,12 +2,17 @@ import { useEffect, useRef, useState } from 'react';
 import { req, type Session, type SessionEvent, type SessionStatus } from '../api';
 import Composer from '../components/Composer';
 import OpenAIIcon from '../components/OpenAIIcon';
-import { statusLabel, statusPillClass } from '../lib/sessionStatus';
 import { pushToast } from '../components/Toast';
 import { EventRow, LivePartialRow, ThinkingRow } from './SessionEventRows';
 
 type RenameState = { active: boolean; value: string };
 type Confirm = null | 'delete';
+
+function compactPath(value?: string | null) {
+  const path = String(value || '').trim();
+  if (!path) return '默认工作区';
+  return path.replace(/^\/Users\/woodchange(?=\/|$)/, '~');
+}
 
 export default function SessionView({ sessionId, onClose }: { sessionId: string; onClose: () => void }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -87,7 +92,6 @@ export default function SessionView({ sessionId, onClose }: { sessionId: string;
   }, [menuOpen]);
 
   const live = !session ? false : !['done', 'cancelled', 'errored'].includes(session.status);
-  const label = session ? statusLabel(session.status) : '';
 
   async function stopAndReset() {
     if (!session || busy) return;
@@ -175,10 +179,7 @@ export default function SessionView({ sessionId, onClose }: { sessionId: string;
               <span className="inline-flex w-5 h-5 rounded-full bg-neutral-900 text-white items-center justify-center">
                 <OpenAIIcon size={11} />
               </span>
-              <span className="truncate">{session?.title?.trim() || 'Codex'}</span>
-              {session && session.status !== 'done' && (
-                <span className={`${statusPillClass(session.status)} !text-[10px] !py-[1px] shrink-0`}>{label}</span>
-              )}
+              <span>Codex</span>
             </div>
           )}
         </div>
@@ -198,7 +199,13 @@ export default function SessionView({ sessionId, onClose }: { sessionId: string;
           </button>
           {menuOpen && (
             <div onMouseDown={(e) => e.stopPropagation()}
-                 className="absolute right-0 top-8 z-50 w-36 overflow-hidden rounded-xl border bg-white py-1 text-sm shadow-lg meem-fade-enter">
+                 className="absolute right-0 top-8 z-50 w-56 overflow-hidden rounded-xl border bg-white py-1 text-sm shadow-lg meem-fade-enter">
+              <div className="px-3 py-2 border-b border-neutral-100">
+                <div className="text-[11px] text-neutral-400">工作目录</div>
+                <div title={session?.cwd || '默认工作区'} className="mt-0.5 truncate text-[12px] text-neutral-700">
+                  {compactPath(session?.cwd)}
+                </div>
+              </div>
               <button onClick={startRename}
                       className="block w-full px-3 py-2 text-left hover:bg-neutral-50">重命名</button>
               <button onClick={() => { setMenuOpen(false); setConfirm('delete'); }}

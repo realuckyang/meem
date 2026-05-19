@@ -7,19 +7,19 @@ const MODES: { key: Mode; label: string; desc: string; hint?: string }[] = [
     key: 'observe',
     label: '观察',
     desc: '只读机器、不写文件不跑命令',
-    hint: '收到的来信只生成草稿，等你点「采用」才发出',
+    hint: '适合先看分析和建议',
   },
   {
     key: 'approval',
     label: '审批',
     desc: '能写文件 / 跑命令，但关键动作需要确认',
-    hint: '收到的来信同样只生成草稿，待你审批后发',
+    hint: '适合需要控制关键动作的任务',
   },
   {
     key: 'managed',
     label: '托管',
     desc: '机器全权处理，完成后向你汇报',
-    hint: '收到的来信会被 Codex 直接回复给对方',
+    hint: '适合明确、可直接执行的任务',
   },
 ];
 

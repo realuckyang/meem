@@ -4,13 +4,10 @@ import Composer from '../components/Composer';
 import Avatar from '../components/Avatar';
 import { fmtClock } from '../lib/time';
 import { pushToast } from '../components/Toast';
-import { navigate, PATH } from '../lib/router';
 import InboxAgentBlock from './InboxAgentBlock';
-import ProcessSessionView from './ProcessSessionView';
 
 export default function InboxThreadView({
   threadId,
-  processSessionId,
   onClose,
 }: {
   threadId: string;
@@ -117,10 +114,6 @@ export default function InboxThreadView({
     } catch {}
   }
 
-  function openProcess(sessionId: string) {
-    navigate(PATH.inboxProcess(threadId, sessionId));
-  }
-
   async function archive() {
     setMenuOpen(false);
     try {
@@ -205,7 +198,6 @@ export default function InboxThreadView({
                 {!outbound && (
                   <InboxAgentBlock
                     session={activeSession}
-                    onOpen={() => activeSession && openProcess(activeSession.id)}
                     onStart={() => processMessage(message.id)}
                   />
                 )}
@@ -222,18 +214,6 @@ export default function InboxThreadView({
         placeholder="回复这封来信... · 回车发送"
         disabled={busy}
       />
-
-      {processSessionId && (() => {
-        const s = sessions.find((session) => session.id === processSessionId);
-        const trigger = s ? messages.find((m) => m.id === s.trigger_msg_id) : null;
-        return (
-          <ProcessSessionView
-            sessionId={processSessionId}
-            triggerMessage={trigger}
-            onClose={() => navigate(PATH.inboxThread(threadId))}
-          />
-        );
-      })()}
 
       {confirm === 'delete' && (
         <div className="absolute inset-0 z-50 flex items-end justify-center">

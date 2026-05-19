@@ -20,7 +20,7 @@ const browserToolDefinitions = [
   },
   {
     name: 'browser_open_tab',
-    description: 'Open a new tab in the user current Chrome profile.',
+    description: 'Open a new inactive tab in the user current Chrome profile, optionally in a specific window.',
     annotations: {
       readOnlyHint: false,
       destructiveHint: false,
@@ -31,6 +31,8 @@ const browserToolDefinitions = [
       type: 'object',
       properties: {
         url: { type: 'string' },
+        active: { type: 'boolean', description: 'Set true only when the user explicitly wants the tab focused. Defaults to false.' },
+        windowId: { type: 'number' },
         timeoutSeconds: { type: 'number' },
       },
       required: ['url'],

@@ -73,7 +73,7 @@ export default function AgentSettings({
     <div className="absolute inset-0 z-30 flex flex-col bg-neutral-50">
       <header className="h-12 shrink-0 flex items-center px-3 border-b bg-white/85 backdrop-blur">
         <button onClick={onClose} className="w-7 h-7 flex items-center justify-center text-neutral-600 text-lg">‹</button>
-        <div className="font-medium text-[15px]">智能体设置</div>
+        <div className="font-medium text-[15px]">Codex 设置</div>
       </header>
 
       <div className="flex-1 overflow-y-auto">

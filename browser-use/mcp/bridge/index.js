@@ -76,10 +76,10 @@ function createBrowserBridge(options = {}) {
     return httpServer.stop();
   }
 
-  async function openTab({ url, timeoutSeconds } = {}) {
+  async function openTab({ url, active = false, windowId, timeoutSeconds } = {}) {
     const targetUrl = String(url || '').trim();
     if (!targetUrl) throw new Error('url is required');
-    return runCommand('open-tab', { url: targetUrl }, {
+    return runCommand('open-tab', { url: targetUrl, active: active === true, windowId }, {
       timeoutMs: timeoutMsFromSeconds(timeoutSeconds),
     });
   }

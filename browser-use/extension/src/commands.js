@@ -38,7 +38,14 @@ async function executeCommand(command, payload = {}) {
       if (!url) {
         throw new Error('Missing payload.url.');
       }
-      const tab = await chrome.tabs.create({ url, active: true });
+      const createOptions = {
+        url,
+        active: payload?.active === true,
+      };
+      if (Number.isFinite(Number(payload?.windowId))) {
+        createOptions.windowId = Number(payload.windowId);
+      }
+      const tab = await chrome.tabs.create(createOptions);
       return { tabId: tab.id, url: tab.url || url };
     }
     case 'navigate': {

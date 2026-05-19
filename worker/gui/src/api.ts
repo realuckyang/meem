@@ -23,6 +23,7 @@ export type Session = {
   inbox_thread_id?: string | null;
   trigger_msg_id?: string | null;
   codex_thread_id?: string | null;
+  cwd?: string | null;
   created_at: number;
   updated_at: number;
   finished_at: number | null;
@@ -53,6 +54,14 @@ export type Presence = {
       hostname?: string;
     };
   }>;
+};
+
+export type Settings = {
+  prompt: string;
+  inbox_enabled: boolean;
+  mode_direct: Mode;
+  mode_inbox: Mode;
+  updated_at?: number;
 };
 
 export type Inclusion = 'must_read' | 'starred' | 'stored';
@@ -182,7 +191,7 @@ export function req<T>(path: string, init: RequestInit = {}): Promise<T> {
   return send<T>(path, init, true);
 }
 
-/** 不带鉴权（公开收件箱、个人主页等）。 */
+/** 不带鉴权（公开个人主页、公开回执等）。 */
 export function pub<T>(path: string, init: RequestInit = {}): Promise<T> {
   return send<T>(path, init, false);
 }

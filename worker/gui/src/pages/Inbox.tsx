@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react';
-import { req, type InboxThread, type Me } from '../api';
+import { req, type InboxThread, type Me, type Mode, type Settings } from '../api';
 import Avatar from '../components/Avatar';
 import { pushToast } from '../components/Toast';
 import { fmtTime } from '../lib/time';
 import InboxThreadView from './InboxThreadView';
+
+const INBOX_MODES: { key: Mode; label: string; desc: string }[] = [
+  { key: 'observe', label: '观察', desc: '只读上下文，生成回复草稿' },
+  { key: 'approval', label: '审批', desc: '需要关键操作时等待确认' },
+  { key: 'managed', label: '托管', desc: '按权限完整处理并给出草稿' },
+];
 
 export default function Inbox({
   threadId,
@@ -18,13 +24,17 @@ export default function Inbox({
 }) {
   const [threads, setThreads] = useState<InboxThread[]>([]);
   const [address, setAddress] = useState('');
+  const [settings, setSettings] = useState<Settings | null>(null);
   const [copied, setCopied] = useState(false);
   const [showAddress, setShowAddress] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const refresh = () => req<InboxThread[]>('/api/inbox/threads').then(setThreads).catch(() => {});
+  const loadSettings = () => req<Settings>('/api/settings').then(setSettings).catch(() => {});
 
   useEffect(() => {
     refresh();
+    loadSettings();
     req<Me>('/api/me').then((me) => setAddress(me.publicAddress)).catch(() => {});
     const onFrame = (event: Event) => {
       const frame = (event as CustomEvent).detail;
@@ -47,14 +57,33 @@ export default function Inbox({
     window.setTimeout(() => setCopied(false), 1200);
   }
 
+  async function saveInboxSettings(next: Partial<Pick<Settings, 'inbox_enabled' | 'mode_inbox'>>) {
+    if (!settings || saving) return;
+    const optimistic = { ...settings, ...next };
+    setSettings(optimistic);
+    setSaving(true);
+    try {
+      const updated = await req<Settings>('/api/settings', {
+        method: 'PUT',
+        body: JSON.stringify(next),
+      });
+      setSettings(updated);
+    } catch {
+      setSettings(settings);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const visible = threads.filter((t) => t.status !== 'archived');
+  const inboxEnabled = settings?.inbox_enabled !== false;
 
   return (
     <div className="h-full flex flex-col">
       <header className="h-12 shrink-0 flex items-center px-4 border-b bg-white/85 backdrop-blur font-semibold">
         <span className="flex-1 flex items-center gap-1.5">
-          <span className="text-lg leading-none">📥</span>
-          <span>收件箱</span>
+          <span className="text-lg leading-none">💬</span>
+          <span>消息</span>
         </span>
         {address && (
           <button
@@ -88,15 +117,62 @@ export default function Inbox({
                 {copied ? '已复制' : '复制'}
               </button>
             </div>
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-[13px] text-neutral-900">接收来信</div>
+                <div className="mt-0.5 text-[11px] text-neutral-400">
+                  {inboxEnabled ? '公开地址可以收到新消息' : '公开地址暂不接收新消息'}
+                </div>
+              </div>
+              <button
+                onClick={() => saveInboxSettings({ inbox_enabled: !inboxEnabled })}
+                disabled={!settings || saving}
+                className={`relative h-6 w-11 shrink-0 rounded-full transition disabled:opacity-50 ${
+                  inboxEnabled ? 'bg-neutral-900' : 'bg-neutral-200'
+                }`}
+                aria-pressed={inboxEnabled}
+              >
+                <span
+                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition ${
+                    inboxEnabled ? 'left-5' : 'left-0.5'
+                  }`}
+                />
+              </button>
+            </div>
+            <div className="mt-3">
+              <div className="text-[11px] text-neutral-400">AI 处理模式</div>
+              <div className="mt-1.5 grid grid-cols-3 gap-1.5">
+                {INBOX_MODES.map((mode) => {
+                  const active = settings?.mode_inbox === mode.key;
+                  return (
+                    <button
+                      key={mode.key}
+                      onClick={() => saveInboxSettings({ mode_inbox: mode.key })}
+                      disabled={!settings || saving}
+                      className={`rounded-md border px-2 py-1.5 text-[12px] transition disabled:opacity-50 ${
+                        active
+                          ? 'border-neutral-900 bg-neutral-900 text-white'
+                          : 'border-neutral-200 text-neutral-500 hover:bg-neutral-50'
+                      }`}
+                    >
+                      {mode.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-1 text-[11px] text-neutral-400">
+                {INBOX_MODES.find((mode) => mode.key === settings?.mode_inbox)?.desc || '加载中'}
+              </div>
+            </div>
           </section>
         )}
         <section>
           {visible.length === 0 && (
             <div className="px-6 pt-10 pb-12 text-center">
               <div className="mx-auto w-12 h-12 rounded-2xl bg-neutral-100 grid place-items-center text-2xl">📭</div>
-              <div className="mt-3 text-sm text-neutral-500">暂无新来信</div>
+              <div className="mt-3 text-sm text-neutral-500">暂无消息</div>
               <div className="mt-1 text-[12px] text-neutral-400">
-                把收件地址分享出去就能收到消息
+                给别人发消息，或者分享你的地址
               </div>
             </div>
           )}

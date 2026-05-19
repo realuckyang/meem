@@ -33,12 +33,17 @@ type DispatchSession = {
   title: string | null;
   inbox_thread_id: string | null;
   trigger_msg_id: string | null;
+  cwd?: string | null;
 };
 
 const app = new Hono<{ Bindings: Env; Variables: { userId: string } }>();
 const hubStub = (env: Env) => env.HUB.get(env.HUB.idFromName('default'));
 const newId = () => crypto.randomUUID();
 const now = () => Math.floor(Date.now() / 1000);
+const normalizeCwd = (value: unknown) => {
+  const cwd = typeof value === 'string' ? value.trim() : '';
+  return cwd ? cwd.slice(0, 500) : null;
+};
 
 const encoder = new TextEncoder();
 
@@ -133,11 +138,13 @@ async function notifyHub(env: Env, userId: string, frame: unknown) {
 
 async function loadSettings(env: Env, userId: string) {
   const row = await env.DB.prepare(
-    'SELECT prompt, mode_direct FROM settings WHERE user_id = ?',
-  ).bind(userId).first<{ prompt: string; mode_direct: Mode }>();
+    'SELECT prompt, inbox_enabled, mode_direct, mode_inbox FROM settings WHERE user_id = ?',
+  ).bind(userId).first<{ prompt: string; inbox_enabled: number; mode_direct: Mode; mode_inbox: Mode }>();
   return {
     prompt: row?.prompt || DEFAULT_PROMPT,
+    inbox_enabled: row?.inbox_enabled !== 0,
     mode_direct: row?.mode_direct || 'managed',
+    mode_inbox: row?.mode_inbox || 'managed',
   };
 }
 
@@ -172,6 +179,102 @@ async function publicProfile(env: Env, origin: string, handle: string) {
   };
 }
 
+function handleFromPublicAddress(origin: string, address: string) {
+  try {
+    const url = new URL(address);
+    if (url.origin !== origin) return null;
+    const [head, handle] = url.pathname.split('/').filter(Boolean);
+    return head === 'u' ? normalizeHandle(handle) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function loadUserByPublicAddress(env: Env, origin: string, address: string) {
+  const handle = handleFromPublicAddress(origin, address);
+  return handle ? loadUserByHandle(env, handle) : null;
+}
+
+async function upsertContact(env: Env, userId: string, name: string, address: string, ts: number) {
+  const id = newId();
+  await env.DB.prepare(
+    `INSERT INTO contacts (id, user_id, name, address, created_at, updated_at, last_contact_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(user_id, address) DO UPDATE SET
+       name = excluded.name,
+       updated_at = excluded.updated_at,
+       last_contact_at = excluded.last_contact_at`,
+  ).bind(id, userId, name, address, ts, ts, ts).run();
+  const row = await env.DB.prepare(
+    `SELECT id FROM contacts WHERE user_id = ? AND address = ?`,
+  ).bind(userId, address).first<{ id: string }>();
+  return row?.id || id;
+}
+
+async function upsertMessageThread(
+  env: Env,
+  userId: string,
+  contactId: string,
+  title: string,
+  preview: string,
+  incoming: boolean,
+  ts: number,
+) {
+  const existing = await env.DB.prepare(
+    `SELECT id, public_token FROM inbox_threads
+     WHERE user_id = ? AND contact_id = ? AND status != 'archived'
+     ORDER BY updated_at DESC LIMIT 1`,
+  ).bind(userId, contactId).first<{ id: string; public_token: string }>();
+
+  if (existing) {
+    await env.DB.prepare(
+      `UPDATE inbox_threads SET status = ?, unread_count = unread_count + ?,
+         last_message_preview = ?, updated_at = ?
+       WHERE id = ? AND user_id = ?`,
+    ).bind(incoming ? 'open' : 'replied', incoming ? 1 : 0, preview, ts, existing.id, userId).run();
+    return existing;
+  }
+
+  const id = newId();
+  const publicToken = randomHex(24);
+  await env.DB.prepare(
+    `INSERT INTO inbox_threads (id, user_id, public_token, contact_id, title, status, unread_count, last_message_preview, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).bind(id, userId, publicToken, contactId, title, incoming ? 'open' : 'replied', incoming ? 1 : 0, preview, ts, ts).run();
+  return { id, public_token: publicToken };
+}
+
+async function loadInboxThread(env: Env, userId: string, threadId: string) {
+  return env.DB.prepare(
+    `SELECT t.id, t.public_token, t.contact_id, t.title, t.status, t.unread_count, t.last_message_preview,
+            t.created_at, t.updated_at, c.name AS contact_name, c.address AS contact_address
+     FROM inbox_threads t LEFT JOIN contacts c ON c.id = t.contact_id
+     WHERE t.id = ? AND t.user_id = ?`,
+  ).bind(threadId, userId).first();
+}
+
+async function insertInboxMessage(
+  env: Env,
+  userId: string,
+  threadId: string,
+  contactId: string,
+  direction: 'inbound' | 'outbound',
+  senderName: string,
+  senderAddress: string,
+  body: string,
+  ts: number,
+) {
+  const id = newId();
+  await env.DB.prepare(
+    `INSERT INTO inbox_messages (id, user_id, thread_id, contact_id, direction, sender_name, sender_address, body, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).bind(id, userId, threadId, contactId, direction, senderName, senderAddress, body, ts).run();
+  return env.DB.prepare(
+    `SELECT id, thread_id, contact_id, direction, sender_name, sender_address, body, created_at
+     FROM inbox_messages WHERE id = ? AND user_id = ?`,
+  ).bind(id, userId).first();
+}
+
 async function nextEventSeq(env: Env, sessionId: string) {
   const row = await env.DB.prepare(
     'SELECT COALESCE(MAX(seq), 0) AS max_seq FROM session_events WHERE session_id = ?',
@@ -199,8 +302,8 @@ async function createUser(env: Env, handle: string, password: string) {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     ).bind(userId, handle, handle, salt, hash, secret, ts, ts),
     env.DB.prepare(
-      `INSERT INTO settings (user_id, prompt, mode_direct, created_at, updated_at)
-       VALUES (?, ?, 'managed', ?, ?)`,
+      `INSERT INTO settings (user_id, prompt, inbox_enabled, mode_direct, mode_inbox, created_at, updated_at)
+       VALUES (?, ?, 1, 'managed', 'managed', ?, ?)`,
     ).bind(userId, DEFAULT_PROMPT, ts, ts),
   ]);
   return user;
@@ -235,28 +338,34 @@ async function dispatchInboxAgentTask(env: Env, userId: string, threadId: string
   if (!thread || !message) return;
 
   const history = await env.DB.prepare(
-    `SELECT direction, sender_name, body, created_at
+    `SELECT id, direction, sender_name, body, created_at
      FROM inbox_messages WHERE thread_id = ? AND user_id = ?
      ORDER BY created_at ASC, id ASC LIMIT 20`,
   ).bind(threadId, userId).all<{
+    id: string;
     direction: 'inbound' | 'outbound';
     sender_name: string;
     body: string;
     created_at: number;
   }>();
 
-  const turns = (history.results || []).map((item) => ({
-    role: item.direction === 'outbound' ? 'assistant' : 'user',
-    content: item.body,
-  }));
+  const contactName = thread.contact_name || message.sender_name || '访客';
+  const turns: any[] = (history.results || [])
+    .filter((item) => item.id !== message.id)
+    .map((item) => ({
+      role: item.direction === 'outbound' ? 'assistant' : 'user',
+      actor: item.direction === 'outbound' ? 'sent_to_contact' : 'external_contact',
+      label: item.direction === 'outbound'
+        ? '已发给外部联系人的回复'
+        : `外部联系人 ${item.sender_name || contactName} 的历史来信`,
+      content: item.body,
+    }));
   turns.push({
     role: 'user',
-    content: [
-      `外部联系人 ${message.sender_name || thread.contact_name || '访客'} 发来消息：`,
-      message.body,
-      '',
-      '请代表用户生成一条可以直接发送给对方的回复。只输出回复正文。',
-    ].join('\n'),
+    actor: 'external_contact',
+    label: `外部联系人 ${contactName} 的当前来信`,
+    content: message.body,
+    instruction: '请代表用户生成一条可以直接发送给对方的回复。只输出回复正文。',
   });
 
   const sessionId = newId();
@@ -285,13 +394,13 @@ async function dispatchInboxAgentTask(env: Env, userId: string, threadId: string
     task: {
       session_id: sessionId,
       kind: 'inbox_reply',
-      mode: settings.mode_direct,
+      mode: settings.mode_inbox,
       owner_id: userId,
       peer_id: thread.contact_id,
       inbox_thread_id: threadId,
       inbox_message_id: messageId,
       contact: {
-        name: thread.contact_name || message.sender_name || '访客',
+        name: contactName,
         address: thread.contact_address || message.sender_address || '',
       },
       trigger: {
@@ -301,6 +410,7 @@ async function dispatchInboxAgentTask(env: Env, userId: string, threadId: string
       },
       prompt: settings.prompt,
       memories,
+      interaction: 'draft_reply',
       history: history.results || [],
       turns,
       trigger_msg_id: messageId,
@@ -326,17 +436,7 @@ app.post('/api/auth/login', async (c) => {
   if (!account || !password) return c.json({ error: 'account and password required' }, 400);
   if (account.length > 80 || password.length > 200) return c.json({ error: 'account or password too long' }, 400);
 
-  let user = await loadUserByHandle(c.env, account);
-  let created = false;
-  if (!user && !await usersCount(c.env)) {
-    try {
-      user = await createUser(c.env, account, password);
-      created = true;
-    } catch {
-      // 竞态：另一个请求刚刚创建了同名用户，回查
-      user = await loadUserByHandle(c.env, account);
-    }
-  }
+  const user = await loadUserByHandle(c.env, account);
 
   if (!user?.password_salt || !user.password_hash || !user.auth_secret) {
     return c.json({ error: 'account or password is incorrect' }, 401);
@@ -345,7 +445,7 @@ app.post('/api/auth/login', async (c) => {
   if (hash !== user.password_hash) {
     return c.json({ error: 'account or password is incorrect' }, 401);
   }
-  return c.json({ token: await signToken(user), account: user.handle, initialized: true, created });
+  return c.json({ token: await signToken(user), account: user.handle, initialized: true, created: false });
 });
 
 app.post('/api/auth/register', async (c) => {
@@ -374,84 +474,54 @@ app.post('/api/public/messages', async (c) => {
   if (!profile || normalizeHandle(body.handle) !== profile.handle) {
     return c.json({ error: 'not found' }, 404);
   }
+  const settings = await loadSettings(c.env, profile.id);
+  if (!settings.inbox_enabled) {
+    return c.json({ error: '收件箱暂未开放' }, 403);
+  }
 
   const text = String(body.text || '').trim();
   if (!text) return c.json({ error: 'text required' }, 400);
   if (text.length > 4000) return c.json({ error: 'text too long' }, 400);
 
+  const origin = new URL(c.req.url).origin;
   const ts = now();
-  const newContactId = newId();
-  const messageId = newId();
   const senderName = normalizeName(body.sender_name);
-  const senderAddress = normalizeAddress(body.sender_address) || `anonymous:${messageId}`;
+  const anonymousId = newId();
+  const senderAddress = normalizeAddress(body.sender_address) || `anonymous:${anonymousId}`;
   const title = messagePreview(text).slice(0, 80) || '新的来信';
   const preview = messagePreview(text);
 
-  // 1) upsert contact，拿到稳定 contact_id
-  await c.env.DB.prepare(
-    `INSERT INTO contacts (id, user_id, name, address, created_at, updated_at, last_contact_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT(user_id, address) DO UPDATE SET
-       name = excluded.name,
-       updated_at = excluded.updated_at,
-       last_contact_at = excluded.last_contact_at`,
-  ).bind(newContactId, profile.id, senderName, senderAddress, ts, ts, ts).run();
-  const contactRow = await c.env.DB.prepare(
-    `SELECT id FROM contacts WHERE user_id = ? AND address = ?`,
-  ).bind(profile.id, senderAddress).first<{ id: string }>();
-  const contactId = contactRow?.id || newContactId;
+  const contactId = await upsertContact(c.env, profile.id, senderName, senderAddress, ts);
+  const threadRef = await upsertMessageThread(c.env, profile.id, contactId, title, preview, true, ts);
+  const threadId = threadRef.id;
+  const message = await insertInboxMessage(
+    c.env, profile.id, threadId, contactId, 'inbound', senderName, senderAddress, text, ts,
+  );
+  const thread = await loadInboxThread(c.env, profile.id, threadId);
 
-  // 2) 找该联系人最近一条 open 的 thread；找不到就开新的
-  const existingThread = await c.env.DB.prepare(
-    `SELECT id, public_token FROM inbox_threads
-     WHERE user_id = ? AND contact_id = ? AND status != 'archived'
-     ORDER BY updated_at DESC LIMIT 1`,
-  ).bind(profile.id, contactId).first<{ id: string; public_token: string }>();
+  const broadcasts: Promise<unknown>[] = [
+    notifyHub(c.env, profile.id, { type: 'inbox-message', thread, message }),
+    dispatchInboxAgentTask(c.env, profile.id, threadId, (message as any).id),
+  ];
 
-  let threadId: string;
-  let publicToken: string;
-  if (existingThread) {
-    threadId = existingThread.id;
-    publicToken = existingThread.public_token;
-    await c.env.DB.prepare(
-      `UPDATE inbox_threads SET status = 'open', unread_count = unread_count + 1,
-         last_message_preview = ?, updated_at = ?
-       WHERE id = ? AND user_id = ?`,
-    ).bind(preview, ts, threadId, profile.id).run();
-  } else {
-    threadId = newId();
-    publicToken = randomHex(24);
-    await c.env.DB.prepare(
-      `INSERT INTO inbox_threads (id, user_id, public_token, contact_id, title, status, unread_count, last_message_preview, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'open', 1, ?, ?, ?)`,
-    ).bind(threadId, profile.id, publicToken, contactId, title, preview, ts, ts).run();
+  const senderUser = await loadUserByPublicAddress(c.env, origin, senderAddress);
+  if (senderUser && senderUser.id !== profile.id) {
+    const senderContactId = await upsertContact(c.env, senderUser.id, profile.name, profile.address, ts);
+    const senderThreadRef = await upsertMessageThread(c.env, senderUser.id, senderContactId, title, preview, false, ts);
+    const senderMessage = await insertInboxMessage(
+      c.env, senderUser.id, senderThreadRef.id, senderContactId, 'outbound',
+      senderName, profile.address, text, ts,
+    );
+    const senderThread = await loadInboxThread(c.env, senderUser.id, senderThreadRef.id);
+    broadcasts.push(notifyHub(c.env, senderUser.id, { type: 'inbox-message', thread: senderThread, message: senderMessage }));
   }
 
-  // 3) 插入消息
-  await c.env.DB.prepare(
-    `INSERT INTO inbox_messages (id, user_id, thread_id, contact_id, direction, sender_name, sender_address, body, created_at)
-     VALUES (?, ?, ?, ?, 'inbound', ?, ?, ?, ?)`,
-  ).bind(messageId, profile.id, threadId, contactId, senderName, senderAddress, text, ts).run();
-
-  const thread = await c.env.DB.prepare(
-    `SELECT t.id, t.contact_id, t.title, t.status, t.unread_count, t.last_message_preview,
-            t.created_at, t.updated_at, c.name AS contact_name, c.address AS contact_address
-     FROM inbox_threads t LEFT JOIN contacts c ON c.id = t.contact_id
-     WHERE t.id = ? AND t.user_id = ?`,
-  ).bind(threadId, profile.id).first();
-  const message = await c.env.DB.prepare(
-    `SELECT id, thread_id, contact_id, direction, sender_name, sender_address, body, created_at
-     FROM inbox_messages WHERE id = ? AND user_id = ?`,
-  ).bind(messageId, profile.id).first();
-  c.executionCtx.waitUntil(Promise.all([
-    notifyHub(c.env, profile.id, { type: 'inbox-message', thread, message }),
-    dispatchInboxAgentTask(c.env, profile.id, threadId, messageId),
-  ]));
+  c.executionCtx.waitUntil(Promise.all(broadcasts));
   return c.json({
     ok: true,
     thread_id: threadId,
-    message_id: messageId,
-    receipt_url: `${new URL(c.req.url).origin}/t/${publicToken}`,
+    message_id: (message as any).id,
+    receipt_url: `${origin}/t/${threadRef.public_token}`,
   });
 });
 
@@ -752,9 +822,12 @@ app.post('/api/inbox/threads/:id/reply', async (c) => {
   const text = String(body.text || '').trim();
   if (!text) return c.json({ error: 'text required' }, 400);
   if (text.length > 4000) return c.json({ error: 'text too long' }, 400);
+  const origin = new URL(c.req.url).origin;
   const ts = now();
   const messageId = newId();
   const preview = messagePreview(text);
+  const owner = await loadUserById(c.env, userId);
+  const ownerProfile = owner ? await publicProfile(c.env, origin, owner.handle) : null;
   await c.env.DB.batch([
     c.env.DB.prepare(
       `INSERT INTO inbox_messages (id, user_id, thread_id, contact_id, direction, sender_name, sender_address, body, created_at)
@@ -768,7 +841,26 @@ app.post('/api/inbox/threads/:id/reply', async (c) => {
     `SELECT id, thread_id, contact_id, direction, sender_name, sender_address, body, created_at
      FROM inbox_messages WHERE id = ? AND user_id = ?`,
   ).bind(messageId, userId).first();
-  c.executionCtx.waitUntil(notifyHub(c.env, userId, { type: 'inbox-reply', thread_id: id, message }));
+  const broadcasts: Promise<unknown>[] = [
+    notifyHub(c.env, userId, { type: 'inbox-reply', thread_id: id, message }),
+  ];
+  const peer = thread.contact_address
+    ? await loadUserByPublicAddress(c.env, origin, thread.contact_address)
+    : null;
+  if (peer && ownerProfile && peer.id !== userId) {
+    const peerContactId = await upsertContact(c.env, peer.id, ownerProfile.name, ownerProfile.address, ts);
+    const peerThreadRef = await upsertMessageThread(c.env, peer.id, peerContactId, preview.slice(0, 80) || '新的来信', preview, true, ts);
+    const peerMessage = await insertInboxMessage(
+      c.env, peer.id, peerThreadRef.id, peerContactId, 'inbound',
+      ownerProfile.name, ownerProfile.address, text, ts,
+    );
+    const peerThread = await loadInboxThread(c.env, peer.id, peerThreadRef.id);
+    broadcasts.push(
+      notifyHub(c.env, peer.id, { type: 'inbox-message', thread: peerThread, message: peerMessage }),
+      dispatchInboxAgentTask(c.env, peer.id, peerThreadRef.id, (peerMessage as any).id),
+    );
+  }
+  c.executionCtx.waitUntil(Promise.all(broadcasts));
   return c.json({ message });
 });
 
@@ -778,23 +870,38 @@ app.get('/api/settings', async (c) => {
 
 app.put('/api/settings', async (c) => {
   const userId = c.get('userId');
-  const body = await c.req.json<{ prompt?: string; mode_direct?: string }>()
-    .catch(() => ({} as { prompt?: string; mode_direct?: string }));
+  const body = await c.req.json<{ prompt?: string; inbox_enabled?: boolean; mode_direct?: string; mode_inbox?: string }>()
+    .catch(() => ({} as { prompt?: string; inbox_enabled?: boolean; mode_direct?: string; mode_inbox?: string }));
   // partial update：只改提供的字段
   const current = await loadSettings(c.env, userId);
   const prompt = typeof body.prompt === 'string' ? body.prompt : current.prompt;
-  const mode = VALID_MODES.includes(body.mode_direct as Mode)
+  const inboxEnabled = typeof body.inbox_enabled === 'boolean'
+    ? body.inbox_enabled
+    : current.inbox_enabled;
+  const modeDirect = VALID_MODES.includes(body.mode_direct as Mode)
     ? (body.mode_direct as Mode)
     : current.mode_direct;
+  const modeInbox = VALID_MODES.includes(body.mode_inbox as Mode)
+    ? (body.mode_inbox as Mode)
+    : current.mode_inbox;
   const ts = Math.floor(Date.now() / 1000);
   await c.env.DB.prepare(
-    `INSERT INTO settings (user_id, prompt, mode_direct, created_at, updated_at) VALUES (?, ?, ?, ?, ?)
+    `INSERT INTO settings (user_id, prompt, inbox_enabled, mode_direct, mode_inbox, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(user_id) DO UPDATE SET
        prompt = excluded.prompt,
+       inbox_enabled = excluded.inbox_enabled,
        mode_direct = excluded.mode_direct,
+       mode_inbox = excluded.mode_inbox,
        updated_at = excluded.updated_at`,
-  ).bind(userId, prompt, mode, ts, ts).run();
-  return c.json({ prompt, mode_direct: mode, updated_at: ts });
+  ).bind(userId, prompt, inboxEnabled ? 1 : 0, modeDirect, modeInbox, ts, ts).run();
+  return c.json({
+    prompt,
+    inbox_enabled: inboxEnabled,
+    mode_direct: modeDirect,
+    mode_inbox: modeInbox,
+    updated_at: ts,
+  });
 });
 
 app.get('/api/presence', async (c) => {
@@ -817,7 +924,7 @@ app.get('/api/sessions', async (c) => {
     binds.push(inboxThreadId);
   }
   const rs = await c.env.DB.prepare(
-    `SELECT id, kind, status, title, inbox_thread_id, trigger_msg_id, codex_thread_id, created_at, updated_at, finished_at
+    `SELECT id, kind, status, title, inbox_thread_id, trigger_msg_id, codex_thread_id, cwd, created_at, updated_at, finished_at
      FROM sessions ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
      ORDER BY updated_at DESC LIMIT 200`,
   ).bind(...binds).all();
@@ -828,7 +935,7 @@ app.get('/api/sessions/:id', async (c) => {
   const userId = c.get('userId');
   const id = c.req.param('id');
   const session = await c.env.DB.prepare(
-    `SELECT id, kind, status, title, inbox_thread_id, trigger_msg_id, codex_thread_id, created_at, updated_at, finished_at
+    `SELECT id, kind, status, title, inbox_thread_id, trigger_msg_id, codex_thread_id, cwd, created_at, updated_at, finished_at
      FROM sessions WHERE id = ? AND user_id = ?`,
   ).bind(id, userId).first();
   if (!session) return c.json({ error: 'not found' }, 404);
@@ -848,20 +955,21 @@ app.get('/api/sessions/:id', async (c) => {
 
 app.post('/api/sessions/direct', async (c) => {
   const userId = c.get('userId');
-  const body = await c.req.json<{ text?: string }>()
-    .catch(() => ({} as { text?: string }));
+  const body = await c.req.json<{ text?: string; cwd?: string }>()
+    .catch(() => ({} as { text?: string; cwd?: string }));
   const text = body.text?.trim() || '';
+  const cwd = normalizeCwd(body.cwd);
   const sessionId = newId();
   const ts = Math.floor(Date.now() / 1000);
   const status = text ? 'thinking' : 'done';
   await c.env.DB.prepare(
-    `INSERT INTO sessions (id, user_id, kind, status, title, created_at, updated_at, finished_at)
-     VALUES (?, ?, 'direct_chat', ?, ?, ?, ?, ?)`,
-  ).bind(sessionId, userId, status, text.slice(0, 80) || null, ts, ts, text ? null : ts).run();
+    `INSERT INTO sessions (id, user_id, kind, status, title, cwd, created_at, updated_at, finished_at)
+     VALUES (?, ?, 'direct_chat', ?, ?, ?, ?, ?, ?)`,
+  ).bind(sessionId, userId, status, text.slice(0, 80) || null, cwd, ts, ts, text ? null : ts).run();
 
   await notifyHub(c.env, userId, { type: 'session-started', session: {
     id: sessionId, user_id: userId, kind: 'direct_chat', status, title: text.slice(0, 80) || null,
-    created_at: ts, updated_at: ts, finished_at: text ? null : ts,
+    cwd, created_at: ts, updated_at: ts, finished_at: text ? null : ts,
   }});
 
   if (text) {
@@ -872,6 +980,7 @@ app.post('/api/sessions/direct', async (c) => {
       title: text.slice(0, 80) || null,
       inbox_thread_id: null,
       trigger_msg_id: null,
+      cwd,
     }, text);
   }
   return c.json({ session_id: sessionId });
@@ -881,7 +990,7 @@ app.post('/api/sessions/:id/turn', async (c) => {
   const userId = c.get('userId');
   const sessionId = c.req.param('id');
   const session = await c.env.DB.prepare(
-    `SELECT id, user_id, kind, title, inbox_thread_id, trigger_msg_id
+    `SELECT id, user_id, kind, title, inbox_thread_id, trigger_msg_id, cwd
      FROM sessions WHERE id = ? AND user_id = ?`,
   ).bind(sessionId, userId).first<DispatchSession>();
   if (!session) return c.json({ error: 'not found' }, 404);
@@ -912,9 +1021,65 @@ async function appendUserMessageAndDispatch(env: Env, session: DispatchSession, 
   const pastTurns = (past.results as any[] | undefined ?? [])
     .map((row) => ({
       role: row.kind === 'agent_message' ? 'assistant' : 'user',
+      actor: row.kind === 'agent_message'
+        ? (session.kind === 'inbox_reply' ? 'codex_internal' : 'codex')
+        : (session.kind === 'inbox_reply' ? 'owner' : 'user'),
+      label: row.kind === 'agent_message'
+        ? (session.kind === 'inbox_reply' ? 'Codex 内部回复' : 'Codex')
+        : (session.kind === 'inbox_reply' ? '用户内部追问' : '用户'),
       content: safeParse(row.payload_json).text || '',
     }))
     .filter((turn) => turn.content);
+
+  let turns: any[] = [...pastTurns, { role: 'user', content: text }];
+  let contact: { name: string; address: string } | undefined;
+  if (session.kind === 'inbox_reply' && session.inbox_thread_id) {
+    const thread = await env.DB.prepare(
+      `SELECT t.contact_id, c.name AS contact_name, c.address AS contact_address
+       FROM inbox_threads t LEFT JOIN contacts c ON c.id = t.contact_id
+       WHERE t.id = ? AND t.user_id = ?`,
+    ).bind(session.inbox_thread_id, userId).first<{
+      contact_id: string | null;
+      contact_name: string | null;
+      contact_address: string | null;
+    }>();
+    const inboxHistory = await env.DB.prepare(
+      `SELECT direction, sender_name, sender_address, body, created_at
+       FROM inbox_messages WHERE thread_id = ? AND user_id = ?
+       ORDER BY created_at ASC, id ASC LIMIT 20`,
+    ).bind(session.inbox_thread_id, userId).all<{
+      direction: 'inbound' | 'outbound';
+      sender_name: string;
+      sender_address: string;
+      body: string;
+      created_at: number;
+    }>();
+    const firstInbound = (inboxHistory.results || []).find((item) => item.direction === 'inbound');
+    const contactName = thread?.contact_name || firstInbound?.sender_name || '访客';
+    contact = {
+      name: contactName,
+      address: thread?.contact_address || firstInbound?.sender_address || '',
+    };
+    const inboxTurns = (inboxHistory.results || []).map((item) => ({
+      role: item.direction === 'outbound' ? 'assistant' : 'user',
+      actor: item.direction === 'outbound' ? 'sent_to_contact' : 'external_contact',
+      label: item.direction === 'outbound'
+        ? '已发给外部联系人的回复'
+        : `外部联系人 ${item.sender_name || contactName} 的来信`,
+      content: item.body,
+    }));
+    turns = [
+      ...inboxTurns,
+      ...pastTurns,
+      {
+        role: 'user',
+        actor: 'owner',
+        label: '用户当前内部追问',
+        content: text,
+        instruction: '请围绕这封外部来信直接回答用户本人。这不是外部联系人的新消息，不要输出可直接发送给对方的回复，除非用户明确要求改写草稿。',
+      },
+    ];
+  }
 
   await env.DB.batch([
     env.DB.prepare(
@@ -942,16 +1107,19 @@ async function appendUserMessageAndDispatch(env: Env, session: DispatchSession, 
     task: {
       session_id: sessionId,
       kind: session.kind,
-      mode: settings.mode_direct,
+      mode: session.kind === 'inbox_reply' ? settings.mode_inbox : settings.mode_direct,
       owner_id: userId,
       peer_id: null,
       inbox_thread_id: session.inbox_thread_id,
       inbox_message_id: session.trigger_msg_id,
+      cwd: session.cwd || null,
+      contact,
       trigger: { content: text, sender_id: userId, created_at: ts },
       prompt: settings.prompt,
       memories,
+      interaction: session.kind === 'inbox_reply' ? 'internal_discussion' : 'direct_chat',
       history: [],
-      turns: [...pastTurns, { role: 'user', content: text }],
+      turns,
       trigger_msg_id: triggerMsgId,
       title,
     },

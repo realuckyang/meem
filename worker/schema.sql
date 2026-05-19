@@ -24,8 +24,11 @@ CREATE UNIQUE INDEX idx_users_handle
 CREATE TABLE settings (
   user_id TEXT PRIMARY KEY,
   prompt TEXT NOT NULL DEFAULT '',
+  inbox_enabled INTEGER NOT NULL DEFAULT 1,
   mode_direct TEXT NOT NULL DEFAULT 'managed'
     CHECK(mode_direct IN ('observe','approval','managed')),
+  mode_inbox TEXT NOT NULL DEFAULT 'managed'
+    CHECK(mode_inbox IN ('observe','approval','managed')),
   created_at INTEGER NOT NULL DEFAULT (unixepoch()),
   updated_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
@@ -41,6 +44,7 @@ CREATE TABLE sessions (
   inbox_thread_id TEXT,
   trigger_msg_id TEXT,
   codex_thread_id TEXT,
+  cwd TEXT,
   created_at INTEGER NOT NULL DEFAULT (unixepoch()),
   updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
   finished_at INTEGER

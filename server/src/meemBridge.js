@@ -378,10 +378,20 @@ async function handleAgentTask(task) {
         ? `inbox-${safeWorkspaceKey(task.inbox_thread_id || sessionId)}`
         : `session-${safeWorkspaceKey(sessionId)}`);
     const workspacePath = workspaceForSession(`${ownerId}-${scopeKey}`);
+    const codexCwd = await resolveCodexCwd(task.cwd, workspacePath);
     await fsp.mkdir(workspacePath, { recursive: true });
-    const memorySignature = await writeAgentsMd(workspacePath, task);
+    const context = await writeAgentsMd(workspacePath, task, { codexCwd });
 
-    reply = await runAgentTurn({ workspacePath, mode, task, memorySignature, onEvent: captureEvent });
+    reply = await runAgentTurn({
+      workspacePath,
+      codexCwd,
+      mode,
+      task,
+      memorySignature: context.signature,
+      contextText: context.text,
+      injectContext: codexCwd !== workspacePath,
+      onEvent: captureEvent,
+    });
   } catch (err) {
     console.error('[meem] agent run failed:', err?.message || err);
     finalStatus = 'errored';
@@ -439,23 +449,15 @@ async function handleAgentTask(task) {
     status: finalStatus,
   }).catch(err => console.error('[meem] update session status failed:', err?.message || err));
 
-  // 只在 managed 模式下，inbox_reply 才自动发回对方；
-  // observe / approval 模式下结果只作为草稿留在 session 里，等用户在收件箱里点"采用"
-  if (kind === 'inbox_reply' && finalStatus === 'done' && mode === 'managed') {
-    const threadId = String(task.inbox_thread_id || '');
-    const text = String(reply?.text || '').trim();
-    if (threadId && text) {
-      await api('POST', `/api/inbox/threads/${encodeURIComponent(threadId)}/reply`, { text })
-        .catch(err => console.error('[meem] persist inbox reply failed:', err?.message || err));
-    }
-  }
+  // inbox_reply 的输出始终是内部草稿或讨论结果。
+  // 外部发送只能由用户在收件箱里明确采用并发送，避免后续内部追问误发给联系人。
 }
 
-async function runAgentTurn({ workspacePath, mode, task, memorySignature, onEvent }) {
+async function runAgentTurn({ workspacePath, codexCwd, mode, task, memorySignature, contextText, injectContext, onEvent }) {
   const cfg = codexConfigForMode(mode);
   const turns = Array.isArray(task.turns) ? task.turns : [];
   const lastUser = turns.slice().reverse().find(t => t.role === 'user');
-  const currentText = lastUser?.content || task.trigger?.content || '';
+  const currentText = lastUser ? formatTurnForPrompt(lastUser, task) : (task.trigger?.content || '');
   if (!currentText) return null;
 
   // 历史 = turns 除最后一条以外的所有；fresh thread 时拼进 prefix 让 Codex 看到上下文
@@ -463,8 +465,8 @@ async function runAgentTurn({ workspacePath, mode, task, memorySignature, onEven
   function buildPromptWithHistory() {
     if (!pastTurns.length) return currentText;
     const prefix = pastTurns
-      .map(t => `${t.role === 'assistant' ? '你' : '我'}: ${t.content}`)
-      .join('\n');
+      .map(t => formatTurnForPrompt(t, task, { history: true }))
+      .join('\n\n');
     return `[历史对话上下文，仅供参考，不要重复回答]\n${prefix}\n\n[当前问题]\n${currentText}`;
   }
 
@@ -477,12 +479,16 @@ async function runAgentTurn({ workspacePath, mode, task, memorySignature, onEven
 
   // 优先用 codex，失败 fallback
   const statePath = path.join(workspacePath, 'meem-thread.json');
+  const withContext = (prompt) => {
+    if (!injectContext) return prompt;
+    return `[Meem 会话上下文]\n${contextText}\n\n[用户当前输入]\n${prompt}`;
+  };
 
   async function tryRun(threadId, prompt) {
     return codex.runTurn({
-      prompt,
+      prompt: withContext(prompt),
       threadId: threadId || '',
-      cwd: workspacePath,
+      cwd: codexCwd,
       approvalPolicy: cfg.approvalPolicy,
       sandbox: cfg.sandbox,
     }, onEvent);
@@ -490,7 +496,7 @@ async function runAgentTurn({ workspacePath, mode, task, memorySignature, onEven
 
   async function freshThread() {
     const t = await codex.createThread({
-      cwd: workspacePath,
+      cwd: codexCwd,
       approvalPolicy: cfg.approvalPolicy,
       sandbox: cfg.sandbox,
     });
@@ -501,6 +507,7 @@ async function runAgentTurn({ workspacePath, mode, task, memorySignature, onEven
       sandbox: cfg.sandbox,
       approvalPolicy: cfg.approvalPolicy,
       memorySignature,
+      codexCwd,
       createdAt: Date.now(),
     }, null, 2));
     return t;
@@ -518,7 +525,8 @@ async function runAgentTurn({ workspacePath, mode, task, memorySignature, onEven
       existing.mode !== mode ||
       existing.sandbox !== cfg.sandbox ||
       existing.approvalPolicy !== cfg.approvalPolicy ||
-      existing.memorySignature !== memorySignature
+      existing.memorySignature !== memorySignature ||
+      existing.codexCwd !== codexCwd
     )) {
       console.log(`[meem] thread context changed, rebuilding thread`);
       try { await fsp.unlink(statePath); } catch {}
@@ -528,7 +536,7 @@ async function runAgentTurn({ workspacePath, mode, task, memorySignature, onEven
     let threadIsFresh = false;
     let thread;
     if (existing?.threadId) {
-      thread = { id: existing.threadId, cwd: workspacePath };
+      thread = { id: existing.threadId, cwd: codexCwd };
     } else {
       thread = await freshThread();
       threadIsFresh = true;
@@ -572,8 +580,9 @@ function safeWorkspaceKey(value) {
     .slice(0, 80) || 'default';
 }
 
-async function writeAgentsMd(workspacePath, task) {
+async function writeAgentsMd(workspacePath, task, { codexCwd = workspacePath } = {}) {
   const memories = Array.isArray(task.memories) ? task.memories : [];
+  const interaction = task.interaction || (task.kind === 'inbox_reply' ? 'draft_reply' : 'direct_chat');
   const groups = { must_read: [], starred: [], stored: [] };
   for (const m of memories) {
     const bucket = groups[m.inclusion] || groups.stored;
@@ -601,7 +610,7 @@ async function writeAgentsMd(workspacePath, task) {
     '',
     `当前共有 ${memories.length} 条记忆：必读 ${groups.must_read.length} 条，星标 ${groups.starred.length} 条，只存 ${groups.stored.length} 条。`,
     '',
-    '需要更多背景时，主动搜索 `./memories/items`，例如：`rg -n "关键词" ./memories/items`。搜索到相关条目后再打开对应文件阅读，不要凭空猜测未展开的内容。',
+    `需要更多背景时，主动搜索 \`${path.join(workspacePath, 'memories/items')}\`，例如：\`rg -n "关键词" ${shellQuote(path.join(workspacePath, 'memories/items'))}\`。搜索到相关条目后再打开对应文件阅读，不要凭空猜测未展开的内容。`,
     '',
     '### 必读',
     '_这些条目你必须内化。处理任何任务前先核对，不要违背。_',
@@ -634,14 +643,13 @@ async function writeAgentsMd(workspacePath, task) {
     '## 第三层 · 当前会话',
     '',
     '- 模式: ' + task.mode,
-    task.kind === 'inbox_reply'
-      ? '- 形态: **处理外部来信**。最终输出会作为一条回复发送给外部联系人。'
-      : '- 形态: **和用户本人直接对话**（所有输出仅给用户看，不会发给任何第三方）。',
+    sessionShapeLine(task, interaction),
+    ...participantLines(task),
     '',
     '### 历史对话（旧→新）',
     '',
     turns.length
-      ? turns.map(t => `- ${t.role}: ${t.content}`).join('\n')
+      ? turns.map(t => formatTurnForContext(t, task)).join('\n\n')
       : '(无)',
     '',
   );
@@ -650,22 +658,129 @@ async function writeAgentsMd(workspacePath, task) {
     '## 规则',
     '',
     '- 如果任务涉及用户机器的真实状态、文件或操作，先按权限模式查清楚或完成操作，再回答。不要凭空猜测或编造结果。',
-    task.kind === 'inbox_reply'
-      ? '- 只输出可以直接发送给对方的回复正文。不要解释你如何处理，不要写标题，不要用代码块包裹整段。'
-      : '- 总结回复用一段中文，文本即可，不要加引号或代码块包裹整段。需要展示命令输出时可以用 ``` 块。',
+    outputRuleLine(task, interaction),
   );
-  if (task.kind === 'inbox_reply') {
-    lines.push('- 这是一封对外回复。语气自然、克制、清楚；不要暴露内部系统、工具、权限模式或处理过程。');
+  if (task.kind === 'inbox_reply' && interaction === 'draft_reply') {
+    lines.push('- 上下文中的“外部联系人来信”来自第三方；你要替用户起草回复，但不能自行发送。');
+    lines.push('- 这是一封回复草稿。语气自然、克制、清楚；不要暴露内部系统、工具、权限模式或处理过程。');
+    lines.push('- 草稿不会自动发给对方。用户会在收件箱中决定是否采用、修改和发送。');
+  } else if (task.kind === 'inbox_reply') {
+    lines.push('- 上下文中的“用户内部追问”是用户本人对你说的话，不是外部联系人的新消息。');
+    lines.push('- 这是围绕外部来信的内部讨论。输出只给用户看，不会发给任何第三方。');
+    lines.push('- 可以解释判断、列选项、提出澄清问题；不要把回答伪装成已经发送给外部联系人的消息。');
   } else {
     lines.push('- 这是和用户本人的直接对话，输出会作为代理回复显示给用户，不会发给任何第三方。可以自由发问澄清，可以汇报你看到的、做了的事。');
   }
   lines.push(
-    '- 你的工作区在 cwd（`./AGENTS.md` 旁边）。读写本地文件、执行 shell 命令请用 cwd 之外的绝对路径（如 `ls ~/Desktop`）。',
+    `- 你的 Codex 工作目录是：${codexCwd}`,
+    `- Meem 会话上下文目录是：${workspacePath}`,
     '',
   );
 
-  await fsp.writeFile(path.join(workspacePath, 'AGENTS.md'), lines.join('\n'));
-  return signature;
+  const text = lines.join('\n');
+  await fsp.writeFile(path.join(workspacePath, 'AGENTS.md'), text);
+  return { signature, text };
+}
+
+async function resolveCodexCwd(input, fallback) {
+  const raw = String(input || '').trim();
+  if (!raw) return fallback;
+  const expanded = raw === '~' || raw.startsWith('~/')
+    ? path.join(os.homedir(), raw.slice(2))
+    : raw;
+  const resolved = path.resolve(expanded);
+  const stat = await fsp.stat(resolved).catch(() => null);
+  if (!stat?.isDirectory()) {
+    throw new Error(`工作目录不存在：${resolved}`);
+  }
+  return resolved;
+}
+
+function shellQuote(value) {
+  return `'${String(value).replace(/'/g, `'\\''`)}'`;
+}
+
+function sessionShapeLine(task, interaction) {
+  if (task.kind !== 'inbox_reply') {
+    return '- 形态: **和用户本人直接对话**（所有输出仅给用户看，不会发给任何第三方）。';
+  }
+  if (interaction === 'internal_discussion') {
+    return '- 形态: **围绕外部来信和用户内部讨论**。输出只给用户看，用于继续分析、修改草稿或决定如何回复。';
+  }
+  return '- 形态: **处理外部来信并起草回复**。最终输出是一条可采用的回复草稿，不会自动发送给外部联系人。';
+}
+
+function outputRuleLine(task, interaction) {
+  if (task.kind !== 'inbox_reply') {
+    return '- 总结回复用一段中文，文本即可，不要加引号或代码块包裹整段。需要展示命令输出时可以用 ``` 块。';
+  }
+  if (interaction === 'internal_discussion') {
+    return '- 直接回答用户这次内部追问。可以分点说明；不要输出“已发送”“已回复对方”之类会造成误解的话。';
+  }
+  return '- 只输出可以直接发送给对方的回复正文。不要解释你如何处理，不要写标题，不要用代码块包裹整段。';
+}
+
+function participantLines(task) {
+  if (task.kind !== 'inbox_reply') return [];
+  const contact = task.contact || {};
+  const name = String(contact.name || '').trim() || '访客';
+  const address = String(contact.address || '').trim();
+  return [
+    `- 用户本人: Meem 所有者。`,
+    `- 外部联系人: ${name}${address ? `（${address}）` : ''}。`,
+  ];
+}
+
+function turnLabel(turn, task) {
+  const label = String(turn?.label || '').trim();
+  if (label) return label;
+  if (task.kind !== 'inbox_reply') {
+    return turn?.role === 'assistant' ? '你' : '我';
+  }
+  switch (turn?.actor) {
+    case 'external_contact':
+      return '外部联系人来信';
+    case 'sent_to_contact':
+      return '已发给外部联系人的回复';
+    case 'owner':
+      return '用户内部追问';
+    case 'codex_internal':
+      return 'Codex 内部回复';
+    default:
+      return turn?.role === 'assistant' ? 'Codex 内部回复' : '用户内部追问';
+  }
+}
+
+function turnContent(turn) {
+  return String(turn?.content || '').trim();
+}
+
+function turnInstruction(turn) {
+  return String(turn?.instruction || '').trim();
+}
+
+function formatTurnForPrompt(turn, task, { history = false } = {}) {
+  const content = turnContent(turn);
+  const instruction = turnInstruction(turn);
+  if (!content) return '';
+  if (task.kind !== 'inbox_reply' && !turn?.label && !turn?.actor && !instruction) {
+    return history ? `${turn?.role === 'assistant' ? '你' : '我'}: ${content}` : content;
+  }
+  return [
+    `【${turnLabel(turn, task)}】`,
+    content,
+    instruction ? `处理要求：${instruction}` : '',
+  ].filter(Boolean).join('\n');
+}
+
+function formatTurnForContext(turn, task) {
+  const content = turnContent(turn) || '(空)';
+  const instruction = turnInstruction(turn);
+  return [
+    `#### ${turnLabel(turn, task)}`,
+    content,
+    instruction ? `处理要求：${instruction}` : '',
+  ].filter(Boolean).join('\n');
 }
 
 function memorySignature(memories) {
