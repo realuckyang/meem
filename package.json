@@ -9,6 +9,9 @@
     "worker:deploy": "npm --prefix worker run deploy",
     "gui:dev": "npm --prefix worker/gui run dev",
     "gui:build": "npm --prefix worker/gui run build",
+    "extension:dev": "npm --prefix extension run dev",
+    "extension:build": "npm --prefix extension run build",
+    "extension:check": "npm --prefix extension run check",
     "browser:mcp": "npm --prefix browser-use run mcp",
     "browser:check": "npm --prefix browser-use run check"
   }

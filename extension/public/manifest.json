@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "meem",
+  "version": "0.1.0",
+  "description": "A browser side panel for conversation and browser tools.",
+  "minimum_chrome_version": "116",
+  "action": {
+    "default_title": "打开 meem"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "index.html"
+  },
+  "permissions": [
+    "activeTab",
+    "sidePanel",
+    "scripting",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ]
+}

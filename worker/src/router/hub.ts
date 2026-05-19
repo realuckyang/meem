@@ -3,6 +3,7 @@ import type { Env } from '../types';
 
 interface Capabilities {
   client: boolean;
+  avatar: boolean;
   codex: boolean;
   codexVersion: string;
   codexLoggedIn: boolean;
@@ -15,7 +16,7 @@ interface Capabilities {
 interface HubSession {
   id: string;
   user: string;
-  kind: 'web' | 'desktop';
+  kind: 'web' | 'desktop' | 'avatar';
   capabilities: Capabilities;
   socket: WebSocket;
 }
@@ -56,7 +57,11 @@ export class Hub extends DurableObject<Env> {
     }
 
     const user = url.searchParams.get('user') || '';
-    const kind: 'web' | 'desktop' = url.searchParams.get('client') === '1' ? 'desktop' : 'web';
+    const kind: 'web' | 'desktop' | 'avatar' = url.searchParams.get('avatar') === '1'
+      ? 'avatar'
+      : url.searchParams.get('client') === '1'
+        ? 'desktop'
+        : 'web';
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     server.accept();
@@ -67,6 +72,7 @@ export class Hub extends DurableObject<Env> {
       kind,
       capabilities: {
         client: kind === 'desktop',
+        avatar: kind === 'avatar',
         codex: false,
         codexVersion: '',
         codexLoggedIn: false,
@@ -87,6 +93,7 @@ export class Hub extends DurableObject<Env> {
           const caps = msg.capabilities;
           session.capabilities = {
             client: kind === 'desktop',
+            avatar: kind === 'avatar',
             codex: Boolean(caps.codex),
             codexVersion: String(caps.codexVersion ?? '').slice(0, 40),
             codexLoggedIn: Boolean(caps.codexLoggedIn),
