@@ -8,6 +8,7 @@ export interface AvatarHandle {
 }
 
 type StatusListener = (status: AvatarStatus, detail?: string) => void;
+type IncomingListener = (incoming: AvatarIncomingMessage) => void;
 
 interface AvatarMessageFrame {
   type: 'avatar-message';
@@ -18,18 +19,26 @@ interface AvatarMessage {
   id: string;
   text: string;
   senderName?: string;
+  senderAccount?: string;
   createdAt?: number;
 }
 
+export interface AvatarIncomingMessage {
+  mode: 'approval' | 'hosted';
+  message: AvatarMessage;
+  messages: ChatMessage[];
+  reply?: string;
+}
+
 function workerUrl(settings: ChatSettings, path: string) {
-  const url = new URL(settings.avatarWorkerUrl || 'https://meem-exetension.chatnext.ai');
+  const url = new URL(settings.avatarWorkerUrl || 'https://meem-extension.chatnext.ai');
   url.pathname = path;
   url.search = '';
   return url.toString();
 }
 
 function wsUrl(settings: ChatSettings) {
-  const url = new URL(settings.avatarWorkerUrl || 'https://meem-exetension.chatnext.ai');
+  const url = new URL(settings.avatarWorkerUrl || 'https://meem-extension.chatnext.ai');
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
   url.pathname = `/api/avatar/${encodeURIComponent(settings.avatarId)}/ws`;
   url.searchParams.set('token', settings.avatarToken);
@@ -72,7 +81,7 @@ function messageToChat(message: AvatarMessage): ChatMessage[] {
   ];
 }
 
-export function startAvatar(settings: ChatSettings, onStatus: StatusListener): AvatarHandle {
+export function startAvatar(settings: ChatSettings, onStatus: StatusListener, onIncoming: IncomingListener): AvatarHandle {
   let closed = false;
   let socket: WebSocket | null = null;
   let reconnectTimer: number | null = null;
@@ -97,14 +106,23 @@ export function startAvatar(settings: ChatSettings, onStatus: StatusListener): A
 
   const handleMessage = async (message?: AvatarMessage) => {
     if (!message?.id || !message.text) return;
+    const initialMessages = messageToChat(message);
+    if (settings.avatarMode === 'approval') {
+      onIncoming({ mode: 'approval', message, messages: initialMessages });
+      onStatus('online');
+      return;
+    }
+
     onStatus('working', message.senderName || message.id);
     try {
-      const result = await chat(messageToChat(message), {
+      const result = await chat(initialMessages, {
         ...settings,
         maxRounds: 30,
         onEvent: () => {}
       });
-      await postReply(settings, message.id, result.text.trim());
+      const reply = result.text.trim();
+      await postReply(settings, message.id, reply);
+      onIncoming({ mode: 'hosted', message, messages: result.messages, reply });
       onStatus('online');
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);

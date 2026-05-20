@@ -1,5 +1,5 @@
 {
-  "name": "meem-exetension-worker",
+  "name": "meem-extension-worker",
   "private": true,
   "type": "module",
   "scripts": {

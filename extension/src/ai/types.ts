@@ -49,6 +49,8 @@ export interface ProviderConfig {
 }
 
 export interface ChatSettings {
+  displayName: string;
+  description: string;
   provider: string;
   apiUrl: string;
   apiKey: string;
@@ -56,7 +58,7 @@ export interface ChatSettings {
   avatarWorkerUrl: string;
   avatarId: string;
   avatarToken: string;
-  avatarEnabled: boolean;
+  avatarMode: 'off' | 'approval' | 'hosted';
 }
 
 export type ChatEvent =

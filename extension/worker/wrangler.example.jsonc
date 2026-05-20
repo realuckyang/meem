@@ -1,13 +1,25 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "meem-exetension",
+  "name": "meem-extension",
   "account_id": "<cloudflare-account-id>",
   "main": "src/index.ts",
   "compatibility_date": "2025-05-01",
+  "assets": {
+    "directory": "../dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
   "routes": [
     {
-      "pattern": "meem-exetension.example.com",
+      "pattern": "meem-extension.example.com",
       "custom_domain": true
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "meem-extension",
+      "database_id": "<d1-database-id>"
     }
   ],
   "durable_objects": {

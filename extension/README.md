@@ -1,6 +1,6 @@
-# meem extension
+# Meem Extension
 
-独立 Chrome side panel 扩展。第一版目标是先跑通浏览器侧栏对话，并保留可扩展工具框架。
+插件版数字分身产品。它现在位于 `meem/extension`，使用独立 Worker 和独立数据，不依赖 Codex 版主项目。
 
 ## 功能
 
@@ -19,11 +19,11 @@
 ## 开发
 
 ```bash
-npm --prefix extension install
-npm --prefix extension/worker install
-npm run extension:check
-npm run extension:build
-npm run extension:worker:check
+npm install
+npm --prefix worker install
+npm run check
+npm run build
+npm run worker:check
 ```
 
 ## 加载扩展
@@ -41,30 +41,30 @@ npm run extension:worker:check
 
 ## 分身服务
 
-插件分身不依赖主 `worker/` 和 Codex 本机服务。独立 Worker 位于：
+插件分身不依赖主 `meem/worker` 和 Codex 本机服务。独立 Worker 位于：
 
 ```text
-extension/worker/
+worker/
 ```
 
 部署配置：
 
 ```text
-name: meem-exetension
-domain: meem-exetension.chatnext.ai
+name: meem-extension
+domain: meem-extension.chatnext.ai
 ```
 
 命令：
 
 ```bash
-npm run extension:worker:dev
-npm run extension:worker:deploy
+npm run worker:dev
+npm run worker:deploy
 ```
 
 外部发消息：
 
 ```bash
-curl -X POST "https://meem-exetension.chatnext.ai/api/avatar/<分身ID>/message?wait=1" \
+curl -X POST "https://meem-extension.chatnext.ai/api/avatar/<分身ID>/message?wait=1" \
   -H "Content-Type: application/json" \
   -d '{"senderName":"访客","text":"你好"}'
 ```
@@ -78,6 +78,7 @@ src/ai/       对话 handler、工具 runner、浏览器工具替换层
 src/llm/      provider pipeline、请求器、输入归一化、输出解析
 src/lib/      storage、标签页等扩展环境封装
 src/App.tsx   side panel 应用
+worker/       独立 Cloudflare Worker
 ```
 
 新增工具时，同时更新 `src/ai/tools.js` 的 schema 和 `src/ai/functions.js` 的执行函数。
