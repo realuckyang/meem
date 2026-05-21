@@ -3,6 +3,7 @@ CREATE TABLE users (
   handle  TEXT UNIQUE NOT NULL,
   name    TEXT NOT NULL DEFAULT '',
   bio     TEXT NOT NULL DEFAULT '',
+  cover   TEXT NOT NULL DEFAULT '',
   salt    TEXT NOT NULL,
   hash    TEXT NOT NULL,
   secret  TEXT NOT NULL,
@@ -95,3 +96,50 @@ CREATE TABLE memories (
 
 CREATE INDEX idx_memories_uid_priority ON memories(uid, priority);
 CREATE INDEX idx_memories_uid_updated ON memories(uid, updated DESC);
+
+-- 广播 / 社区信息流
+CREATE TABLE posts (
+  id      TEXT PRIMARY KEY,
+  author  TEXT NOT NULL,
+  body    TEXT NOT NULL DEFAULT '',
+  images  TEXT NOT NULL DEFAULT '[]',
+  likes   INTEGER NOT NULL DEFAULT 0,
+  replies INTEGER NOT NULL DEFAULT 0,
+  created INTEGER NOT NULL DEFAULT (unixepoch()),
+  updated INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE INDEX idx_posts_created ON posts(created DESC);
+CREATE INDEX idx_posts_author  ON posts(author, created DESC);
+
+CREATE TABLE comments (
+  id      TEXT PRIMARY KEY,
+  post    TEXT NOT NULL,
+  parent  TEXT,
+  author  TEXT NOT NULL,
+  body    TEXT NOT NULL,
+  likes   INTEGER NOT NULL DEFAULT 0,
+  created INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE INDEX idx_comments_post ON comments(post, created ASC);
+
+CREATE TABLE reactions (
+  uid         TEXT NOT NULL,
+  target_kind TEXT NOT NULL CHECK(target_kind IN ('post','comment')),
+  target      TEXT NOT NULL,
+  created     INTEGER NOT NULL DEFAULT (unixepoch()),
+  PRIMARY KEY (uid, target_kind, target)
+);
+CREATE INDEX idx_reactions_target ON reactions(target_kind, target);
+
+CREATE VIRTUAL TABLE posts_fts USING fts5(body, content='posts', content_rowid='rowid');
+
+CREATE TRIGGER posts_ai AFTER INSERT ON posts BEGIN
+  INSERT INTO posts_fts(rowid, body) VALUES (new.rowid, new.body);
+END;
+CREATE TRIGGER posts_ad AFTER DELETE ON posts BEGIN
+  INSERT INTO posts_fts(posts_fts, rowid, body) VALUES('delete', old.rowid, old.body);
+END;
+CREATE TRIGGER posts_au AFTER UPDATE ON posts BEGIN
+  INSERT INTO posts_fts(posts_fts, rowid, body) VALUES('delete', old.rowid, old.body);
+  INSERT INTO posts_fts(rowid, body) VALUES (new.rowid, new.body);
+END;

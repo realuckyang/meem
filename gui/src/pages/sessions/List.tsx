@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { req, type Session as SessionData } from '../lib/api';
+import { req, type Session as SessionData } from '../../lib/api';
 
 const STATUS: Record<string, { label: string; color: string }> = {
   thinking: { label: '处理中', color: 'bg-amber-50 text-amber-600' },
@@ -19,12 +19,8 @@ export default function Sessions() {
 
   useEffect(() => { load(); }, []);
 
-  async function create() {
-    const s = await req<SessionData>('/api/sessions', {
-      method: 'POST',
-      body: JSON.stringify({ title: '新对话', kind: 'direct' }),
-    });
-    navigate(`/sessions/${s.id}`);
+  function create() {
+    navigate('/sessions/new');
   }
 
   return (

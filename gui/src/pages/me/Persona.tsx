@@ -15,7 +15,7 @@ export default function Persona() {
     try {
       await req('/api/settings', { method: 'PATCH', body: JSON.stringify({ prompt }) });
       await refresh();
-      navigate('/settings');
+      navigate('/me');
     } finally { setSaving(false); }
   }
 

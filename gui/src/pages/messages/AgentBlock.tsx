@@ -5,13 +5,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { marked } from 'marked';
-import { req, type Session as SessionType } from '../lib/api';
-import { onFrame, sendFrame, isOpen } from '../lib/socket';
-import { useMe } from '../lib/me';
-import Avatar from './Avatar';
-import { applyEvent, type ChatItem, type EventRow } from '../lib/parseEvents';
-import { parseAssistant } from '../lib/suggestions';
-import ToolCard from './ToolCard';
+import { req, type Session as SessionType } from '../../lib/api';
+import { onFrame, sendFrame, isOpen } from '../../lib/socket';
+import { useMe } from '../../lib/me';
+import Avatar from '../../components/Avatar';
+import { applyEvent, type ChatItem, type EventRow } from '../../lib/parseEvents';
+import { parseAssistant } from '../../lib/suggestions';
+import ToolCard from '../../components/ToolCard';
 
 interface Props {
   messageId: string;
@@ -77,6 +77,16 @@ export default function MessageAgentBlock({ messageId, initialSession, onAdopt }
         body: JSON.stringify({ kind: 'agent', trigger: messageId, title: '私聊智能体' }),
       });
       setSession(s);
+      // 用户点击就是「想要一个回复建议」，免去再手打一遍
+      if (isOpen()) {
+        sendFrame({
+          type: 'session.send',
+          sid: s.id,
+          text: '基于我和对方的对话，给我一个回复和处理建议。',
+        });
+      } else {
+        setErr('连接未就绪，请稍候');
+      }
     } catch (e: any) {
       setErr(e?.message ?? '创建失败');
     } finally {

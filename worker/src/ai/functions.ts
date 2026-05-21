@@ -98,6 +98,122 @@ export async function memory_delete(args: { id?: string }, ctx: ToolContext) {
   return { ok: true, changes: res.meta?.changes ?? 0 };
 }
 
+// ── 广播 / 社区 ─────────────────────────────────────────────────────────────
+// 直接走 D1，跟记忆系一样
+
+function safeJsonArr(s: string): string[] {
+  try { const a = JSON.parse(s); return Array.isArray(a) ? a.filter((x) => typeof x === 'string') : []; }
+  catch { return []; }
+}
+
+function ftsQuote(q: string): string {
+  return '"' + q.replace(/"/g, '""') + '"';
+}
+
+interface FeedPostRow { id: string; author: string; body: string; images: string; likes: number; replies: number; created: number; updated: number; }
+interface FeedCommentRow { id: string; post: string; parent: string | null; author: string; body: string; likes: number; created: number; }
+
+function shapeFeedPost(r: FeedPostRow) {
+  return { id: r.id, author: r.author, body: r.body, images: safeJsonArr(r.images), likes: r.likes, replies: r.replies, created: r.created };
+}
+
+export async function feed_list(args: { limit?: number; cursor?: number; author?: string }, ctx: ToolContext) {
+  const limit = Math.min(args?.limit ?? 20, 50);
+  const conds: string[] = [];
+  const vals: unknown[] = [];
+  if (args?.cursor) { conds.push('created < ?'); vals.push(args.cursor); }
+  if (args?.author) { conds.push('author = ?'); vals.push(args.author); }
+  const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
+  const rows = await ctx.env.DB.prepare(
+    `SELECT * FROM posts ${where} ORDER BY created DESC LIMIT ?`
+  ).bind(...vals, limit).all<FeedPostRow>();
+  return rows.results.map(shapeFeedPost);
+}
+
+export async function feed_search(args: { q?: string; limit?: number }, ctx: ToolContext) {
+  const q = String(args?.q ?? '').trim();
+  if (!q) return [];
+  const limit = Math.min(args?.limit ?? 20, 50);
+  const rows = await ctx.env.DB.prepare(
+    `SELECT posts.* FROM posts_fts JOIN posts ON posts.rowid = posts_fts.rowid
+     WHERE posts_fts MATCH ? ORDER BY posts.created DESC LIMIT ?`
+  ).bind(ftsQuote(q), limit).all<FeedPostRow>();
+  return rows.results.map(shapeFeedPost);
+}
+
+export async function feed_read(args: { id?: string }, ctx: ToolContext) {
+  const id = String(args?.id ?? '');
+  if (!id) throw new Error('id required');
+  const post = await ctx.env.DB.prepare('SELECT * FROM posts WHERE id = ?').bind(id).first<FeedPostRow>();
+  if (!post) throw new Error('帖子不存在');
+  const comments = await ctx.env.DB.prepare(
+    'SELECT * FROM comments WHERE post = ? ORDER BY created ASC LIMIT 300'
+  ).bind(id).all<FeedCommentRow>();
+  return {
+    post: shapeFeedPost(post),
+    comments: comments.results.map((c) => ({
+      id: c.id, parent: c.parent, author: c.author, body: c.body, likes: c.likes, created: c.created,
+    })),
+  };
+}
+
+export async function feed_post(args: { body?: string; images?: string[] }, ctx: ToolContext) {
+  const body = String(args?.body ?? '').trim();
+  const images = Array.isArray(args?.images) ? args!.images!.filter((x) => typeof x === 'string').slice(0, 9) : [];
+  if (!body && !images.length) throw new Error('body 或 images 至少一个');
+  if (body.length > 4000) throw new Error('body 超过 4000 字');
+  const id = crypto.randomUUID();
+  await ctx.env.DB.prepare('INSERT INTO posts (id, author, body, images) VALUES (?, ?, ?, ?)')
+    .bind(id, ctx.handle, body, JSON.stringify(images)).run();
+  return { ok: true, id };
+}
+
+export async function feed_comment(args: { post?: string; body?: string; parent?: string }, ctx: ToolContext) {
+  const post = String(args?.post ?? '');
+  const body = String(args?.body ?? '').trim();
+  if (!post || !body) throw new Error('post 和 body 必填');
+  if (body.length > 1000) throw new Error('评论过长');
+  const exists = await ctx.env.DB.prepare('SELECT id FROM posts WHERE id = ?').bind(post).first();
+  if (!exists) throw new Error('帖子不存在');
+  if (args?.parent) {
+    const p = await ctx.env.DB.prepare('SELECT id FROM comments WHERE id = ? AND post = ?').bind(args.parent, post).first();
+    if (!p) throw new Error('父评论不存在');
+  }
+  const id = crypto.randomUUID();
+  await ctx.env.DB.batch([
+    ctx.env.DB.prepare('INSERT INTO comments (id, post, parent, author, body) VALUES (?, ?, ?, ?, ?)')
+      .bind(id, post, args?.parent ?? null, ctx.handle, body),
+    ctx.env.DB.prepare('UPDATE posts SET replies = replies + 1, updated = unixepoch() WHERE id = ?').bind(post),
+  ]);
+  return { ok: true, id };
+}
+
+export async function feed_like(args: { target_kind?: string; target?: string }, ctx: ToolContext) {
+  const kind = args?.target_kind;
+  const target = String(args?.target ?? '');
+  if (kind !== 'post' && kind !== 'comment') throw new Error('target_kind 必须是 post 或 comment');
+  if (!target) throw new Error('target 必填');
+  const table = kind === 'post' ? 'posts' : 'comments';
+  const has = await ctx.env.DB.prepare(
+    'SELECT 1 as v FROM reactions WHERE uid = ? AND target_kind = ? AND target = ?'
+  ).bind(ctx.uid, kind, target).first();
+  if (has) {
+    await ctx.env.DB.batch([
+      ctx.env.DB.prepare('DELETE FROM reactions WHERE uid = ? AND target_kind = ? AND target = ?')
+        .bind(ctx.uid, kind, target),
+      ctx.env.DB.prepare(`UPDATE ${table} SET likes = MAX(likes - 1, 0) WHERE id = ?`).bind(target),
+    ]);
+    return { liked: false };
+  } else {
+    await ctx.env.DB.batch([
+      ctx.env.DB.prepare('INSERT INTO reactions (uid, target_kind, target) VALUES (?, ?, ?)')
+        .bind(ctx.uid, kind, target),
+      ctx.env.DB.prepare(`UPDATE ${table} SET likes = likes + 1 WHERE id = ?`).bind(target),
+    ]);
+    return { liked: true };
+  }
+}
+
 // ── 代用户发消息：仅在 auto 模式触发的 session 里可用 ──────────────────────
 
 export async function conversation_reply(args: { text?: string }, ctx: ToolContext) {

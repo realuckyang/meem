@@ -60,8 +60,8 @@ export async function runSessionSend(env: Env, input: SessionSendInput, broadcas
 
   // 1. 会话归属 + 取 trigger
   const session = await env.DB.prepare(
-    'SELECT id, kind, trigger FROM sessions WHERE id = ? AND uid = ?'
-  ).bind(sid, uid).first<{ id: string; kind: string; trigger: string | null }>();
+    'SELECT id, kind, trigger, title FROM sessions WHERE id = ? AND uid = ?'
+  ).bind(sid, uid).first<{ id: string; kind: string; trigger: string | null; title: string }>();
   if (!session) {
     broadcast({ type: 'session.error', sid, message: '会话不存在' });
     return;
@@ -133,6 +133,15 @@ export async function runSessionSend(env: Env, input: SessionSendInput, broadcas
   // 4. 持久化 + 广播 user 事件
   const userId = await insertEvent(env, sid, uid, userMsg, null);
   emit({ type: 'event', event: { id: userId, sid, message: userMsg } });
+
+  // 首条消息自动起标题：取前 20 字
+  if (!session.title?.trim()) {
+    const autoTitle = text.trim().replace(/\s+/g, ' ').slice(0, 20);
+    if (autoTitle) {
+      await env.DB.prepare('UPDATE sessions SET title = ? WHERE id = ?').bind(autoTitle, sid).run();
+      emit({ type: 'session.title', sid, title: autoTitle });
+    }
+  }
 
   emit({ type: 'session.thinking', sid });
   await env.DB.prepare('UPDATE sessions SET status = ?, updated = unixepoch() WHERE id = ?').bind('thinking', sid).run();

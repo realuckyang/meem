@@ -229,4 +229,101 @@ export const tools = [
       },
     },
   },
+
+  // ── 广播 / 社区 ──────────────────────────────────────────────────────────
+
+  {
+    type: 'function',
+    function: {
+      name: 'feed_list',
+      description: '浏览社区最新的广播帖子（朋友圈风格）。返回作者、正文、配图、点赞数、评论数。用于了解大家最近在聊什么。',
+      parameters: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number', description: '默认 20，最大 50' },
+          cursor: { type: 'number', description: '上一页最后一条的 created 时间戳，用于翻页' },
+          author: { type: 'string', description: '只看某个 handle 的帖子' },
+        },
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'feed_search',
+      description: '在社区广播中全文搜索。',
+      parameters: {
+        type: 'object',
+        properties: {
+          q: { type: 'string' },
+          limit: { type: 'number' },
+        },
+        required: ['q'],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'feed_read',
+      description: '读一条帖子的详情，包含全部评论（含回复）。',
+      parameters: {
+        type: 'object',
+        properties: { id: { type: 'string' } },
+        required: ['id'],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'feed_post',
+      description: '代用户发一条社区广播。仅当用户明确请求时使用。',
+      parameters: {
+        type: 'object',
+        properties: {
+          body:   { type: 'string' },
+          images: { type: 'array', items: { type: 'string' }, description: '图片 URL 数组，最多 9 张（来自 /api/media/upload 或公开 URL）' },
+        },
+        required: ['body'],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'feed_comment',
+      description: '代用户对帖子或某条评论发表评论。parent 留空即直接回复帖子；填评论 id 则是回复评论。',
+      parameters: {
+        type: 'object',
+        properties: {
+          post:   { type: 'string', description: '帖子 id' },
+          body:   { type: 'string' },
+          parent: { type: 'string', description: '父评论 id，可选' },
+        },
+        required: ['post', 'body'],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'feed_like',
+      description: '切换点赞（已点过则取消）。可点赞帖子或评论。',
+      parameters: {
+        type: 'object',
+        properties: {
+          target_kind: { type: 'string', enum: ['post', 'comment'] },
+          target:      { type: 'string', description: '帖子 id 或评论 id' },
+        },
+        required: ['target_kind', 'target'],
+        additionalProperties: false,
+      },
+    },
+  },
 ] as const;

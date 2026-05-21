@@ -1,8 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import { clearToken } from '../lib/api';
-import { useMe } from '../lib/me';
-import Avatar from '../components/Avatar';
-import { useConnectionStatus } from '../components/ConnectionStatus';
+import { clearToken } from '../../lib/api';
+import { useMe } from '../../lib/me';
+import Avatar from '../../components/Avatar';
+import { useConnectionStatus } from '../../components/ConnectionStatus';
 
 const WHISPER_LABEL: Record<string, string> = {
   silent:  '静默',
@@ -18,23 +18,24 @@ export default function Settings() {
   return (
     <div className="flex flex-col h-full overflow-y-auto">
       <header className="h-14 flex items-center px-4 bg-white/90 backdrop-blur border-b border-neutral-200 flex-shrink-0 sticky top-0 z-10">
-        <span className="text-[17px] font-semibold">设置</span>
+        <span className="text-[17px] font-semibold">我</span>
       </header>
 
-      {/* 头像区作为 profile 入口 */}
-      <button
-        onClick={() => navigate('/settings/profile')}
-        className="flex items-center gap-3.5 px-4 py-5 bg-white border-b border-neutral-200 w-full text-left active:bg-neutral-50"
-      >
-        <Avatar handle={me.handle} name={me.name} size={56} />
-        <div className="min-w-0 flex-1">
-          <div className="text-[17px] font-semibold truncate">{me.name || me.handle}</div>
-          <div className="text-sm text-neutral-400 mt-0.5 truncate">
-            {me.bio || `@${me.handle}`}
+      <div className="px-4 pt-4">
+        <button
+          onClick={() => navigate('/me/profile')}
+          className="flex items-center gap-3.5 px-4 py-4 bg-white rounded-xl w-full text-left active:bg-neutral-50"
+        >
+          <Avatar handle={me.handle} name={me.name} size={56} />
+          <div className="min-w-0 flex-1">
+            <div className="text-[17px] font-semibold truncate">{me.name || me.handle}</div>
+            <div className="text-sm text-neutral-400 mt-0.5 truncate">
+              {me.bio || `@${me.handle}`}
+            </div>
           </div>
-        </div>
-        <span className="text-neutral-300 text-lg flex-shrink-0">›</span>
-      </button>
+          <span className="text-neutral-300 text-lg flex-shrink-0">›</span>
+        </button>
+      </div>
 
       <Section title="能力">
         <PluginRow status={status} />
@@ -42,11 +43,11 @@ export default function Settings() {
       </Section>
 
       <Section title="智能体">
-        <Row icon="🤖" label="大模型" value={me.settings.model || '未配置'} onClick={() => navigate('/settings/model')} />
-        <Row icon="🪪" label="人设" value={me.settings.prompt ? `${me.settings.prompt.length} 字` : '未配置'} onClick={() => navigate('/settings/persona')} />
-        <Row icon="🧠" label="记忆" value="管理你的长期记忆" onClick={() => navigate('/settings/memory')} />
-        <Row icon="🤫" label="悄悄商量" value={WHISPER_LABEL[me.settings.whisper_mode]} onClick={() => navigate('/settings/whisper')} />
-        <Row icon="📏" label="上下文窗口" value={`${me.settings.max_rounds} 轮`} onClick={() => navigate('/settings/limits')} last />
+        <Row icon="🤖" label="大模型" value={me.settings.model || '未配置'} onClick={() => navigate('/me/model')} />
+        <Row icon="🪪" label="人设" value={me.settings.prompt ? `${me.settings.prompt.length} 字` : '未配置'} onClick={() => navigate('/me/persona')} />
+        <Row icon="🧠" label="记忆" value="管理你的长期记忆" onClick={() => navigate('/me/memory')} />
+        <Row icon="🤫" label="悄悄商量" value={WHISPER_LABEL[me.settings.whisper_mode]} onClick={() => navigate('/me/whisper')} />
+        <Row icon="📏" label="上下文窗口" value={`${me.settings.max_rounds} 轮`} onClick={() => navigate('/me/limits')} last />
       </Section>
 
       <div className="px-4 pt-8 pb-10">
@@ -99,7 +100,7 @@ function PluginRow({ status }: { status: { extension: boolean; web: boolean } })
   const navigate = useNavigate();
   const ok = status.extension;
   return (
-    <button onClick={() => navigate('/settings/extension')} className="flex items-center gap-3 w-full px-4 py-3 text-left active:bg-neutral-50 border-b border-neutral-100">
+    <button onClick={() => navigate('/me/extension')} className="flex items-center gap-3 w-full px-4 py-3 text-left active:bg-neutral-50 border-b border-neutral-100">
       <span className="text-lg w-6 text-center flex-shrink-0">🌐</span>
       <span className="flex-1 text-[15px]">浏览器控制</span>
       <span className={`flex items-center gap-1.5 text-sm ${ok ? 'text-emerald-600' : 'text-red-500'}`}>

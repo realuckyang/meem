@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { marked } from 'marked';
-import { req, type Session as SessionType } from '../lib/api';
-import { onFrame, sendFrame, isOpen } from '../lib/socket';
-import { applyEvent, type ChatItem, type EventRow } from '../lib/parseEvents';
-import { useMe } from '../lib/me';
-import Composer from '../components/Composer';
-import MessageRow, { AgentAv, CircleLabel } from '../components/MessageRow';
-import ToolCard from '../components/ToolCard';
+import { req, type Session as SessionType } from '../../lib/api';
+import { onFrame, sendFrame, isOpen } from '../../lib/socket';
+import { applyEvent, type ChatItem, type EventRow } from '../../lib/parseEvents';
+import { useMe } from '../../lib/me';
+import { useConnectionStatus } from '../../components/ConnectionStatus';
+import Composer from '../../components/Composer';
+import MessageRow, { AgentAv, CircleLabel } from '../../components/MessageRow';
+import ToolCard from '../../components/ToolCard';
 
 const SUGGESTS = [
   { icon: '✍️', label: '帮我写点东西', prompt: '帮我写一段……' },
@@ -37,9 +38,12 @@ function fmtClock(ts: number) {
 }
 
 export default function Session() {
-  const { sid = '' } = useParams();
+  const { sid: sidParam = '' } = useParams();
+  const isDraft = sidParam === 'new';
+  const [sid, setSid] = useState<string>(isDraft ? '' : sidParam);
   const navigate = useNavigate();
   const { me } = useMe();
+  const self = useConnectionStatus();
   const [session, setSession] = useState<SessionType | null>(null);
   const [items, setItems] = useState<ChatItem[]>([]);
   const [running, setRunning] = useState(false);
@@ -56,6 +60,7 @@ export default function Session() {
   }
 
   useEffect(() => {
+    if (!sid) { setSession(null); setItems([]); return; }
     req<SessionType>(`/api/sessions/${sid}`).then((s) => {
       setSession(s);
       if (s.status === 'thinking') setRunning(true);
@@ -80,7 +85,8 @@ export default function Session() {
       if (f.type === 'session.thinking' && f.sid === sid) { setRunning(true); setErrMsg(''); return; }
       if (f.type === 'session.done' && f.sid === sid)     { setRunning(false); return; }
       if (f.type === 'session.error' && f.sid === sid)    { setRunning(false); setErrMsg(f.message ?? '处理失败'); return; }
-      if (f.type === 'ws:open') loadHistory();
+      if (f.type === 'session.title' && f.sid === sid)    { setSession((s) => s ? { ...s, title: f.title } : s); return; }
+      if (f.type === 'ws:open' && sid) loadHistory();
     });
     return off;
   }, [sid]);
@@ -89,11 +95,29 @@ export default function Session() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [items, running]);
 
-  function send(text: string) {
+  async function send(text: string) {
     if (running) return;
     setErrMsg('');
     if (!isOpen()) { setErrMsg('连接未就绪，请稍候'); return; }
-    if (!sendFrame({ type: 'session.send', sid, text })) {
+
+    let targetSid = sid;
+    if (!targetSid) {
+      try {
+        const s = await req<SessionType>('/api/sessions', {
+          method: 'POST',
+          body: JSON.stringify({ kind: 'direct' }),
+        });
+        targetSid = s.id;
+        setSid(targetSid);
+        setSession(s);
+        navigate(`/sessions/${targetSid}`, { replace: true });
+      } catch (e: any) {
+        setErrMsg(`新建会话失败: ${e?.message ?? e}`);
+        return;
+      }
+    }
+
+    if (!sendFrame({ type: 'session.send', sid: targetSid, text })) {
       setErrMsg('发送失败，连接已断开');
     }
   }
@@ -105,7 +129,14 @@ export default function Session() {
     <div className="flex flex-col h-full">
       <header className="h-14 flex items-center gap-2 px-3 bg-white/90 backdrop-blur border-b border-neutral-200 flex-shrink-0">
         <button onClick={() => navigate('/sessions')} className="text-2xl text-accent px-1 leading-none">‹</button>
-        <span className="text-[17px] font-semibold flex-1 truncate">{session?.title || '智能体'}</span>
+        <div className="flex flex-col min-w-0 flex-1">
+          <span className="text-[16px] font-semibold leading-tight truncate">
+            {session?.title || (isDraft || !sid ? '新对话' : '智能体')}
+          </span>
+          <span className={`text-[11px] leading-tight ${self.extension || self.extensionBg ? 'text-emerald-600' : self.web ? 'text-amber-600' : 'text-neutral-400'}`}>
+            {self.extension || self.extensionBg ? '浏览器在线' : self.web ? '浏览器离线' : '离线'}
+          </span>
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto">

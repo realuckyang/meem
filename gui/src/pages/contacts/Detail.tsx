@@ -1,12 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { req, type User } from '../lib/api';
-import Avatar from '../components/Avatar';
+import { req, type User } from '../../lib/api';
+import { usePresence } from '../../lib/presence';
+import Avatar from '../../components/Avatar';
+import { AvatarPresence } from '../../components/PresenceDot';
 
 export default function UserDetail() {
   const { handle = '' } = useParams();
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
+  const handles = useMemo(() => (handle ? [handle] : []), [handle]);
+  const presence = usePresence(handles);
+  const status = presence[handle];
 
   useEffect(() => {
     if (!handle) return;
@@ -45,9 +50,18 @@ export default function UserDetail() {
 
       <div className="flex-1 overflow-y-auto">
         <div className="flex flex-col items-center pt-10 pb-6 px-6 bg-white border-b border-neutral-200">
-          <Avatar handle={user.handle} name={user.name} size={88} />
+          <div className="relative">
+            <Avatar handle={user.handle} name={user.name} size={88} />
+            <AvatarPresence status={status} size={16} />
+          </div>
           <div className="mt-4 text-[22px] font-semibold">{user.name || user.handle}</div>
           <div className="text-sm text-neutral-400 mt-1">@{user.handle}</div>
+          {status?.online && (
+            <div className={`mt-2 text-xs flex items-center gap-1.5 ${(status.extension || status.extensionBg) ? 'text-emerald-600' : 'text-amber-600'}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${(status.extension || status.extensionBg) ? 'bg-emerald-500' : 'bg-amber-400'}`} />
+              {(status.extension || status.extensionBg) ? '浏览器在线' : '浏览器离线'}
+            </div>
+          )}
           {user.bio && (
             <div className="mt-4 text-[14px] text-neutral-600 leading-relaxed text-center whitespace-pre-wrap max-w-[360px]">
               {user.bio}

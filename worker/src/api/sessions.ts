@@ -18,7 +18,7 @@ export async function handleSessionList(_request: Request, env: Env, ctx: Ctx): 
 }
 
 export async function handleSessionCreate(request: Request, env: Env, ctx: Ctx): Promise<Response> {
-  const { title = '新对话', kind = 'direct', trigger } = await request.json<any>();
+  const { title = '', kind = 'direct', trigger } = await request.json<any>();
   const id = newId();
   // 新建时不在跑 LLM，显式置为 done；status='thinking' 只在 ws/session.ts 真正发起 LLM 调用时设置
   await env.DB.prepare('INSERT INTO sessions (id,uid,kind,status,title,trigger) VALUES (?,?,?,?,?,?)')

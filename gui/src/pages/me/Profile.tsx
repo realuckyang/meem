@@ -16,7 +16,7 @@ export default function Profile() {
     try {
       await req('/api/me', { method: 'PATCH', body: JSON.stringify({ name, bio }) });
       await refresh();
-      navigate('/settings');
+      navigate('/me');
     } finally { setSaving(false); }
   }
 

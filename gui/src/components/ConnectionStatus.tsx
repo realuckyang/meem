@@ -5,11 +5,12 @@ import { onFrame } from '../lib/socket';
 interface Status {
   online: boolean;
   extension: boolean;
+  extensionBg?: boolean;
   web: boolean;
 }
 
 export function useConnectionStatus(): Status {
-  const [status, setStatus] = useState<Status>({ online: false, extension: false, web: false });
+  const [status, setStatus] = useState<Status>({ online: false, extension: false, extensionBg: false, web: false });
 
   useEffect(() => {
     const load = () => req<Status>('/api/status').then(setStatus).catch(() => {});

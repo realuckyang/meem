@@ -21,7 +21,7 @@ export default function Model() {
         body: JSON.stringify({ url, key, model, vision: vision ? 1 : 0 }),
       });
       await refresh();
-      navigate('/settings');
+      navigate('/me');
     } finally { setSaving(false); }
   }
 

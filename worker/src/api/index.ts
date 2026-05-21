@@ -22,6 +22,11 @@ import {
 } from './memories';
 import { handleStatus, handleUpgrade } from '../ws';
 import { handleMediaGet, handleMediaUpload } from './media';
+import { handlePresence } from './presence';
+import {
+  handleFeedList, handleFeedSearch, handleFeedCreate, handleFeedItem,
+  handleCommentCreate, handleCommentDelete, handleLikeToggle,
+} from './feed';
 
 export async function route(request: Request, env: Env, execCtx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
@@ -49,6 +54,7 @@ export async function route(request: Request, env: Env, execCtx: ExecutionContex
   if (pathname === '/api/me') return handleMe(request, env, ctx);
   if (pathname === '/api/settings') return handleSettings(request, env, ctx);
   if (pathname === '/api/users') return handleUsers(request, env, ctx);
+  if (pathname === '/api/presence' && method === 'GET') return handlePresence(request, env, ctx);
   const userMatch = pathname.match(/^\/api\/users\/([^/]+)$/);
   if (userMatch) return handleUserByHandle(request, env, ctx, userMatch[1]);
 
@@ -76,6 +82,20 @@ export async function route(request: Request, env: Env, execCtx: ExecutionContex
   }
   const memMatch = pathname.match(/^\/api\/memories\/([^/]+)$/);
   if (memMatch) return handleMemory(request, env, ctx, memMatch[1]);
+
+  // ── feed ──
+  if (pathname === '/api/feed/search' && method === 'GET') return handleFeedSearch(request, env, ctx);
+  if (pathname === '/api/feed/like' && method === 'POST') return handleLikeToggle(request, env, ctx);
+  if (pathname === '/api/feed') {
+    if (method === 'GET') return handleFeedList(request, env, ctx);
+    if (method === 'POST') return handleFeedCreate(request, env, ctx);
+  }
+  const feedCommentDel = pathname.match(/^\/api\/feed\/comments\/([^/]+)$/);
+  if (feedCommentDel && method === 'DELETE') return handleCommentDelete(request, env, ctx, feedCommentDel[1]);
+  const feedComments = pathname.match(/^\/api\/feed\/([^/]+)\/comments$/);
+  if (feedComments && method === 'POST') return handleCommentCreate(request, env, ctx, feedComments[1]);
+  const feedItem = pathname.match(/^\/api\/feed\/([^/]+)$/);
+  if (feedItem) return handleFeedItem(request, env, ctx, feedItem[1]);
 
   // ── WS channels ──
   if (pathname === '/api/ws') return handleUpgrade(request, env, ctx);

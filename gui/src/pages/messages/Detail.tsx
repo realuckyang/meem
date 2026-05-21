@@ -1,12 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { req, type Message, type Session as SessionType } from '../lib/api';
-import { onFrame } from '../lib/socket';
-import { useMe } from '../lib/me';
-import Avatar from '../components/Avatar';
-import Composer from '../components/Composer';
-import MessageRow from '../components/MessageRow';
-import MessageAgentBlock from '../components/MessageAgentBlock';
+import { req, type Message, type Session as SessionType } from '../../lib/api';
+import { onFrame } from '../../lib/socket';
+import { useMe } from '../../lib/me';
+import { usePresence } from '../../lib/presence';
+import Avatar from '../../components/Avatar';
+import { AvatarPresence } from '../../components/PresenceDot';
+import Composer from '../../components/Composer';
+import MessageRow from '../../components/MessageRow';
+import MessageAgentBlock from './AgentBlock';
 
 function fmtClock(ts: number) {
   const d = new Date(ts * 1000);
@@ -22,6 +24,9 @@ export default function Conversation() {
   const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState('');
   const [agentByMsg, setAgentByMsg] = useState<Record<string, SessionType>>({});
+  const peerHandles = useMemo(() => (peer ? [peer] : []), [peer]);
+  const presence = usePresence(peerHandles);
+  const peerStatus = presence[peer];
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const load = () =>
@@ -67,8 +72,20 @@ export default function Conversation() {
     <div className="flex flex-col h-full">
       <header className="h-14 flex items-center gap-2 px-3 bg-white/90 backdrop-blur border-b border-neutral-200 flex-shrink-0">
         <button onClick={() => navigate('/messages')} className="text-2xl text-accent px-1 leading-none">‹</button>
-        {peer && <Avatar handle={peer} size={28} />}
-        <span className="text-[17px] font-semibold">{peer || '会话'}</span>
+        {peer && (
+          <div className="relative flex-shrink-0">
+            <Avatar handle={peer} size={28} />
+            <AvatarPresence status={peerStatus} size={8} />
+          </div>
+        )}
+        <div className="flex flex-col min-w-0">
+          <span className="text-[16px] font-semibold leading-tight truncate">{peer || '会话'}</span>
+          {peerStatus?.online && (
+            <span className={`text-[11px] leading-tight ${(peerStatus.extension || peerStatus.extensionBg) ? 'text-emerald-600' : 'text-amber-600'}`}>
+              {(peerStatus.extension || peerStatus.extensionBg) ? '浏览器在线' : '浏览器离线'}
+            </span>
+          )}
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto divide-y divide-neutral-100">

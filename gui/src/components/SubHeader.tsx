@@ -7,7 +7,7 @@ interface Props {
   saving?: boolean;
 }
 
-export default function SubHeader({ title, back = '/settings', onSave, saving }: Props) {
+export default function SubHeader({ title, back = '/me', onSave, saving }: Props) {
   const navigate = useNavigate();
   return (
     <header className="h-14 flex items-center gap-2 px-3 bg-white/90 backdrop-blur border-b border-neutral-200 flex-shrink-0">

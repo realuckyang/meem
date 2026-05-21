@@ -7,20 +7,23 @@ import { MeContext } from './lib/me';
 
 import Login from './pages/Login';
 import Layout from './pages/Layout';
-import Messages from './pages/Messages';
-import Conversation from './pages/Conversation';
-import Sessions from './pages/Sessions';
-import Session from './pages/Session';
-import Contacts from './pages/Contacts';
-import UserDetail from './pages/UserDetail';
-import Settings from './pages/Settings';
-import ProfileSub from './pages/settings/Profile';
-import ModelSub from './pages/settings/Model';
-import PersonaSub from './pages/settings/Persona';
-import WhisperSub from './pages/settings/Whisper';
-import ExtensionSub from './pages/settings/Extension';
-import MemorySub from './pages/settings/Memory';
-import LimitsSub from './pages/settings/Limits';
+import MessagesList from './pages/messages/List';
+import MessageDetail from './pages/messages/Detail';
+import SessionsList from './pages/sessions/List';
+import SessionDetail from './pages/sessions/Detail';
+import FeedList from './pages/feed/List';
+import FeedDetail from './pages/feed/Detail';
+import FeedCompose from './pages/feed/Compose';
+import ContactsList from './pages/contacts/List';
+import ContactDetail from './pages/contacts/Detail';
+import MeHub from './pages/me/Hub';
+import ProfileSub from './pages/me/Profile';
+import ModelSub from './pages/me/Model';
+import PersonaSub from './pages/me/Persona';
+import WhisperSub from './pages/me/Whisper';
+import ExtensionSub from './pages/me/Extension';
+import MemorySub from './pages/me/Memory';
+import LimitsSub from './pages/me/Limits';
 
 export default function App() {
   const [me, setMe] = useState<Me | null>(null);
@@ -55,20 +58,23 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/messages" replace />} />
           <Route element={<Layout />}>
-            <Route path="/messages" element={<Messages />} />
-            <Route path="/messages/:cid" element={<Conversation />} />
-            <Route path="/sessions" element={<Sessions />} />
-            <Route path="/sessions/:sid" element={<Session />} />
-            <Route path="/contacts" element={<Contacts />} />
-            <Route path="/contacts/:handle" element={<UserDetail />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/settings/profile" element={<ProfileSub />} />
-            <Route path="/settings/model" element={<ModelSub />} />
-            <Route path="/settings/persona" element={<PersonaSub />} />
-            <Route path="/settings/whisper" element={<WhisperSub />} />
-            <Route path="/settings/extension" element={<ExtensionSub />} />
-            <Route path="/settings/memory" element={<MemorySub />} />
-            <Route path="/settings/limits" element={<LimitsSub />} />
+            <Route path="/messages" element={<MessagesList />} />
+            <Route path="/messages/:cid" element={<MessageDetail />} />
+            <Route path="/sessions" element={<SessionsList />} />
+            <Route path="/sessions/:sid" element={<SessionDetail />} />
+            <Route path="/feed" element={<FeedList />} />
+            <Route path="/feed/new" element={<FeedCompose />} />
+            <Route path="/feed/:id" element={<FeedDetail />} />
+            <Route path="/contacts" element={<ContactsList />} />
+            <Route path="/contacts/:handle" element={<ContactDetail />} />
+            <Route path="/me" element={<MeHub />} />
+            <Route path="/me/profile" element={<ProfileSub />} />
+            <Route path="/me/model" element={<ModelSub />} />
+            <Route path="/me/persona" element={<PersonaSub />} />
+            <Route path="/me/whisper" element={<WhisperSub />} />
+            <Route path="/me/extension" element={<ExtensionSub />} />
+            <Route path="/me/memory" element={<MemorySub />} />
+            <Route path="/me/limits" element={<LimitsSub />} />
           </Route>
           <Route path="*" element={<Navigate to="/messages" replace />} />
         </Routes>

@@ -1,4 +1,4 @@
-export type Tab = 'messages' | 'contacts' | 'settings';
+export type Tab = 'messages' | 'contacts' | 'feed' | 'me';
 
 interface Props {
   active: Tab;
@@ -6,24 +6,33 @@ interface Props {
 }
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
-  { key: 'messages', label: '消息', icon: '💬' },
+  { key: 'messages', label: '消息',   icon: '💬' },
   { key: 'contacts', label: '联系人', icon: '👥' },
-  { key: 'settings', label: '设置', icon: '⚙️' },
+  { key: 'feed',     label: '广播',   icon: '📣' },
+  { key: 'me',       label: '我',     icon: '👤' },
 ];
 
 export default function TabBar({ active, onChange }: Props) {
   return (
     <nav className="h-14 flex border-t border-neutral-200 bg-white/90 backdrop-blur">
-      {TABS.map((t) => (
-        <button
-          key={t.key}
-          className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${active === t.key ? 'text-accent' : 'text-neutral-400'}`}
-          onClick={() => onChange(t.key)}
-        >
-          <span className="text-xl leading-none">{t.icon}</span>
-          <span className="text-[11px]">{t.label}</span>
-        </button>
-      ))}
+      {TABS.map((t) => {
+        const on = active === t.key;
+        return (
+          <button
+            key={t.key}
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-all ${on ? 'text-accent' : 'text-neutral-400'}`}
+            onClick={() => onChange(t.key)}
+          >
+            <span
+              className="text-xl leading-none transition-all"
+              style={on ? undefined : { filter: 'grayscale(1)', opacity: 0.45 }}
+            >
+              {t.icon}
+            </span>
+            <span className={`text-[11px] ${on ? 'font-medium' : ''}`}>{t.label}</span>
+          </button>
+        );
+      })}
     </nav>
   );
 }

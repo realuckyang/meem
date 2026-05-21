@@ -50,6 +50,7 @@ export interface Me {
   handle: string;
   name: string;
   bio: string;
+  cover: string;
   settings: Settings;
 }
 
@@ -113,4 +114,28 @@ export interface User {
   handle: string;
   name: string;
   bio?: string;
+  cover?: string;
+}
+
+export interface FeedPost {
+  id: string;
+  author: string;
+  body: string;
+  images: string[];
+  likes: number;
+  replies: number;
+  liked: boolean;
+  created: number;
+  updated: number;
+}
+
+export interface FeedComment {
+  id: string;
+  post: string;
+  parent: string | null;
+  author: string;
+  body: string;
+  likes: number;
+  liked: boolean;
+  created: number;
 }

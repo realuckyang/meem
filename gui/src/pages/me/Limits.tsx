@@ -19,7 +19,7 @@ export default function Limits() {
         body: JSON.stringify({ max_rounds: maxRounds, tool_max_chars: toolMax }),
       });
       await refresh();
-      navigate('/settings');
+      navigate('/me');
     } finally { setSaving(false); }
   }
 
