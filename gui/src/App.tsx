@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { req, hasToken, type Me } from './lib/api';
 import { startSocket, stopSocket } from './lib/socket';
-import { startToolExecutor } from './lib/tools';
+// 工具执行已下沉到 extension/src/background.ts；side panel 仅负责 UI。
 import { MeContext } from './lib/me';
 
 import Login from './pages/Login';
@@ -43,7 +43,6 @@ export default function App() {
   useEffect(() => {
     if (!me) return;
     startSocket();
-    startToolExecutor();
     return stopSocket;
   }, [me]);
 

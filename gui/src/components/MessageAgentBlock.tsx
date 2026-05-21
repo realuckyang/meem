@@ -1,4 +1,4 @@
-// 「跟分身私聊」——挂在对方消息下方的悄悄话。
+// 「跟智能体私聊」——挂在对方消息下方的悄悄话。
 //
 // 视觉：缩进到对方消息正文列、左侧竖线、整体淡化，强化「附属于那条消息」的感觉。
 // 内容：自定义紧凑行布局（不复用 MessageRow，以控制更小的留白）。
@@ -7,7 +7,10 @@ import { useEffect, useRef, useState } from 'react';
 import { marked } from 'marked';
 import { req, type Session as SessionType } from '../lib/api';
 import { onFrame, sendFrame, isOpen } from '../lib/socket';
+import { useMe } from '../lib/me';
+import Avatar from './Avatar';
 import { applyEvent, type ChatItem, type EventRow } from '../lib/parseEvents';
+import { parseAssistant } from '../lib/suggestions';
 import ToolCard from './ToolCard';
 
 interface Props {
@@ -28,6 +31,7 @@ function fmtClock(ts: number) {
 }
 
 export default function MessageAgentBlock({ messageId, initialSession, onAdopt }: Props) {
+  const { me } = useMe();
   const [expanded, setExpanded] = useState(!!initialSession);
   const [session, setSession] = useState<SessionType | null>(initialSession);
   const [items, setItems] = useState<ChatItem[]>([]);
@@ -70,7 +74,7 @@ export default function MessageAgentBlock({ messageId, initialSession, onAdopt }
     try {
       const s = await req<SessionType>('/api/sessions', {
         method: 'POST',
-        body: JSON.stringify({ kind: 'agent', trigger: messageId, title: '私聊分身' }),
+        body: JSON.stringify({ kind: 'agent', trigger: messageId, title: '私聊智能体' }),
       });
       setSession(s);
     } catch (e: any) {
@@ -89,8 +93,6 @@ export default function MessageAgentBlock({ messageId, initialSession, onAdopt }
     else setErr('发送失败');
   }
 
-  const lastAssistant = [...items].reverse().find((it) => it.kind === 'assistant');
-
   // ── 折叠态：只是个虚线按钮 ──
   if (!expanded) {
     return (
@@ -100,7 +102,7 @@ export default function MessageAgentBlock({ messageId, initialSession, onAdopt }
           className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[11px] text-purple-500/80 hover:text-purple-700 transition-colors"
         >
           <span>🤫</span>
-          <span>跟分身悄悄商量</span>
+          <span>跟智能体悄悄商量</span>
         </button>
       </div>
     );
@@ -134,24 +136,65 @@ export default function MessageAgentBlock({ messageId, initialSession, onAdopt }
           );
         }
         if (it.kind === 'assistant') {
+          const parsed = parseAssistant(it.content);
           return (
             <Row
               key={it.key}
               avatar={<span className="w-4 h-4 rounded-full bg-neutral-900 text-white text-[9px] grid place-items-center flex-shrink-0">🤖</span>}
-              who="分身"
+              who="智能体"
               time={fmtClock(it.created)}
               tone="ai"
             >
-              <div className="md md-mini" dangerouslySetInnerHTML={{ __html: marked.parse(it.content) as string }} />
+              {parsed.text && (
+                <div className="md md-mini" dangerouslySetInnerHTML={{ __html: marked.parse(parsed.text) as string }} />
+              )}
+              {(parsed.replies.length > 0 || parsed.asks.length > 0) && (
+                <div className="mt-2 space-y-2">
+                  {parsed.replies.length > 0 && (
+                    <div>
+                      <div className="text-[10.5px] text-neutral-400 mb-1">回复对方 ↓</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {parsed.replies.map((t, i) => (
+                          <button
+                            key={`r${i}`}
+                            onClick={() => onAdopt(t)}
+                            className="px-2 py-1 text-[12px] text-neutral-700 bg-white border border-neutral-200 hover:border-accent hover:text-accent rounded-md max-w-full text-left transition-colors"
+                            title="点击塞进给对方的输入框"
+                          >
+                            💬 {t.length > 60 ? t.slice(0, 60) + '…' : t}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {parsed.asks.length > 0 && (
+                    <div>
+                      <div className="text-[10.5px] text-neutral-400 mb-1">继续问智能体 ↓</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {parsed.asks.map((t, i) => (
+                          <button
+                            key={`a${i}`}
+                            onClick={() => setDraft(t)}
+                            className="px-2 py-1 text-[12px] text-purple-700 bg-purple-50 border border-purple-200 hover:bg-purple-100 rounded-md max-w-full text-left transition-colors"
+                            title="点击塞进悄悄商量的输入框"
+                          >
+                            ❓ {t.length > 60 ? t.slice(0, 60) + '…' : t}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </Row>
           );
         }
-        // tool_group —— 同一轮多个工具共享分身 header
+        // tool_group —— 同一轮多个工具共享智能体 header
         return (
           <Row
             key={it.key}
             avatar={<span className="w-4 h-4 rounded-full bg-neutral-900 text-white text-[9px] grid place-items-center flex-shrink-0">🤖</span>}
-            who="分身"
+            who="智能体"
             action={it.calls.length > 1 ? `调用 ${it.calls.length} 个工具` : '调用工具'}
             time={fmtClock(it.created)}
             tone="ai"
@@ -168,7 +211,7 @@ export default function MessageAgentBlock({ messageId, initialSession, onAdopt }
       {running && (
         <Row
           avatar={<span className="w-4 h-4 rounded-full bg-neutral-900 text-white text-[9px] grid place-items-center flex-shrink-0">🤖</span>}
-          who="分身"
+          who="智能体"
           tone="ai"
         >
           <span className="typing-dots"><span /><span /><span /></span>
@@ -177,18 +220,8 @@ export default function MessageAgentBlock({ messageId, initialSession, onAdopt }
 
       {err && <div className="text-[12px] text-red-500 pl-5">{err}</div>}
 
-      {lastAssistant && lastAssistant.kind === 'assistant' && !running && (
-        <div className="pl-5">
-          <button
-            onClick={() => onAdopt(lastAssistant.content)}
-            className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] text-purple-600 hover:text-purple-900 border border-dashed border-purple-300 hover:border-purple-500 rounded transition-colors"
-          >
-            采用为回复 ↑
-          </button>
-        </div>
-      )}
-
       <div className="flex items-end gap-1.5">
+        <Avatar handle={me.handle} name={me.name} size={22} />
         <textarea
           rows={1}
           value={draft}
@@ -201,7 +234,7 @@ export default function MessageAgentBlock({ messageId, initialSession, onAdopt }
             }
           }}
           disabled={!sid || running}
-          placeholder={running ? '思考中…' : '问问分身…'}
+          placeholder={running ? '思考中…' : '问问智能体…'}
           className="flex-1 resize-none px-2 py-1 text-[12px] leading-snug bg-white border border-neutral-200 rounded focus:border-purple-400 transition-colors disabled:opacity-50 max-h-20"
         />
         <button

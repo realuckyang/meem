@@ -75,27 +75,34 @@ export default function Conversation() {
         {messages.length === 0 && (
           <div className="py-16 text-center text-neutral-400 text-sm">还没消息，发个招呼吧</div>
         )}
-        {messages.map((m) => {
-          const mine = m.sender === me.handle;
-          return (
-            <div key={m.id} className="bg-white">
-              <MessageRow
-                who={mine ? '我' : m.sender}
-                time={fmtClock(m.created)}
-                avatar={<Avatar handle={mine ? me.handle : m.sender} size={28} />}
-              >
-                <div className="whitespace-pre-wrap">{m.body}</div>
-              </MessageRow>
-              {!mine && (
-                <MessageAgentBlock
-                  messageId={m.id}
-                  initialSession={agentByMsg[m.id] ?? null}
-                  onAdopt={setDraft}
-                />
-              )}
-            </div>
-          );
-        })}
+        {(() => {
+          // 只在最新一条对方消息下挂悄悄商量入口
+          let lastPeerIdx = -1;
+          for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].sender !== me.handle) { lastPeerIdx = i; break; }
+          }
+          return messages.map((m, i) => {
+            const mine = m.sender === me.handle;
+            return (
+              <div key={m.id} className="bg-white">
+                <MessageRow
+                  who={mine ? '我' : m.sender}
+                  time={fmtClock(m.created)}
+                  avatar={<Avatar handle={mine ? me.handle : m.sender} size={28} />}
+                >
+                  <div className="whitespace-pre-wrap">{m.body}</div>
+                </MessageRow>
+                {!mine && i === lastPeerIdx && (
+                  <MessageAgentBlock
+                    messageId={m.id}
+                    initialSession={agentByMsg[m.id] ?? null}
+                    onAdopt={setDraft}
+                  />
+                )}
+              </div>
+            );
+          });
+        })()}
         <div ref={bottomRef} />
       </div>
 

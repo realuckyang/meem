@@ -9,7 +9,7 @@
 import type { Env } from '../types';
 import { dispatch } from './dispatch';
 
-type ClientKind = 'web' | 'extension';
+type ClientKind = 'web' | 'extension' | 'extension-bg';
 
 interface Attachment {
   uid: string;
@@ -45,7 +45,8 @@ export class AvatarRoom implements DurableObject {
   }
 
   private acceptWebSocket(url: URL): Response {
-    const kind: ClientKind = url.searchParams.get('client') === 'extension' ? 'extension' : 'web';
+    const c = url.searchParams.get('client') ?? '';
+    const kind: ClientKind = c === 'extension-bg' ? 'extension-bg' : (c === 'extension' ? 'extension' : 'web');
     const uid = url.searchParams.get('uid') ?? '';
     const handle = url.searchParams.get('handle') ?? '';
     const pair = new WebSocketPair();
@@ -67,13 +68,20 @@ export class AvatarRoom implements DurableObject {
   private handleStatusQuery(): Response {
     let extension = false;
     let web = false;
+    let extensionBg = false;
     for (const ws of this.sockets) {
       const att = (ws.deserializeAttachment() as Attachment | null) ?? null;
-      if (att?.kind === 'extension') extension = true;
-      if (att?.kind === 'web') web = true;
+      if (att?.kind === 'extension-bg') extensionBg = true;
+      else if (att?.kind === 'extension') extension = true;
+      else if (att?.kind === 'web') web = true;
     }
+    // 对外把 bg / panel 统一展示为「extension」连接状态
     return new Response(JSON.stringify({
-      online: this.sockets.size > 0, extension, web, connections: this.sockets.size,
+      online: this.sockets.size > 0,
+      extension: extension || extensionBg,
+      extensionBg,
+      web,
+      connections: this.sockets.size,
     }), { headers: { 'Content-Type': 'application/json' } });
   }
 
@@ -82,12 +90,15 @@ export class AvatarRoom implements DurableObject {
   private async handleDispatch(request: Request): Promise<Response> {
     const body = await request.json<{ type: string; name?: string; args?: any; timeoutMs?: number }>();
 
-    // 找一条扩展连接
-    let extWs: WebSocket | null = null;
+    // 优先派给 background（常驻），其次 side panel，否则报扩展离线
+    let extBg: WebSocket | null = null;
+    let extPanel: WebSocket | null = null;
     for (const ws of this.sockets) {
       const att = (ws.deserializeAttachment() as Attachment | null) ?? null;
-      if (att?.kind === 'extension') { extWs = ws; break; }
+      if (att?.kind === 'extension-bg') { extBg = ws; break; }
+      if (att?.kind === 'extension')    extPanel = ws;
     }
+    const extWs = extBg ?? extPanel;
     if (!extWs) {
       return new Response(JSON.stringify({ ok: false, error: 'extension_offline' }), {
         headers: { 'Content-Type': 'application/json' },

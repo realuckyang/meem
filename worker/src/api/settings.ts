@@ -19,6 +19,7 @@ export async function handleSettings(request: Request, env: Env, ctx: Ctx): Prom
     if (body.model !== undefined) { fields.push('model = ?'); vals.push(body.model); }
     if (body.max_rounds !== undefined) { fields.push('max_rounds = ?'); vals.push(Math.max(1, Math.min(50, Number(body.max_rounds) || 20))); }
     if (body.tool_max_chars !== undefined) { fields.push('tool_max_chars = ?'); vals.push(Math.max(1000, Math.min(50000, Number(body.tool_max_chars) || 12000))); }
+    if (body.vision !== undefined) { fields.push('vision = ?'); vals.push(body.vision ? 1 : 0); }
     if (fields.length) {
       vals.push(ctx.me.id);
       await env.DB.prepare(`UPDATE settings SET ${fields.join(', ')} WHERE uid = ?`).bind(...vals).run();

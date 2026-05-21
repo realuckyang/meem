@@ -27,7 +27,7 @@ export default function Layout() {
   const showTab = isRoot(location.pathname);
 
   return (
-    <div className="flex flex-col h-full max-w-[480px] mx-auto bg-neutral-100 border-x border-neutral-200">
+    <div className="flex flex-col h-full max-w-[760px] mx-auto bg-neutral-100 border-x border-neutral-200">
       <div className="flex-1 overflow-hidden">
         <Outlet />
       </div>

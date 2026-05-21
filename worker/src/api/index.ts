@@ -21,6 +21,7 @@ import {
   handleMemory,
 } from './memories';
 import { handleStatus, handleUpgrade } from '../ws';
+import { handleMediaGet, handleMediaUpload } from './media';
 
 export async function route(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
@@ -32,6 +33,10 @@ export async function route(request: Request, env: Env): Promise<Response> {
   // ── public ──
   if (pathname === '/api/register' && method === 'POST') return handleRegister(request, env);
   if (pathname === '/api/login' && method === 'POST') return handleLogin(request, env);
+
+  // /r/:key —— 公开读取 R2（截图、附件）
+  const mediaMatch = pathname.match(/^\/r\/([A-Za-z0-9._\-/]+)$/);
+  if (mediaMatch && method === 'GET') return handleMediaGet(request, env, mediaMatch[1]);
 
   // ── require auth ──
   const me = await authorize(env, request);
@@ -62,6 +67,8 @@ export async function route(request: Request, env: Env): Promise<Response> {
   if (eventsMatch) return handleEvents(request, env, ctx, eventsMatch[1]);
   const sessionMatch = pathname.match(/^\/api\/sessions\/([^/]+)$/);
   if (sessionMatch) return handleSession(request, env, ctx, sessionMatch[1]);
+
+  if (pathname === '/api/media/upload') return handleMediaUpload(request, env, ctx);
 
   if (pathname === '/api/memories') {
     if (method === 'GET') return handleMemoryList(request, env, ctx);

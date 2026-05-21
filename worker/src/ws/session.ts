@@ -56,8 +56,8 @@ async function runSessionSend(env: Env, input: SessionSendInput, broadcast: Broa
 
   // 2. 模型配置
   const settings = await env.DB.prepare(
-    'SELECT prompt, url, "key" as apiKey, model, max_rounds, tool_max_chars FROM settings WHERE uid = ?'
-  ).bind(uid).first<{ prompt: string; url: string; apiKey: string; model: string; max_rounds: number; tool_max_chars: number }>();
+    'SELECT prompt, url, "key" as apiKey, model, max_rounds, tool_max_chars, vision FROM settings WHERE uid = ?'
+  ).bind(uid).first<{ prompt: string; url: string; apiKey: string; model: string; max_rounds: number; tool_max_chars: number; vision: number }>();
   if (!settings?.url || !settings?.apiKey || !settings?.model) {
     broadcast({ type: 'session.error', sid, message: '请先到「设置 → 大模型」配置 API 信息' });
     return;
@@ -88,15 +88,41 @@ async function runSessionSend(env: Env, input: SessionSendInput, broadcast: Broa
   }
 
   if (session.trigger) {
+    // 拿触发消息所在的整段对话（user ↔ peer），给 AI 完整上下文
     const trig = await env.DB.prepare(
-      'SELECT sender, body, created FROM messages WHERE id = ?'
-    ).bind(session.trigger).first<{ sender: string; body: string; created: number }>();
+      'SELECT cid, sender, body FROM messages WHERE id = ?'
+    ).bind(session.trigger).first<{ cid: string; sender: string; body: string }>();
     if (trig) {
+      const transcript = await env.DB.prepare(
+        'SELECT sender, body, created FROM messages WHERE cid = ? ORDER BY created ASC LIMIT 200'
+      ).bind(trig.cid).all<{ sender: string; body: string; created: number }>();
+
+      const lines = transcript.results.map((m) => {
+        const who = m.sender === handle ? '我' : `@${m.sender}`;
+        return `${who}: ${m.body}`;
+      }).join('\n');
+
       systemParts.push(
-        `你正在帮用户私下讨论一条收到的消息（用户不会回到原对话直接发），上下文如下：\n` +
-        `发件人：@${trig.sender}\n` +
-        `内容：${trig.body}\n\n` +
-        `接下来用户会跟你商量怎么解读、怎么回。你可以帮他思考、起草回复、查信息。`
+        `# 你正在帮用户私下讨论一场对话\n\n` +
+        `对方：@${trig.sender}\n` +
+        `最新一条来自对方的消息：「${trig.body}」\n\n` +
+        `## 完整聊天记录\n${lines || '（仅这一条）'}\n\n` +
+        `用户来跟你私下商量怎么读、怎么回。可以：\n` +
+        `- 帮他分析对方在想什么\n` +
+        `- 起草回复（可以多版本，正式/随意/直接）\n` +
+        `- 调用浏览器工具查资料、调用记忆工具读你以前对用户的了解\n\n` +
+        `## 在回复末尾追加一段建议（可选但鼓励）\n` +
+        `当合适时，在你的回复**最后**附加一段 suggestions 区块——让用户一键采用，省得复制粘贴：\n\n` +
+        `<suggestions>\n` +
+        `[\n` +
+        `  {"type": "reply", "text": "给对方的回复草稿，直接可发"},\n` +
+        `  {"type": "ask",   "text": "用户可能想继续问你的话"}\n` +
+        `]\n` +
+        `</suggestions>\n\n` +
+        `- \`reply\`：一句给对方（@${trig.sender}）的回复草稿——短、自然、直接可发，点击会塞进用户给对方的输入框\n` +
+        `- \`ask\`：用户可能想继续追问你的方向——点击会塞进当前这个悄悄商量的输入框\n` +
+        `- 每种 0-3 条；如果场景没有合适的建议就**不要**输出这段，正常结束就行\n` +
+        `- 一定要严格 JSON 数组，不要在 <suggestions> 里再加其他文字`
       );
     }
   }
@@ -129,6 +155,7 @@ async function runSessionSend(env: Env, input: SessionSendInput, broadcast: Broa
       system: systemPrompt || undefined,
       maxRounds: settings.max_rounds,
       toolResultMaxChars: settings.tool_max_chars,
+      vision: !!settings.vision,
       toolContext: { env, uid, handle },
       onEvent: async (e) => {
         if (e.type === 'assistant_message') {

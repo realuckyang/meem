@@ -24,14 +24,15 @@ async function dispatchToExtension(env: Env, handle: string, name: string, args:
   return body.data;
 }
 
-export const get_active_tab = (args: any, ctx: ToolContext) =>
-  dispatchToExtension(ctx.env, ctx.handle, 'get_active_tab', args ?? {});
-export const list_tabs = (args: any, ctx: ToolContext) =>
-  dispatchToExtension(ctx.env, ctx.handle, 'list_tabs', args ?? {});
-export const navigate_active_tab = (args: any, ctx: ToolContext) =>
-  dispatchToExtension(ctx.env, ctx.handle, 'navigate_active_tab', args ?? {});
-export const inspect_page = (args: any, ctx: ToolContext) =>
-  dispatchToExtension(ctx.env, ctx.handle, 'inspect_page', args ?? {});
+export const browser_status        = (args: any, ctx: ToolContext) => dispatchToExtension(ctx.env, ctx.handle, 'browser_status',        args ?? {});
+export const browser_open_tab      = (args: any, ctx: ToolContext) => dispatchToExtension(ctx.env, ctx.handle, 'browser_open_tab',      args ?? {});
+export const browser_tabs          = (args: any, ctx: ToolContext) => dispatchToExtension(ctx.env, ctx.handle, 'browser_tabs',          args ?? {});
+export const browser_activate_tab  = (args: any, ctx: ToolContext) => dispatchToExtension(ctx.env, ctx.handle, 'browser_activate_tab',  args ?? {});
+export const browser_close_tab     = (args: any, ctx: ToolContext) => dispatchToExtension(ctx.env, ctx.handle, 'browser_close_tab',     args ?? {});
+export const browser_navigate      = (args: any, ctx: ToolContext) => dispatchToExtension(ctx.env, ctx.handle, 'browser_navigate',      args ?? {});
+export const browser_evaluate      = (args: any, ctx: ToolContext) => dispatchToExtension(ctx.env, ctx.handle, 'browser_evaluate',      args ?? {});
+// 截图：扩展自己抓 + 自己 POST /api/media/upload，回 WS 时就只剩 URL 了
+export const browser_screenshot    = (args: any, ctx: ToolContext) => dispatchToExtension(ctx.env, ctx.handle, 'browser_screenshot',    args ?? {});
 
 // ── 记忆工具：服务端直查 D1 ────────────────────────────────────────────────
 

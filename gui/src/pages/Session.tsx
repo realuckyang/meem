@@ -147,7 +147,7 @@ export default function Session() {
               return (
                 <MessageRow
                   key={it.key}
-                  who="分身"
+                  who="智能体"
                   action="说"
                   time={fmtClock(it.created)}
                   avatar={<AgentAv size={28} />}
@@ -156,11 +156,11 @@ export default function Session() {
                 </MessageRow>
               );
             }
-            // tool_group —— 一轮调多个工具，共用一个分身 header
+            // tool_group —— 一轮调多个工具，共用一个智能体 header
             return (
               <MessageRow
                 key={it.key}
-                who="分身"
+                who="智能体"
                 action={it.calls.length > 1 ? `调用 ${it.calls.length} 个工具` : '调用工具'}
                 time={fmtClock(it.created)}
                 avatar={<AgentAv size={28} />}
@@ -180,7 +180,7 @@ export default function Session() {
           })}
 
           {running && (
-            <MessageRow who="分身" action="说" avatar={<AgentAv size={28} />} muted>
+            <MessageRow who="智能体" action="说" avatar={<AgentAv size={28} />} muted>
               <span className="typing-dots">
                 <span /><span /><span />
               </span>

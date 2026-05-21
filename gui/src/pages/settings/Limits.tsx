@@ -28,7 +28,7 @@ export default function Limits() {
       <SubHeader title="对话限制" onSave={save} saving={saving} />
       <div className="p-4 space-y-5">
         <p className="text-sm text-neutral-400 px-1">
-          这些参数控制分身在一次回复里能跑多少轮工具循环、单次工具结果最多带回多少内容。
+          这些参数控制智能体在一次回复里能跑多少轮工具循环、单次工具结果最多带回多少内容。
           数字越大越能完成复杂任务，但消耗 token 也越多。
         </p>
 
@@ -44,7 +44,7 @@ export default function Limits() {
             onChange={(e) => setMaxRounds(Number(e.target.value))}
             className="w-full"
           />
-          <div className="text-xs text-neutral-400 px-1">分身在一次回复里最多和 LLM 来回 N 次（含工具循环）</div>
+          <div className="text-xs text-neutral-400 px-1">智能体在一次回复里最多和 LLM 来回 N 次（含工具循环）</div>
         </div>
 
         <div className="space-y-2">

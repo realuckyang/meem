@@ -23,7 +23,7 @@ export default function Persona() {
     <div className="flex flex-col h-full">
       <SubHeader title="人设" onSave={save} saving={saving} />
       <div className="p-4 space-y-3">
-        <p className="text-sm text-neutral-400 px-1">告诉分身你是谁、它该怎么代表你</p>
+        <p className="text-sm text-neutral-400 px-1">告诉智能体你是谁、它该怎么代表你</p>
         <textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}

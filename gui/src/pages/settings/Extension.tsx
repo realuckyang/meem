@@ -14,8 +14,8 @@ export default function Extension() {
           </div>
           <p className="text-sm text-neutral-600 mt-2">
             {status.extension
-              ? '你的分身正在常驻运行，可以接收别人发来的消息并自动处理。'
-              : '没有插件，关掉网页后分身就停了。装上插件，Chrome 开着分身就一直在。'}
+              ? '你的智能体正在常驻运行，可以接收别人发来的消息并自动处理。'
+              : '没有插件，关掉网页后智能体就停了。装上插件，Chrome 开着智能体就一直在。'}
           </p>
         </div>
 

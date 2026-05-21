@@ -1,47 +1,144 @@
 // LLM 可见的工具 schema。
-// 实际执行在 functions.ts，会通过 WS 分发给浏览器扩展。
+// 浏览器系：通过 functions.ts → DO /dispatch 转发给扩展执行。
+// 记忆系：服务端直接读写 D1。
 
 export const tools = [
+  // ── 浏览器控制 ────────────────────────────────────────────────────────────
+
   {
     type: 'function',
     function: {
-      name: 'get_active_tab',
-      description: '获取用户当前正在浏览的标签页信息（URL、标题、是否激活）。',
-      parameters: { type: 'object', properties: {} },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'list_tabs',
-      description: '列出浏览器中所有打开的标签页。',
-      parameters: { type: 'object', properties: {} },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'navigate_active_tab',
-      description: '让当前激活的标签页跳转到指定 URL。',
+      name: 'browser_status',
+      description: 'Get Meem Browser Bridge status and current active tab information.',
       parameters: {
         type: 'object',
         properties: {
-          url: { type: 'string', description: '目标 URL，需带协议（https:// 等）' },
+          timeoutSeconds: { type: 'number' },
         },
-        required: ['url'],
+        additionalProperties: false,
       },
     },
   },
   {
     type: 'function',
     function: {
-      name: 'inspect_page',
-      description: '提取当前激活标签页的标题、URL 和正文文本。',
-      parameters: { type: 'object', properties: {} },
+      name: 'browser_open_tab',
+      description: 'Open a new inactive tab in the user current Chrome profile, optionally in a specific window.',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: { type: 'string' },
+          active: { type: 'boolean', description: 'Set true only when the user explicitly wants the tab focused. Defaults to false.' },
+          windowId: { type: 'number' },
+          timeoutSeconds: { type: 'number' },
+        },
+        required: ['url'],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'browser_tabs',
+      description: 'List Chrome tabs, optionally filtered by current window, active state, or windowId.',
+      parameters: {
+        type: 'object',
+        properties: {
+          currentWindow: { type: 'boolean' },
+          active: { type: 'boolean' },
+          windowId: { type: 'number' },
+          timeoutSeconds: { type: 'number' },
+        },
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'browser_activate_tab',
+      description: 'Activate a Chrome tab and focus its window.',
+      parameters: {
+        type: 'object',
+        properties: {
+          tabId: { type: 'number' },
+          timeoutSeconds: { type: 'number' },
+        },
+        required: ['tabId'],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'browser_close_tab',
+      description: 'Close a Chrome tab.',
+      parameters: {
+        type: 'object',
+        properties: {
+          tabId: { type: 'number' },
+          timeoutSeconds: { type: 'number' },
+        },
+        required: ['tabId'],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'browser_navigate',
+      description: 'Navigate a Chrome tab to a URL.',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: { type: 'string' },
+          tabId: { type: 'number' },
+          timeoutSeconds: { type: 'number' },
+        },
+        required: ['url'],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'browser_evaluate',
+      description: 'Evaluate JavaScript in a Chrome tab and return the result. Use this to extract DOM data, click elements, fill forms, scroll, etc.',
+      parameters: {
+        type: 'object',
+        properties: {
+          code: { type: 'string', description: 'JavaScript expression or statements. The last expression value is returned.' },
+          tabId: { type: 'number' },
+          timeoutSeconds: { type: 'number' },
+        },
+        required: ['code'],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'browser_screenshot',
+      description: 'Capture a screenshot of a Chrome tab visible viewport, return as base64 data URL.',
+      parameters: {
+        type: 'object',
+        properties: {
+          format: { type: 'string', enum: ['png', 'jpeg'] },
+          tabId: { type: 'number' },
+          quality: { type: 'number', description: 'jpeg quality 0-100' },
+          timeoutSeconds: { type: 'number' },
+        },
+        additionalProperties: false,
+      },
     },
   },
 
-  // ── 记忆工具：分身管理自己的长期记忆库 ───────────────────────────────────
+  // ── 记忆 ─────────────────────────────────────────────────────────────────
 
   {
     type: 'function',

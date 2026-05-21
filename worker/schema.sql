@@ -19,7 +19,8 @@ CREATE TABLE settings (
   key            TEXT    NOT NULL DEFAULT '',
   model          TEXT    NOT NULL DEFAULT '',
   max_rounds     INTEGER NOT NULL DEFAULT 20,
-  tool_max_chars INTEGER NOT NULL DEFAULT 12000
+  tool_max_chars INTEGER NOT NULL DEFAULT 12000,
+  vision         INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE conversations (

@@ -15,7 +15,7 @@ interface Memory {
 const PRIORITIES: { key: Memory['priority']; label: string; emoji: string; desc: string }[] = [
   { key: 'must',    label: '必读', emoji: '⭐', desc: '每次对话都会注入到上下文' },
   { key: 'starred', label: '重点', emoji: '📌', desc: '可被搜索，重要场景下使用' },
-  { key: 'stored',  label: '存档', emoji: '📦', desc: '安静放着，分身按需检索' },
+  { key: 'stored',  label: '存档', emoji: '📦', desc: '安静放着，智能体按需检索' },
 ];
 
 export default function Memory() {
@@ -47,7 +47,7 @@ export default function Memory() {
       <SubHeader title="自我更新" />
       <div className="px-4 py-3 bg-amber-50/60 border-b border-amber-100">
         <p className="text-[12.5px] text-amber-700 leading-relaxed">
-          分身会在对话里主动用 <code className="bg-amber-100 px-1 rounded text-[11.5px]">memory_add / memory_edit / memory_delete</code> 维护这里的内容。
+          智能体会在对话里主动用 <code className="bg-amber-100 px-1 rounded text-[11.5px]">memory_add / memory_edit / memory_delete</code> 维护这里的内容。
           你也可以手动添加和编辑。
         </p>
       </div>

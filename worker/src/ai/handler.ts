@@ -39,6 +39,7 @@ export interface ChatConfig extends ChatOptions {
   model: string;
   provider?: string;
   system?: string;
+  vision?: boolean;
   toolContext: ToolContext;
   onEvent?: (e: ChatEvent) => void | Promise<void>;
 }
@@ -58,9 +59,12 @@ export async function chat(input: ChatMessage[], config: ChatConfig): Promise<Ch
     provider: config.provider,
   }) as ChatMessage[]);
 
+  // vision 关闭时，剔除会产生图像数据的工具——避免文本模型收到无法理解的内容
+  const exposedTools = config.vision ? tools : tools.filter((t: any) => t.function?.name !== 'browser_screenshot');
+
   let round = 0;
   while (round++ < opts.maxRounds) {
-    const payload = { model: config.model, messages: workMessages, tools };
+    const payload = { model: config.model, messages: workMessages, tools: exposedTools };
     const { message, usage }: { message: any; usage: any } =
       await callLlmRegular(config.apiUrl, config.apiKey, payload, { provider: config.provider });
 

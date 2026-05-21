@@ -52,7 +52,7 @@ export default function Settings() {
         />
       </Section>
 
-      <Section title="分身">
+      <Section title="智能体">
         <Row icon="🤖" label="大模型" value={me.settings.model || '未配置'} onClick={() => navigate('/settings/model')} />
         <Row icon="🪪" label="人设" value={me.settings.prompt ? `${me.settings.prompt.length} 字` : '未配置'} onClick={() => navigate('/settings/persona')} />
         <Row icon="⚙️" label="模式" value={MODE_LABEL[me.settings.mode]} onClick={() => navigate('/settings/mode')} />

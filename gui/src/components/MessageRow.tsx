@@ -49,7 +49,7 @@ export function CircleLabel({ label, size = 28, bg = '#37352f' }: { label: strin
   );
 }
 
-// 头像变体 2：分身/Agent
+// 头像变体 2：智能体/Agent
 export function AgentAv({ size = 20 }: { size?: number }) {
   return (
     <div

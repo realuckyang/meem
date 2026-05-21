@@ -4,8 +4,8 @@ import { useMe } from '../../lib/me';
 import SubHeader from '../../components/SubHeader';
 
 const OPTIONS: { key: 'auto' | 'review'; label: string; desc: string }[] = [
-  { key: 'auto', label: '自动回复', desc: '分身收到消息后直接回复对方' },
-  { key: 'review', label: '审批后回复', desc: '分身生成草稿后等你确认再发出' },
+  { key: 'auto', label: '自动回复', desc: '智能体收到消息后直接回复对方' },
+  { key: 'review', label: '审批后回复', desc: '智能体生成草稿后等你确认再发出' },
 ];
 
 export default function Mode() {

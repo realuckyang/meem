@@ -42,7 +42,7 @@ export default function Login({ onDone }: Props) {
     <div className="flex items-center justify-center h-full p-6 bg-neutral-100">
       <div className="w-full max-w-sm bg-white rounded-2xl px-7 pt-10 pb-8 flex flex-col">
         <h1 className="text-[30px] font-bold text-center tracking-tight">Meem</h1>
-        <p className="text-center text-neutral-400 text-sm mt-1 mb-8">数字分身</p>
+        <p className="text-center text-neutral-400 text-sm mt-1 mb-8">数字智能体</p>
         <form onSubmit={submit} className="space-y-3">
           <input value={handle} onChange={(e) => setHandle(e.target.value)} placeholder="账号" autoFocus autoComplete="username" className="input" />
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="密码" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} className="input" />
