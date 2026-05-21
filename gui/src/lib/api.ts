@@ -89,6 +89,7 @@ export interface Message {
 export interface Session {
   id: string;
   uid: string;
+  agent_id: string;
   kind: 'direct' | 'agent';
   status: 'thinking' | 'approval' | 'input' | 'done' | 'cancelled' | 'error';
   title: string | null;
@@ -96,6 +97,26 @@ export interface Session {
   created: number;
   updated: number;
   finished: number | null;
+}
+
+export interface Agent {
+  id: string;
+  uid: string;
+  name: string;
+  emoji: string;
+  description: string;
+  prompt: string;
+  preset: string | null;
+  created: number;
+  updated: number;
+  tools?: string[];        // 只在 GET /api/agents/:id 时返回
+}
+
+export interface ToolMeta {
+  name: string;
+  description: string;
+  kind: 'function' | 'agent' | 'trigger';
+  target_preset: string | null;
 }
 
 export interface MemoryItem {

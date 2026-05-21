@@ -5,21 +5,22 @@ const ROOT_PATHS: Record<Tab, string> = {
   messages: '/messages',
   contacts: '/contacts',
   feed:     '/feed',
+  agents:   '/agents',
   me:       '/me',
 };
 
 function pickTab(pathname: string): Tab | null {
   if (pathname.startsWith('/messages')) return 'messages';
-  if (pathname.startsWith('/sessions')) return 'messages';
   if (pathname.startsWith('/contacts')) return 'contacts';
   if (pathname.startsWith('/feed'))     return 'feed';
+  if (pathname.startsWith('/agents'))   return 'agents';
+  if (pathname.startsWith('/sessions')) return 'agents';  // 会话进入也算智能体 tab
   if (pathname.startsWith('/me'))       return 'me';
   return null;
 }
 
-// 根路径才显示 tab bar；进入子页隐藏
 function isRoot(pathname: string): boolean {
-  return ['/messages', '/contacts', '/feed', '/me'].includes(pathname);
+  return ['/messages', '/contacts', '/feed', '/agents', '/me'].includes(pathname);
 }
 
 export default function Layout() {

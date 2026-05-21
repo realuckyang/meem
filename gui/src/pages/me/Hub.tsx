@@ -42,13 +42,16 @@ export default function Settings() {
         <StatusRow icon="🖥️" label="电脑控制" status="todo" hint="敬请期待" last />
       </Section>
 
-      <Section title="智能体">
+      <Section title="共享配置">
         <Row icon="🤖" label="大模型" value={me.settings.model || '未配置'} onClick={() => navigate('/me/model')} />
-        <Row icon="🪪" label="人设" value={me.settings.prompt ? `${me.settings.prompt.length} 字` : '未配置'} onClick={() => navigate('/me/persona')} />
-        <Row icon="🧠" label="记忆" value="管理你的长期记忆" onClick={() => navigate('/me/memory')} />
+        <Row icon="🧠" label="长期记忆" value="所有智能体共享" onClick={() => navigate('/me/memory')} />
         <Row icon="🤫" label="悄悄商量" value={WHISPER_LABEL[me.settings.whisper_mode]} onClick={() => navigate('/me/whisper')} />
         <Row icon="📏" label="上下文窗口" value={`${me.settings.max_rounds} 轮`} onClick={() => navigate('/me/limits')} last />
       </Section>
+
+      <div className="px-4 pt-3 text-[11px] text-neutral-400 leading-relaxed">
+        每个智能体的人设、工具、头像都在「智能体」tab 里单独配置。
+      </div>
 
       <div className="px-4 pt-8 pb-10">
         <button className="btn-danger" onClick={() => { clearToken(); logout(); }}>退出登录</button>

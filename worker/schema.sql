@@ -58,6 +58,7 @@ CREATE INDEX idx_messages_cid_created ON messages(cid, created ASC);
 CREATE TABLE sessions (
   id       TEXT PRIMARY KEY,
   uid      TEXT NOT NULL,
+  agent_id TEXT NOT NULL DEFAULT '',
   kind     TEXT NOT NULL DEFAULT 'direct'
     CHECK(kind IN ('direct','agent')),
   status   TEXT NOT NULL DEFAULT 'thinking'
@@ -70,6 +71,28 @@ CREATE TABLE sessions (
 );
 
 CREATE INDEX idx_sessions_uid_updated ON sessions(uid, updated DESC);
+CREATE INDEX idx_sessions_agent ON sessions(agent_id, updated DESC);
+
+-- 多 agent 架构 v2
+CREATE TABLE agents (
+  id          TEXT PRIMARY KEY,
+  uid         TEXT NOT NULL,
+  name        TEXT NOT NULL,
+  emoji       TEXT NOT NULL DEFAULT '🤖',
+  description TEXT NOT NULL DEFAULT '',
+  prompt      TEXT NOT NULL DEFAULT '',
+  preset      TEXT,
+  created     INTEGER NOT NULL DEFAULT (unixepoch()),
+  updated     INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE INDEX idx_agents_uid ON agents(uid);
+CREATE INDEX idx_agents_uid_preset ON agents(uid, preset);
+
+CREATE TABLE maps (
+  agent_id  TEXT NOT NULL,
+  tool_name TEXT NOT NULL,
+  PRIMARY KEY (agent_id, tool_name)
+);
 
 CREATE TABLE events (
   id      INTEGER PRIMARY KEY AUTOINCREMENT,

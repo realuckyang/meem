@@ -3,13 +3,15 @@ import type { Ctx } from './helpers';
 import { err, json, newId } from './helpers';
 
 export async function handleSessionList(_request: Request, env: Env, ctx: Ctx): Promise<Response> {
-  const kind = ctx.url.searchParams.get('kind');
-  const trigger = ctx.url.searchParams.get('trigger');
+  const kind     = ctx.url.searchParams.get('kind');
+  const trigger  = ctx.url.searchParams.get('trigger');
+  const agent_id = ctx.url.searchParams.get('agent_id');
 
   const conds: string[] = ['uid = ?'];
   const args: unknown[] = [ctx.me.id];
-  if (kind)    { conds.push('kind = ?');    args.push(kind); }
-  if (trigger) { conds.push('trigger = ?'); args.push(trigger); }
+  if (kind)     { conds.push('kind = ?');     args.push(kind); }
+  if (trigger)  { conds.push('trigger = ?');  args.push(trigger); }
+  if (agent_id) { conds.push('agent_id = ?'); args.push(agent_id); }
 
   const rows = await env.DB.prepare(
     `SELECT * FROM sessions WHERE ${conds.join(' AND ')} ORDER BY updated DESC LIMIT 50`
@@ -18,12 +20,29 @@ export async function handleSessionList(_request: Request, env: Env, ctx: Ctx): 
 }
 
 export async function handleSessionCreate(request: Request, env: Env, ctx: Ctx): Promise<Response> {
-  const { title = '', kind = 'direct', trigger } = await request.json<any>();
+  const { title = '', kind = 'direct', trigger, agent_id = '' } = await request.json<any>();
+
+  // 必须绑定 agent。如果调用方没传 agent_id，按 kind 选默认：
+  //   kind=direct → chief；kind=agent (悄悄商量) → whisper
+  let aid = String(agent_id ?? '').trim();
+  if (!aid) {
+    const wanted = kind === 'agent' ? 'whisper' : 'chief';
+    const row = await env.DB.prepare(
+      'SELECT id FROM agents WHERE uid = ? AND preset = ? LIMIT 1'
+    ).bind(ctx.me.id, wanted).first<{ id: string }>();
+    if (!row) return err(`未找到 preset='${wanted}' 的预置 agent，先调 POST /api/agents/seed`, 400);
+    aid = row.id;
+  } else {
+    // 校验所有权
+    const own = await env.DB.prepare('SELECT 1 FROM agents WHERE id = ? AND uid = ?')
+      .bind(aid, ctx.me.id).first();
+    if (!own) return err('agent_id 无效或不属于你', 400);
+  }
+
   const id = newId();
-  // 新建时不在跑 LLM，显式置为 done；status='thinking' 只在 ws/session.ts 真正发起 LLM 调用时设置
-  await env.DB.prepare('INSERT INTO sessions (id,uid,kind,status,title,trigger) VALUES (?,?,?,?,?,?)')
-    .bind(id, ctx.me.id, kind, 'done', title, trigger ?? null).run();
-  return json({ id, uid: ctx.me.id, kind, status: 'done', title, trigger: trigger ?? null }, { status: 201 });
+  await env.DB.prepare('INSERT INTO sessions (id,uid,agent_id,kind,status,title,trigger) VALUES (?,?,?,?,?,?,?)')
+    .bind(id, ctx.me.id, aid, kind, 'done', title, trigger ?? null).run();
+  return json({ id, uid: ctx.me.id, agent_id: aid, kind, status: 'done', title, trigger: trigger ?? null }, { status: 201 });
 }
 
 export async function handleSession(request: Request, env: Env, ctx: Ctx, sid: string): Promise<Response> {

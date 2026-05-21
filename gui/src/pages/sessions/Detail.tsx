@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { marked } from 'marked';
 import { req, type Session as SessionType } from '../../lib/api';
 import { onFrame, sendFrame, isOpen } from '../../lib/socket';
@@ -39,8 +39,11 @@ function fmtClock(ts: number) {
 
 export default function Session() {
   const { sid: sidParam = '' } = useParams();
+  const [searchParams] = useSearchParams();
+  const draftAgentId = searchParams.get('agent') ?? '';
   const isDraft = sidParam === 'new';
   const [sid, setSid] = useState<string>(isDraft ? '' : sidParam);
+  const [agentId, setAgentId] = useState<string>(draftAgentId);
   const navigate = useNavigate();
   const { me } = useMe();
   const self = useConnectionStatus();
@@ -63,6 +66,7 @@ export default function Session() {
     if (!sid) { setSession(null); setItems([]); return; }
     req<SessionType>(`/api/sessions/${sid}`).then((s) => {
       setSession(s);
+      if (s.agent_id) setAgentId(s.agent_id);
       if (s.status === 'thinking') setRunning(true);
     }).catch(() => {});
     loadHistory();
@@ -103,13 +107,16 @@ export default function Session() {
     let targetSid = sid;
     if (!targetSid) {
       try {
+        const body: any = { kind: 'direct' };
+        if (agentId) body.agent_id = agentId;
         const s = await req<SessionType>('/api/sessions', {
           method: 'POST',
-          body: JSON.stringify({ kind: 'direct' }),
+          body: JSON.stringify(body),
         });
         targetSid = s.id;
         setSid(targetSid);
         setSession(s);
+        if (s.agent_id) setAgentId(s.agent_id);
         navigate(`/sessions/${targetSid}`, { replace: true });
       } catch (e: any) {
         setErrMsg(`新建会话失败: ${e?.message ?? e}`);
@@ -128,7 +135,7 @@ export default function Session() {
   return (
     <div className="flex flex-col h-full">
       <header className="h-14 flex items-center gap-2 px-3 bg-white/90 backdrop-blur border-b border-neutral-200 flex-shrink-0">
-        <button onClick={() => navigate('/sessions')} className="text-2xl text-accent px-1 leading-none">‹</button>
+        <button onClick={() => navigate(agentId ? `/agents/${agentId}` : '/agents')} className="text-2xl text-accent px-1 leading-none">‹</button>
         <div className="flex flex-col min-w-0 flex-1">
           <span className="text-[16px] font-semibold leading-tight truncate">
             {session?.title || (isDraft || !sid ? '新对话' : '智能体')}

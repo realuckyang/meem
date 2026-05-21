@@ -9,13 +9,16 @@ import Login from './pages/Login';
 import Layout from './pages/Layout';
 import MessagesList from './pages/messages/List';
 import MessageDetail from './pages/messages/Detail';
-import SessionsList from './pages/sessions/List';
 import SessionDetail from './pages/sessions/Detail';
 import FeedList from './pages/feed/List';
 import FeedDetail from './pages/feed/Detail';
 import FeedCompose from './pages/feed/Compose';
 import ContactsList from './pages/contacts/List';
 import ContactDetail from './pages/contacts/Detail';
+import AgentsList from './pages/agents/List';
+import AgentDetail from './pages/agents/Detail';
+import AgentSettings from './pages/agents/Settings';
+import AgentNew from './pages/agents/New';
 import MeHub from './pages/me/Hub';
 import ProfileSub from './pages/me/Profile';
 import ModelSub from './pages/me/Model';
@@ -60,13 +63,17 @@ export default function App() {
           <Route element={<Layout />}>
             <Route path="/messages" element={<MessagesList />} />
             <Route path="/messages/:cid" element={<MessageDetail />} />
-            <Route path="/sessions" element={<SessionsList />} />
+            <Route path="/sessions" element={<Navigate to="/agents" replace />} />
             <Route path="/sessions/:sid" element={<SessionDetail />} />
             <Route path="/feed" element={<FeedList />} />
             <Route path="/feed/new" element={<FeedCompose />} />
             <Route path="/feed/:id" element={<FeedDetail />} />
             <Route path="/contacts" element={<ContactsList />} />
             <Route path="/contacts/:handle" element={<ContactDetail />} />
+            <Route path="/agents" element={<AgentsList />} />
+            <Route path="/agents/new" element={<AgentNew />} />
+            <Route path="/agents/:aid" element={<AgentDetail />} />
+            <Route path="/agents/:aid/settings" element={<AgentSettings />} />
             <Route path="/me" element={<MeHub />} />
             <Route path="/me/profile" element={<ProfileSub />} />
             <Route path="/me/model" element={<ModelSub />} />

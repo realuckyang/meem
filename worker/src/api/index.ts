@@ -27,6 +27,9 @@ import {
   handleFeedList, handleFeedSearch, handleFeedCreate, handleFeedItem,
   handleCommentCreate, handleCommentDelete, handleLikeToggle,
 } from './feed';
+import {
+  handleAgentList, handleAgentCreate, handleAgent, handleRegistry, handleAgentSeed,
+} from './agents';
 
 export async function route(request: Request, env: Env, execCtx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
@@ -82,6 +85,16 @@ export async function route(request: Request, env: Env, execCtx: ExecutionContex
   }
   const memMatch = pathname.match(/^\/api\/memories\/([^/]+)$/);
   if (memMatch) return handleMemory(request, env, ctx, memMatch[1]);
+
+  // ── agents ──
+  if (pathname === '/api/registry' && method === 'GET') return handleRegistry(request, env, ctx);
+  if (pathname === '/api/agents/seed' && method === 'POST') return handleAgentSeed(request, env, ctx);
+  if (pathname === '/api/agents') {
+    if (method === 'GET') return handleAgentList(request, env, ctx);
+    if (method === 'POST') return handleAgentCreate(request, env, ctx);
+  }
+  const agentMatch = pathname.match(/^\/api\/agents\/([^/]+)$/);
+  if (agentMatch) return handleAgent(request, env, ctx, agentMatch[1]);
 
   // ── feed ──
   if (pathname === '/api/feed/search' && method === 'GET') return handleFeedSearch(request, env, ctx);

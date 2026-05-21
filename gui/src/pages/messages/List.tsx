@@ -4,7 +4,6 @@ import { req, type Conversation as ConvData, type User } from '../../lib/api';
 import { onFrame } from '../../lib/socket';
 import { useMe } from '../../lib/me';
 import { usePresence } from '../../lib/presence';
-import { useConnectionStatus } from '../../components/ConnectionStatus';
 import Avatar from '../../components/Avatar';
 import { AvatarPresence } from '../../components/PresenceDot';
 
@@ -27,7 +26,6 @@ export default function Messages() {
 
   const peers = useMemo(() => list.map((c) => c.peer ?? '').filter(Boolean), [list]);
   const presence = usePresence(peers);
-  const self = useConnectionStatus();
 
   const load = () => req<ConvData[]>('/api/conversations').then(setList).catch(() => {});
 
@@ -64,27 +62,7 @@ export default function Messages() {
         <button onClick={() => setShowNew(true)} className="text-2xl text-accent px-1 leading-none">＋</button>
       </header>
 
-      <button
-        onClick={() => navigate('/sessions')}
-        className="flex items-center gap-3 px-4 py-3 mx-3 mt-3 mb-2 bg-white rounded-xl shadow-sm border border-neutral-200 active:bg-neutral-50"
-      >
-        <div className="relative w-10 h-10 flex-shrink-0">
-          <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-xl">⌘</div>
-          <AvatarPresence status={self} />
-        </div>
-        <div className="flex-1 text-left">
-          <div className="font-medium">我的智能体</div>
-          <div className="text-xs text-neutral-400 mt-0.5">
-            {self.extension || self.extensionBg ? '浏览器在线' : self.web ? '浏览器离线' : '离线'}
-          </div>
-        </div>
-        <span className="text-neutral-400 text-lg">›</span>
-      </button>
-
       <div className="flex-1 overflow-y-auto">
-        {list.length > 0 && (
-          <div className="text-[11px] font-semibold tracking-wider text-neutral-400 uppercase px-4 pt-3 pb-2">最近会话</div>
-        )}
         {list.length === 0 && <div className="py-16 text-center text-neutral-400 text-sm">暂无消息</div>}
         {list.map((c) => (
           <button

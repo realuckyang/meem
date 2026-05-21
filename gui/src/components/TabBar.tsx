@@ -1,4 +1,4 @@
-export type Tab = 'messages' | 'contacts' | 'feed' | 'me';
+export type Tab = 'messages' | 'contacts' | 'feed' | 'agents' | 'me';
 
 interface Props {
   active: Tab;
@@ -9,6 +9,7 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: 'messages', label: '消息',   icon: '💬' },
   { key: 'contacts', label: '联系人', icon: '👥' },
   { key: 'feed',     label: '广播',   icon: '📣' },
+  { key: 'agents',   label: '智能体', icon: '🤖' },
   { key: 'me',       label: '我',     icon: '👤' },
 ];
 
