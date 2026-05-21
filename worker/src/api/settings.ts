@@ -13,7 +13,13 @@ export async function handleSettings(request: Request, env: Env, ctx: Ctx): Prom
     const vals: unknown[] = [];
     if (body.prompt !== undefined) { fields.push('prompt = ?'); vals.push(body.prompt); }
     if (body.public !== undefined) { fields.push('public = ?'); vals.push(body.public ? 1 : 0); }
-    if (body.mode !== undefined) { fields.push('mode = ?'); vals.push(body.mode); }
+    if (body.whisper_mode !== undefined) {
+      const m = String(body.whisper_mode);
+      if (!['silent', 'suggest', 'auto'].includes(m)) return new Response(JSON.stringify({ error: 'invalid whisper_mode' }), { status: 400 });
+      fields.push('whisper_mode = ?'); vals.push(m);
+    }
+    if (body.whisper_suggest_prompt !== undefined) { fields.push('whisper_suggest_prompt = ?'); vals.push(String(body.whisper_suggest_prompt)); }
+    if (body.whisper_auto_prompt    !== undefined) { fields.push('whisper_auto_prompt = ?');    vals.push(String(body.whisper_auto_prompt)); }
     if (body.url !== undefined) { fields.push('url = ?'); vals.push(body.url); }
     if (body.key !== undefined) { fields.push('"key" = ?'); vals.push(body.key); }
     if (body.model !== undefined) { fields.push('model = ?'); vals.push(body.model); }

@@ -17,7 +17,7 @@ import Settings from './pages/Settings';
 import ProfileSub from './pages/settings/Profile';
 import ModelSub from './pages/settings/Model';
 import PersonaSub from './pages/settings/Persona';
-import ModeSub from './pages/settings/Mode';
+import WhisperSub from './pages/settings/Whisper';
 import ExtensionSub from './pages/settings/Extension';
 import MemorySub from './pages/settings/Memory';
 import LimitsSub from './pages/settings/Limits';
@@ -65,7 +65,7 @@ export default function App() {
             <Route path="/settings/profile" element={<ProfileSub />} />
             <Route path="/settings/model" element={<ModelSub />} />
             <Route path="/settings/persona" element={<PersonaSub />} />
-            <Route path="/settings/mode" element={<ModeSub />} />
+            <Route path="/settings/whisper" element={<WhisperSub />} />
             <Route path="/settings/extension" element={<ExtensionSub />} />
             <Route path="/settings/memory" element={<MemorySub />} />
             <Route path="/settings/limits" element={<LimitsSub />} />

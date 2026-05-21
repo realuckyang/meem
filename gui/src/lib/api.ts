@@ -57,7 +57,9 @@ export interface Settings {
   uid: string;
   prompt: string;
   public: number;
-  mode: 'auto' | 'review';
+  whisper_mode: 'silent' | 'suggest' | 'auto';
+  whisper_suggest_prompt: string;
+  whisper_auto_prompt: string;
   url: string;
   key: string;
   model: string;

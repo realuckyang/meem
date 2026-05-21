@@ -126,8 +126,9 @@ export default function MessageAgentBlock({ messageId, initialSession, onAdopt }
           return (
             <Row
               key={it.key}
-              avatar={<span className="w-4 h-4 rounded-full bg-neutral-700 text-white text-[9px] grid place-items-center font-semibold flex-shrink-0">我</span>}
-              who="你"
+              avatar={<Avatar handle={me.handle} name={me.name} size={18} />}
+              who="我"
+              action="对智能体说"
               time={fmtClock(it.created)}
               tone="user"
             >

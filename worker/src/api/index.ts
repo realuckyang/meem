@@ -23,7 +23,7 @@ import {
 import { handleStatus, handleUpgrade } from '../ws';
 import { handleMediaGet, handleMediaUpload } from './media';
 
-export async function route(request: Request, env: Env): Promise<Response> {
+export async function route(request: Request, env: Env, execCtx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
   const { pathname } = url;
   const method = request.method;
@@ -43,7 +43,7 @@ export async function route(request: Request, env: Env): Promise<Response> {
   if (!me && pathname.startsWith('/api/')) return err('unauthorized', 401);
   if (!me) return env.ASSETS ? env.ASSETS.fetch(request) : new Response('not found', { status: 404 });
 
-  const ctx = { me, url, method };
+  const ctx = { me, url, method, execCtx };
 
   // ── REST ──
   if (pathname === '/api/me') return handleMe(request, env, ctx);

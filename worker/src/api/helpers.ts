@@ -58,4 +58,5 @@ export interface Ctx {
   me: UserRow;
   url: URL;
   method: string;
+  execCtx: ExecutionContext;
 }

@@ -25,7 +25,7 @@ export default function Limits() {
 
   return (
     <div className="flex flex-col h-full">
-      <SubHeader title="对话限制" onSave={save} saving={saving} />
+      <SubHeader title="上下文窗口" onSave={save} saving={saving} />
       <div className="p-4 space-y-5">
         <p className="text-sm text-neutral-400 px-1">
           这些参数控制智能体在一次回复里能跑多少轮工具循环、单次工具结果最多带回多少内容。

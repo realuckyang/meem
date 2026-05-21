@@ -8,6 +8,9 @@ export interface ToolContext {
   env: Env;
   uid: string;
   handle: string;
+  // 仅 auto-reply 触发的 session 才会塞这两个字段；其他场景为空，conversation_reply 工具会拒绝执行
+  replyCid?: string;
+  replyPeer?: string;
 }
 
 // ── 转发到扩展 ─────────────────────────────────────────────────────────────
@@ -93,4 +96,41 @@ export async function memory_delete(args: { id?: string }, ctx: ToolContext) {
   if (!id) throw new Error('id required');
   const res = await ctx.env.DB.prepare('DELETE FROM memories WHERE id = ? AND uid = ?').bind(id, ctx.uid).run();
   return { ok: true, changes: res.meta?.changes ?? 0 };
+}
+
+// ── 代用户发消息：仅在 auto 模式触发的 session 里可用 ──────────────────────
+
+export async function conversation_reply(args: { text?: string }, ctx: ToolContext) {
+  const text = String(args?.text ?? '').trim();
+  if (!text) throw new Error('text required');
+  if (!ctx.replyCid) throw new Error('conversation_reply 仅在自动回复模式下可用，当前 session 无目标会话');
+
+  // 校验用户仍是这条会话的成员
+  const member = await ctx.env.DB.prepare(
+    'SELECT handle FROM members WHERE cid = ? AND handle = ?'
+  ).bind(ctx.replyCid, ctx.handle).first();
+  if (!member) throw new Error('not a member of this conversation');
+
+  const id = crypto.randomUUID();
+  const created = Math.floor(Date.now() / 1000);
+  await ctx.env.DB.prepare('INSERT INTO messages (id,cid,sender,body,created) VALUES (?,?,?,?,?)')
+    .bind(id, ctx.replyCid, ctx.handle, text, created).run();
+  await ctx.env.DB.prepare('UPDATE conversations SET preview = ?, updated = ? WHERE id = ?')
+    .bind(text.slice(0, 80), created, ctx.replyCid).run();
+  await ctx.env.DB.prepare('UPDATE members SET unread = unread + 1 WHERE cid = ? AND handle != ?')
+    .bind(ctx.replyCid, ctx.handle).run();
+
+  // 推送给所有成员
+  const allMembers = await ctx.env.DB.prepare('SELECT handle FROM members WHERE cid = ?')
+    .bind(ctx.replyCid).all<{ handle: string }>();
+  const msg = { id, cid: ctx.replyCid, sender: ctx.handle, body: text, created };
+  for (const { handle } of allMembers.results) {
+    const stub = ctx.env.AVATAR.get(ctx.env.AVATAR.idFromName(handle));
+    stub.fetch(new Request('https://room/push', {
+      method: 'POST',
+      body: JSON.stringify({ type: 'message', message: msg }),
+    })).catch(() => {});
+  }
+
+  return { ok: true, id, sentTo: ctx.replyPeer ?? null };
 }

@@ -11,16 +11,19 @@ CREATE TABLE users (
 );
 
 CREATE TABLE settings (
-  uid            TEXT    PRIMARY KEY,
-  prompt         TEXT    NOT NULL DEFAULT '',
-  public         INTEGER NOT NULL DEFAULT 1,
-  mode           TEXT    NOT NULL DEFAULT 'auto' CHECK(mode IN ('auto','review')),
-  url            TEXT    NOT NULL DEFAULT '',
-  key            TEXT    NOT NULL DEFAULT '',
-  model          TEXT    NOT NULL DEFAULT '',
-  max_rounds     INTEGER NOT NULL DEFAULT 20,
-  tool_max_chars INTEGER NOT NULL DEFAULT 12000,
-  vision         INTEGER NOT NULL DEFAULT 0
+  uid                    TEXT    PRIMARY KEY,
+  prompt                 TEXT    NOT NULL DEFAULT '',
+  public                 INTEGER NOT NULL DEFAULT 1,
+  whisper_mode           TEXT    NOT NULL DEFAULT 'silent'
+                                 CHECK(whisper_mode IN ('silent','suggest','auto')),
+  whisper_suggest_prompt TEXT    NOT NULL DEFAULT '',
+  whisper_auto_prompt    TEXT    NOT NULL DEFAULT '',
+  url                    TEXT    NOT NULL DEFAULT '',
+  key                    TEXT    NOT NULL DEFAULT '',
+  model                  TEXT    NOT NULL DEFAULT '',
+  max_rounds             INTEGER NOT NULL DEFAULT 20,
+  tool_max_chars         INTEGER NOT NULL DEFAULT 12000,
+  vision                 INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE conversations (

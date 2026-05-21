@@ -4,9 +4,10 @@ import { useMe } from '../lib/me';
 import Avatar from '../components/Avatar';
 import { useConnectionStatus } from '../components/ConnectionStatus';
 
-const MODE_LABEL: Record<string, string> = {
-  auto: '自动回复',
-  review: '审批后回复',
+const WHISPER_LABEL: Record<string, string> = {
+  silent:  '静默',
+  suggest: '主动建议',
+  auto:    '自动回复',
 };
 
 export default function Settings() {
@@ -36,27 +37,16 @@ export default function Settings() {
       </button>
 
       <Section title="能力">
-        <Row
-          icon="🧠"
-          label="自我更新"
-          value="记忆"
-          onClick={() => navigate('/settings/memory')}
-        />
-        <PluginRow status={status} onClick={() => navigate('/settings/extension')} />
-        <Row
-          icon="🖥️"
-          label="电脑控制"
-          value="敬请期待"
-          dim
-          last
-        />
+        <PluginRow status={status} />
+        <StatusRow icon="🖥️" label="电脑控制" status="todo" hint="敬请期待" last />
       </Section>
 
       <Section title="智能体">
         <Row icon="🤖" label="大模型" value={me.settings.model || '未配置'} onClick={() => navigate('/settings/model')} />
         <Row icon="🪪" label="人设" value={me.settings.prompt ? `${me.settings.prompt.length} 字` : '未配置'} onClick={() => navigate('/settings/persona')} />
-        <Row icon="⚙️" label="模式" value={MODE_LABEL[me.settings.mode]} onClick={() => navigate('/settings/mode')} />
-        <Row icon="📏" label="对话限制" value={`${me.settings.max_rounds} 轮`} onClick={() => navigate('/settings/limits')} last />
+        <Row icon="🧠" label="记忆" value="管理你的长期记忆" onClick={() => navigate('/settings/memory')} />
+        <Row icon="🤫" label="悄悄商量" value={WHISPER_LABEL[me.settings.whisper_mode]} onClick={() => navigate('/settings/whisper')} />
+        <Row icon="📏" label="上下文窗口" value={`${me.settings.max_rounds} 轮`} onClick={() => navigate('/settings/limits')} last />
       </Section>
 
       <div className="px-4 pt-8 pb-10">
@@ -90,10 +80,26 @@ function Row({ icon, label, value, onClick, last, dim }: { icon: string; label: 
   );
 }
 
-function PluginRow({ status, onClick }: { status: { extension: boolean; web: boolean }; onClick: () => void }) {
+function StatusRow({ icon, label, status, hint, last }: { icon: string; label: string; status: 'ok' | 'todo'; hint: string; last?: boolean }) {
+  const dotColor = status === 'ok' ? 'bg-emerald-500' : 'bg-neutral-300';
+  const textColor = status === 'ok' ? 'text-emerald-600' : 'text-neutral-400';
+  return (
+    <div className={`flex items-center gap-3 w-full px-4 py-3 ${last ? '' : 'border-b border-neutral-100'} ${status === 'todo' ? 'opacity-70' : ''}`}>
+      <span className="text-lg w-6 text-center flex-shrink-0">{icon}</span>
+      <span className="flex-1 text-[15px]">{label}</span>
+      <span className={`flex items-center gap-1.5 text-sm ${textColor}`}>
+        <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+        {hint}
+      </span>
+    </div>
+  );
+}
+
+function PluginRow({ status }: { status: { extension: boolean; web: boolean } }) {
+  const navigate = useNavigate();
   const ok = status.extension;
   return (
-    <button onClick={onClick} className="flex items-center gap-3 w-full px-4 py-3 text-left active:bg-neutral-50 border-b border-neutral-100">
+    <button onClick={() => navigate('/settings/extension')} className="flex items-center gap-3 w-full px-4 py-3 text-left active:bg-neutral-50 border-b border-neutral-100">
       <span className="text-lg w-6 text-center flex-shrink-0">🌐</span>
       <span className="flex-1 text-[15px]">浏览器控制</span>
       <span className={`flex items-center gap-1.5 text-sm ${ok ? 'text-emerald-600' : 'text-red-500'}`}>

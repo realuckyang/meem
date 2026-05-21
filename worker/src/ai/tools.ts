@@ -138,6 +138,23 @@ export const tools = [
     },
   },
 
+  // ── 代用户发消息（仅 whisper_mode=auto 模式开放） ─────────────────────────
+
+  {
+    type: 'function',
+    function: {
+      name: 'conversation_reply',
+      description: '代用户给对方发送一条回复。仅在「自动回复对方」模式下可用。调用后消息会立即发出，对方会收到。',
+      parameters: {
+        type: 'object',
+        properties: {
+          text: { type: 'string', description: '要发送的文本内容。请用用户的语气，自然、贴合上下文。' },
+        },
+        required: ['text'],
+      },
+    },
+  },
+
   // ── 记忆 ─────────────────────────────────────────────────────────────────
 
   {

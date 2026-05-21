@@ -59,8 +59,15 @@ export async function chat(input: ChatMessage[], config: ChatConfig): Promise<Ch
     provider: config.provider,
   }) as ChatMessage[]);
 
-  // vision 关闭时，剔除会产生图像数据的工具——避免文本模型收到无法理解的内容
-  const exposedTools = config.vision ? tools : tools.filter((t: any) => t.function?.name !== 'browser_screenshot');
+  // 工具过滤：
+  // - vision 关闭 → 不暴露 browser_screenshot
+  // - 没有 replyCid（非 auto 触发 session）→ 不暴露 conversation_reply
+  const exposedTools = (tools as readonly any[]).filter((t) => {
+    const name = t.function?.name;
+    if (name === 'browser_screenshot' && !config.vision) return false;
+    if (name === 'conversation_reply' && !config.toolContext.replyCid) return false;
+    return true;
+  });
 
   let round = 0;
   while (round++ < opts.maxRounds) {

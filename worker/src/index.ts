@@ -6,7 +6,7 @@ export { AvatarRoom };
 export type { Env };
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    return route(request, env);
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    return route(request, env, ctx);
   },
 };

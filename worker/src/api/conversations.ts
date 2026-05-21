@@ -2,6 +2,7 @@ import type { Env } from '../types';
 import type { Ctx } from './helpers';
 import { err, json, newId } from './helpers';
 import { pushToHandle } from '../ws/status';
+import { runSessionSend } from '../ws/session';
 
 export async function handleConversationList(_request: Request, env: Env, ctx: Ctx): Promise<Response> {
   const rows = await env.DB.prepare(`
@@ -69,8 +70,62 @@ export async function handleMessages(request: Request, env: Env, ctx: Ctx, cid: 
     for (const { handle } of members.results) {
       await pushToHandle(env, handle, { type: 'message', message: msg });
     }
+
+    // 触发其他成员的智能体（按各自 whisper_mode）
+    for (const { handle: peerHandle } of members.results) {
+      if (peerHandle === ctx.me.handle) continue;  // 不触发发件人自己
+      ctx.execCtx.waitUntil(triggerWhisper(env, peerHandle, id, ctx.me.handle, cid));
+    }
+
     return json(msg, { status: 201 });
   }
 
   return new Response('method not allowed', { status: 405 });
+}
+
+// 入站消息触发收件人的智能体：按 whisper_mode 决定行为。
+// silent=不做事；suggest=建议草稿；auto=代发回复（带 conversation_reply 工具）。
+async function triggerWhisper(
+  env: Env,
+  peerHandle: string,
+  triggerMsgId: string,
+  senderHandle: string,
+  cid: string,
+): Promise<void> {
+  try {
+    const peer = await env.DB.prepare('SELECT id FROM users WHERE handle = ?').bind(peerHandle).first<{ id: string }>();
+    if (!peer) return;
+
+    const s = await env.DB.prepare(
+      'SELECT whisper_mode, whisper_suggest_prompt, whisper_auto_prompt FROM settings WHERE uid = ?'
+    ).bind(peer.id).first<{ whisper_mode: string; whisper_suggest_prompt: string; whisper_auto_prompt: string }>();
+    const mode = s?.whisper_mode ?? 'silent';
+    if (mode === 'silent') return;
+
+    // 创建一个 agent session，trigger 指向触发消息
+    const sid = newId();
+    await env.DB.prepare(
+      'INSERT INTO sessions (id, uid, kind, status, title, trigger) VALUES (?, ?, ?, ?, ?, ?)'
+    ).bind(sid, peer.id, 'agent', 'done', mode === 'auto' ? '自动回复' : '主动建议', triggerMsgId).run();
+
+    const extraSystem = (mode === 'suggest' ? s?.whisper_suggest_prompt : s?.whisper_auto_prompt) ?? '';
+    const seedText = '收到对方一条新消息，请按当前模式的要求处理。';
+
+    await runSessionSend(
+      env,
+      {
+        uid: peer.id,
+        sid,
+        text: seedText,
+        handle: peerHandle,
+        extraSystem,
+        ...(mode === 'auto' ? { replyCid: cid, replyPeer: senderHandle } : {}),
+        silent: false,  // 仍广播到 peer 的 WS，让他打开就能看到智能体的活动
+      },
+      // 给 peerHandle 广播，不是给当前 sender
+      (frame) => { void pushToHandle(env, peerHandle, frame); },
+    );
+  } catch {
+    // 触发失败不影响正常消息送达
+  }
 }

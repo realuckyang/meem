@@ -11,7 +11,19 @@ import type { FrameContext } from './dispatch';
 
 type Broadcast = (frame: unknown) => void;
 
-interface SessionSendInput { uid: string; sid: string; text: string; handle: string; }
+interface SessionSendInput {
+  uid: string;
+  sid: string;
+  text: string;
+  handle: string;
+  // 由 auto-reply 入站触发器调用时，告诉 chat() 允许用 conversation_reply
+  replyCid?: string;
+  replyPeer?: string;
+  // 由 suggest/auto 触发时附加的额外系统提示词（来自 settings.whisper_*_prompt）
+  extraSystem?: string;
+  // 不广播 thinking/done（auto 触发的后台 session 不需要打扰用户）
+  silent?: boolean;
+}
 
 interface EventRow {
   id: number;
@@ -38,8 +50,9 @@ export async function handle(ctx: FrameContext, frame: { type: string; [k: strin
 
 // ── 业务：发一条消息 ────────────────────────────────────────────────────────
 
-async function runSessionSend(env: Env, input: SessionSendInput, broadcast: Broadcast): Promise<void> {
-  const { uid, sid, text, handle } = input;
+export async function runSessionSend(env: Env, input: SessionSendInput, broadcast: Broadcast): Promise<void> {
+  const { uid, sid, text, handle, extraSystem, replyCid, replyPeer, silent } = input;
+  const emit = silent ? (() => {}) : broadcast;
   if (!sid || !text?.trim()) {
     broadcast({ type: 'session.error', sid, message: 'sid 和 text 必填' });
     return;
@@ -58,37 +71,30 @@ async function runSessionSend(env: Env, input: SessionSendInput, broadcast: Broa
   const settings = await env.DB.prepare(
     'SELECT prompt, url, "key" as apiKey, model, max_rounds, tool_max_chars, vision FROM settings WHERE uid = ?'
   ).bind(uid).first<{ prompt: string; url: string; apiKey: string; model: string; max_rounds: number; tool_max_chars: number; vision: number }>();
+  // 外部传入的 extraSystem 已经包含模式特定提示词，这里不再读取 whisper_*_prompt
   if (!settings?.url || !settings?.apiKey || !settings?.model) {
     broadcast({ type: 'session.error', sid, message: '请先到「设置 → 大模型」配置 API 信息' });
     return;
   }
 
-  // 3. 装上下文：base prompt + must 记忆 + trigger 注入（如有） + 历史 + 当前用户消息
+  // 3. 装上下文：完全从 DB 读，不混硬编码指令
+  //   - settings.prompt（用户人设，能看能编）
+  //   - 所有 priority=must 的记忆（系统指令也以记忆形式存在，能看能编能删）
+  //   - 若是悄悄商量场景，再注入对话 transcript 作为数据
   const systemParts: string[] = [];
   if (settings.prompt?.trim()) systemParts.push(settings.prompt.trim());
 
-  // must 优先级记忆——每次对话都注入
   const mustMems = await env.DB.prepare(
     'SELECT title, content, summary FROM memories WHERE uid = ? AND priority = ? ORDER BY updated DESC LIMIT 30'
   ).bind(uid, 'must').all<{ title: string; content: string; summary: string }>();
-  if (mustMems.results.length) {
-    const memText = mustMems.results
-      .map((m) => `### ${m.title}\n${m.content || m.summary}`)
-      .join('\n\n');
-    systemParts.push(
-      `# 关于用户（务必记住）\n\n${memText}\n\n` +
-      `如果用户透露了新的重要信息，或者你发现已有记忆需要更新，主动调用 memory_add / memory_edit。\n` +
-      `还有更多记忆通过 memory_search 可以查到。`
-    );
-  } else {
-    systemParts.push(
-      `你有一个记忆库——通过 memory_search / memory_list 查询，通过 memory_add / memory_edit / memory_delete 管理。\n` +
-      `当用户透露关于自己的重要信息（偏好、关键事实、长期目标），主动用 memory_add 记下来。`
-    );
+  for (const m of mustMems.results) {
+    systemParts.push(`### ${m.title}\n${m.content || m.summary}`);
   }
 
+  // 模式特定提示词（由调用方根据 settings.whisper_*_prompt 准备好后传入）
+  if (extraSystem?.trim()) systemParts.push(extraSystem.trim());
+
   if (session.trigger) {
-    // 拿触发消息所在的整段对话（user ↔ peer），给 AI 完整上下文
     const trig = await env.DB.prepare(
       'SELECT cid, sender, body FROM messages WHERE id = ?'
     ).bind(session.trigger).first<{ cid: string; sender: string; body: string }>();
@@ -103,29 +109,14 @@ async function runSessionSend(env: Env, input: SessionSendInput, broadcast: Broa
       }).join('\n');
 
       systemParts.push(
-        `# 你正在帮用户私下讨论一场对话\n\n` +
-        `对方：@${trig.sender}\n` +
-        `最新一条来自对方的消息：「${trig.body}」\n\n` +
-        `## 完整聊天记录\n${lines || '（仅这一条）'}\n\n` +
-        `用户来跟你私下商量怎么读、怎么回。可以：\n` +
-        `- 帮他分析对方在想什么\n` +
-        `- 起草回复（可以多版本，正式/随意/直接）\n` +
-        `- 调用浏览器工具查资料、调用记忆工具读你以前对用户的了解\n\n` +
-        `## 在回复末尾追加一段建议（可选但鼓励）\n` +
-        `当合适时，在你的回复**最后**附加一段 suggestions 区块——让用户一键采用，省得复制粘贴：\n\n` +
-        `<suggestions>\n` +
-        `[\n` +
-        `  {"type": "reply", "text": "给对方的回复草稿，直接可发"},\n` +
-        `  {"type": "ask",   "text": "用户可能想继续问你的话"}\n` +
-        `]\n` +
-        `</suggestions>\n\n` +
-        `- \`reply\`：一句给对方（@${trig.sender}）的回复草稿——短、自然、直接可发，点击会塞进用户给对方的输入框\n` +
-        `- \`ask\`：用户可能想继续追问你的方向——点击会塞进当前这个悄悄商量的输入框\n` +
-        `- 每种 0-3 条；如果场景没有合适的建议就**不要**输出这段，正常结束就行\n` +
-        `- 一定要严格 JSON 数组，不要在 <suggestions> 里再加其他文字`
+        `### 来自其他对话的上下文（用户和 @${trig.sender}）\n` +
+        `${lines || '（仅这一条）'}\n` +
+        `\n最新一条来自对方：「${trig.body}」\n` +
+        `用户想跟你私下商量怎么回。`
       );
     }
   }
+
   const systemPrompt = systemParts.join('\n\n');
 
   const history = await env.DB.prepare(
@@ -141,9 +132,9 @@ async function runSessionSend(env: Env, input: SessionSendInput, broadcast: Broa
 
   // 4. 持久化 + 广播 user 事件
   const userId = await insertEvent(env, sid, uid, userMsg, null);
-  broadcast({ type: 'event', event: { id: userId, sid, message: userMsg } });
+  emit({ type: 'event', event: { id: userId, sid, message: userMsg } });
 
-  broadcast({ type: 'session.thinking', sid });
+  emit({ type: 'session.thinking', sid });
   await env.DB.prepare('UPDATE sessions SET status = ?, updated = unixepoch() WHERE id = ?').bind('thinking', sid).run();
 
   // 5. 跑 chat loop——每个 assistant_message / tool_result 都通过 onEvent 直接持久化
@@ -156,30 +147,30 @@ async function runSessionSend(env: Env, input: SessionSendInput, broadcast: Broa
       maxRounds: settings.max_rounds,
       toolResultMaxChars: settings.tool_max_chars,
       vision: !!settings.vision,
-      toolContext: { env, uid, handle },
+      toolContext: { env, uid, handle, replyCid, replyPeer },
       onEvent: async (e) => {
         if (e.type === 'assistant_message') {
           const m = (e as any).message;
           const usage = (e as any).usage ?? null;
           const id = await insertEvent(env, sid, uid, m, usage ? { usage } : null);
-          broadcast({ type: 'event', event: { id, sid, message: m } });
+          emit({ type: 'event', event: { id, sid, message: m } });
         }
         if (e.type === 'tool_result') {
           const m = (e as any).message;
           const id = await insertEvent(env, sid, uid, m, null);
-          broadcast({ type: 'event', event: { id, sid, message: m } });
+          emit({ type: 'event', event: { id, sid, message: m } });
         }
       },
     });
   } catch (e: any) {
     await env.DB.prepare('UPDATE sessions SET status = ?, updated = unixepoch() WHERE id = ?').bind('error', sid).run();
-    broadcast({ type: 'session.error', sid, message: `调用失败: ${e?.message ?? e}` });
+    emit({ type: 'session.error', sid, message: `调用失败: ${e?.message ?? e}` });
     return;
   }
 
   // 6. 收尾
   await env.DB.prepare('UPDATE sessions SET status = ?, updated = unixepoch() WHERE id = ?').bind('done', sid).run();
-  broadcast({ type: 'session.done', sid });
+  emit({ type: 'session.done', sid });
 }
 
 async function insertEvent(env: Env, sid: string, uid: string, message: any, meta: unknown): Promise<number> {
