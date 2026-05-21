@@ -1,62 +1,40 @@
-import type { Hono } from 'hono';
-import { INCLUSIONS } from '../lib/constants';
-import { now } from '../lib/id';
-import {
-  createMemory,
-  deleteMemory,
-  loadMemoriesForUser,
-  loadMemory,
-  patchMemory,
-} from '../repository/memories';
-import { notifyHub } from '../service/hub';
-import type { AppVariables, Env, Inclusion } from '../types';
+import type { Env } from '../types';
+import type { Ctx } from './helpers';
+import { err, json, newId } from './helpers';
 
-type App = Hono<{ Bindings: Env; Variables: AppVariables }>;
+export async function handleMemoryList(_request: Request, env: Env, ctx: Ctx): Promise<Response> {
+  const rows = await env.DB.prepare(
+    'SELECT * FROM memories WHERE uid = ? ORDER BY priority ASC, updated DESC'
+  ).bind(ctx.me.id).all();
+  return json(rows.results);
+}
 
-export function mountMemoriesApi(app: App) {
-  app.get('/api/memories', async (c) => {
-    return c.json(await loadMemoriesForUser(c.env, c.get('userId')));
-  });
+export async function handleMemoryCreate(request: Request, env: Env, ctx: Ctx): Promise<Response> {
+  const { title, summary = '', content = '', priority = 'stored' } = await request.json<any>();
+  if (!title) return err('title required');
+  const id = newId();
+  await env.DB.prepare('INSERT INTO memories (id,uid,title,summary,content,priority) VALUES (?,?,?,?,?,?)')
+    .bind(id, ctx.me.id, title, summary, content, priority).run();
+  return json({ id }, { status: 201 });
+}
 
-  app.post('/api/memories', async (c) => {
-    const userId = c.get('userId');
-    const body = await c.req.json<{ title?: string; summary?: string; content?: string; inclusion?: string }>()
-      .catch(() => ({} as { title?: string; summary?: string; content?: string; inclusion?: string }));
-    const title = String(body.title || '').trim().slice(0, 120);
-    if (!title) return c.json({ error: 'title required' }, 400);
-    const inclusion: Inclusion = INCLUSIONS.includes(body.inclusion as Inclusion)
-      ? (body.inclusion as Inclusion)
-      : 'stored';
-    const memory = await createMemory(c.env, userId, {
-      title,
-      summary: String(body.summary || '').slice(0, 500),
-      content: String(body.content || '').slice(0, 8000),
-      inclusion,
-    }, now());
-    c.executionCtx.waitUntil(notifyHub(c.env, userId, { type: 'memory-updated', memory }));
-    return c.json(memory);
-  });
-
-  app.patch('/api/memories/:id', async (c) => {
-    const userId = c.get('userId');
-    const id = c.req.param('id');
-    const body = await c.req.json<{ title?: string; summary?: string; content?: string; inclusion?: string }>()
-      .catch(() => ({} as { title?: string; summary?: string; content?: string; inclusion?: string }));
-    try {
-      if (!await patchMemory(c.env, userId, id, body, now())) return c.json({ error: 'not found' }, 404);
-    } catch (err: any) {
-      return c.json({ error: err?.message || 'invalid memory' }, 400);
-    }
-    const memory = await loadMemory(c.env, userId, id);
-    c.executionCtx.waitUntil(notifyHub(c.env, userId, { type: 'memory-updated', memory }));
-    return c.json(memory);
-  });
-
-  app.delete('/api/memories/:id', async (c) => {
-    const userId = c.get('userId');
-    const id = c.req.param('id');
-    if (!await deleteMemory(c.env, userId, id)) return c.json({ error: 'not found' }, 404);
-    c.executionCtx.waitUntil(notifyHub(c.env, userId, { type: 'memory-deleted', id }));
-    return c.json({ ok: true });
-  });
+export async function handleMemory(request: Request, env: Env, ctx: Ctx, mid: string): Promise<Response> {
+  if (ctx.method === 'PATCH') {
+    const { title, summary, content, priority } = await request.json<any>();
+    const fields: string[] = ['updated = unixepoch()'];
+    const vals: unknown[] = [];
+    if (title !== undefined) { fields.push('title = ?'); vals.push(title); }
+    if (summary !== undefined) { fields.push('summary = ?'); vals.push(summary); }
+    if (content !== undefined) { fields.push('content = ?'); vals.push(content); }
+    if (priority !== undefined) { fields.push('priority = ?'); vals.push(priority); }
+    vals.push(mid, ctx.me.id);
+    await env.DB.prepare(`UPDATE memories SET ${fields.join(',')} WHERE id = ? AND uid = ?`)
+      .bind(...vals).run();
+    return json({ ok: true });
+  }
+  if (ctx.method === 'DELETE') {
+    await env.DB.prepare('DELETE FROM memories WHERE id = ? AND uid = ?').bind(mid, ctx.me.id).run();
+    return json({ ok: true });
+  }
+  return new Response('method not allowed', { status: 405 });
 }

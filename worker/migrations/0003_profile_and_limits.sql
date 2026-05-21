@@ -1,0 +1,3 @@
+ALTER TABLE users    ADD COLUMN bio              TEXT    NOT NULL DEFAULT '';
+ALTER TABLE settings ADD COLUMN max_rounds       INTEGER NOT NULL DEFAULT 20;
+ALTER TABLE settings ADD COLUMN tool_max_chars   INTEGER NOT NULL DEFAULT 12000;

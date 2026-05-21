@@ -1,11 +1,19 @@
+.DS_Store
 node_modules/
 dist/
 .wrangler/
-.DS_Store
 *.log
 *.tsbuildinfo
-client/tauri/target/
-client/tauri/binaries/
-server/token.json
+gui/node_modules/
+gui/dist/
+extension/dist/
+worker/node_modules/
+worker/.wrangler/
 worker/wrangler.jsonc
-extension/worker/wrangler.jsonc
+
+# 本地备份和构建产物
+dev/bak/
+dev/sitegeist-main/
+dev/sitegeist-main.zip
+meem-extension.zip
+meem.chatnext.zip

@@ -1,41 +1,31 @@
-import type { Hono } from 'hono';
-import { normalizeHandle } from '../lib/normalize';
-import { signToken } from '../lib/password';
-import { createUser, authenticatePassword } from '../service/auth';
-import { loadUserByHandle, usersCount } from '../repository/users';
-import type { AppVariables, Env } from '../types';
+import { b64url, hashPassword, signToken } from '../auth';
+import type { Env } from '../types';
+import { err, json, newId } from './helpers';
 
-type App = Hono<{ Bindings: Env; Variables: AppVariables }>;
+export async function handleRegister(request: Request, env: Env): Promise<Response> {
+  const { handle, password, name = '' } = await request.json<any>();
+  if (!handle || !password) return err('handle and password required');
+  const existing = await env.DB.prepare('SELECT id FROM users WHERE handle = ?').bind(handle).first();
+  if (existing) return err('handle taken', 409);
+  const salt = b64url(crypto.getRandomValues(new Uint8Array(16)));
+  const hash = await hashPassword(password, salt);
+  const secret = b64url(crypto.getRandomValues(new Uint8Array(32)));
+  const id = newId();
+  await env.DB.prepare('INSERT INTO users (id,handle,name,salt,hash,secret) VALUES (?,?,?,?,?,?)')
+    .bind(id, handle, name, salt, hash, secret).run();
+  await env.DB.prepare('INSERT INTO settings (uid) VALUES (?)').bind(id).run();
+  const token = await signToken(id, secret);
+  return json({ token, handle, name });
+}
 
-export function mountAuthApi(app: App) {
-  app.get('/api/auth/status', async (c) => {
-    return c.json({
-      initialized: await usersCount(c.env) > 0,
-      account: '',
-    });
-  });
-
-  app.post('/api/auth/login', async (c) => {
-    const body = await c.req.json<{ account?: string; password?: string }>()
-      .catch(() => ({} as { account?: string; password?: string }));
-    const account = normalizeHandle(body.account);
-    const password = String(body.password || '');
-    if (!account || !password) return c.json({ error: 'account and password required' }, 400);
-    if (account.length > 80 || password.length > 200) return c.json({ error: 'account or password too long' }, 400);
-    const user = await authenticatePassword(c.env, account, password);
-    if (!user) return c.json({ error: 'account or password is incorrect' }, 401);
-    return c.json({ token: await signToken(user), account: user.handle, initialized: true, created: false });
-  });
-
-  app.post('/api/auth/register', async (c) => {
-    const body = await c.req.json<{ account?: string; password?: string }>()
-      .catch(() => ({} as { account?: string; password?: string }));
-    const account = normalizeHandle(body.account);
-    const password = String(body.password || '');
-    if (!account || !password) return c.json({ error: 'account and password required' }, 400);
-    if (account.length > 40 || password.length > 200) return c.json({ error: 'account or password too long' }, 400);
-    if (await loadUserByHandle(c.env, account)) return c.json({ error: 'account already exists' }, 409);
-    const user = await createUser(c.env, account, password);
-    return c.json({ token: await signToken(user), account: user.handle, initialized: true, created: true });
-  });
+export async function handleLogin(request: Request, env: Env): Promise<Response> {
+  const { handle, password } = await request.json<any>();
+  if (!handle || !password) return err('handle and password required');
+  const user = await env.DB.prepare('SELECT id,handle,name,salt,hash,secret FROM users WHERE handle = ?')
+    .bind(handle).first<{ id: string; handle: string; name: string; salt: string; hash: string; secret: string }>();
+  if (!user) return err('invalid credentials', 401);
+  const hash = await hashPassword(password, user.salt);
+  if (hash !== user.hash) return err('invalid credentials', 401);
+  const token = await signToken(user.id, user.secret);
+  return json({ token, handle: user.handle, name: user.name });
 }

@@ -1,30 +1,24 @@
-import type { Hono } from 'hono';
-import { listUsers, loadUserById } from '../repository/users';
-import { publicProfile } from '../service/profile';
-import type { AppVariables, Env } from '../types';
+import type { Env } from '../types';
+import type { Ctx } from './helpers';
+import { json } from './helpers';
 
-type App = Hono<{ Bindings: Env; Variables: AppVariables }>;
-
-export function mountMeApi(app: App) {
-  app.get('/api/me', async (c) => {
-    const userId = c.get('userId');
-    const user = await loadUserById(c.env, userId);
-    if (!user) return c.json({ error: 'not found' }, 404);
-    const profile = await publicProfile(c.env, new URL(c.req.url).origin, user.handle);
-    return c.json({
-      id: user.id,
-      name: profile?.name || user.name || user.handle,
-      baseUrl: new URL(c.req.url).origin,
-      publicAddress: profile?.address || '',
-    });
-  });
-
-  app.get('/api/users', async (c) => {
-    const origin = new URL(c.req.url).origin;
-    const users = await listUsers(c.env);
-    return c.json(users.map((user) => ({
-      ...user,
-      publicAddress: `${origin}/u/${encodeURIComponent(user.handle)}`,
-    })));
-  });
+export async function handleMe(request: Request, env: Env, ctx: Ctx): Promise<Response> {
+  if (ctx.method === 'GET') {
+    const user = await env.DB.prepare('SELECT id, handle, name, bio FROM users WHERE id = ?').bind(ctx.me.id).first();
+    const settings = await env.DB.prepare('SELECT * FROM settings WHERE uid = ?').bind(ctx.me.id).first();
+    return json({ ...(user ?? { id: ctx.me.id, handle: ctx.me.handle, name: ctx.me.name }), settings });
+  }
+  if (ctx.method === 'PATCH') {
+    const body = await request.json<any>();
+    const fields: string[] = ['updated = unixepoch()'];
+    const vals: unknown[] = [];
+    if (body.name !== undefined) { fields.push('name = ?'); vals.push(body.name); }
+    if (body.bio  !== undefined) { fields.push('bio = ?');  vals.push(body.bio); }
+    if (fields.length > 1) {
+      vals.push(ctx.me.id);
+      await env.DB.prepare(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`).bind(...vals).run();
+    }
+    return json({ ok: true });
+  }
+  return new Response('method not allowed', { status: 405 });
 }

@@ -1,35 +1,29 @@
-import type { Hono } from 'hono';
-import { VALID_MODES } from '../lib/constants';
-import { now } from '../lib/id';
-import { loadSettings, upsertSettings } from '../repository/settings';
-import type { AppVariables, Env, Mode } from '../types';
+import type { Env } from '../types';
+import type { Ctx } from './helpers';
+import { json } from './helpers';
 
-type App = Hono<{ Bindings: Env; Variables: AppVariables }>;
-
-export function mountSettingsApi(app: App) {
-  app.get('/api/settings', async (c) => {
-    return c.json(await loadSettings(c.env, c.get('userId')));
-  });
-
-  app.put('/api/settings', async (c) => {
-    const userId = c.get('userId');
-    const body = await c.req.json<{ prompt?: string; public_messages_enabled?: boolean; mode_direct?: string; mode_message_agent?: string }>()
-      .catch(() => ({} as { prompt?: string; public_messages_enabled?: boolean; mode_direct?: string; mode_message_agent?: string }));
-    const current = await loadSettings(c.env, userId);
-    const settings = {
-      prompt: typeof body.prompt === 'string' ? body.prompt : current.prompt,
-      public_messages_enabled: typeof body.public_messages_enabled === 'boolean'
-        ? body.public_messages_enabled
-        : current.public_messages_enabled,
-      mode_direct: VALID_MODES.includes(body.mode_direct as Mode)
-        ? (body.mode_direct as Mode)
-        : current.mode_direct,
-      mode_message_agent: VALID_MODES.includes(body.mode_message_agent as Mode)
-        ? (body.mode_message_agent as Mode)
-        : current.mode_message_agent,
-    };
-    const ts = now();
-    await upsertSettings(c.env, userId, settings, ts);
-    return c.json({ ...settings, updated_at: ts });
-  });
+export async function handleSettings(request: Request, env: Env, ctx: Ctx): Promise<Response> {
+  if (ctx.method === 'GET') {
+    const row = await env.DB.prepare('SELECT * FROM settings WHERE uid = ?').bind(ctx.me.id).first();
+    return json(row);
+  }
+  if (ctx.method === 'PATCH') {
+    const body = await request.json<any>();
+    const fields: string[] = [];
+    const vals: unknown[] = [];
+    if (body.prompt !== undefined) { fields.push('prompt = ?'); vals.push(body.prompt); }
+    if (body.public !== undefined) { fields.push('public = ?'); vals.push(body.public ? 1 : 0); }
+    if (body.mode !== undefined) { fields.push('mode = ?'); vals.push(body.mode); }
+    if (body.url !== undefined) { fields.push('url = ?'); vals.push(body.url); }
+    if (body.key !== undefined) { fields.push('"key" = ?'); vals.push(body.key); }
+    if (body.model !== undefined) { fields.push('model = ?'); vals.push(body.model); }
+    if (body.max_rounds !== undefined) { fields.push('max_rounds = ?'); vals.push(Math.max(1, Math.min(50, Number(body.max_rounds) || 20))); }
+    if (body.tool_max_chars !== undefined) { fields.push('tool_max_chars = ?'); vals.push(Math.max(1000, Math.min(50000, Number(body.tool_max_chars) || 12000))); }
+    if (fields.length) {
+      vals.push(ctx.me.id);
+      await env.DB.prepare(`UPDATE settings SET ${fields.join(', ')} WHERE uid = ?`).bind(...vals).run();
+    }
+    return json({ ok: true });
+  }
+  return new Response('method not allowed', { status: 405 });
 }

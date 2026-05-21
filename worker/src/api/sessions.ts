@@ -1,68 +1,75 @@
-import type { Hono } from 'hono';
-import { listSessions } from '../repository/sessions';
-import {
-  addSessionEvents,
-  appendTurn,
-  createDirectChat,
-  getSessionDetail,
-  removeSession,
-  updateSession,
-} from '../service/sessions';
-import type { AppVariables, Env } from '../types';
+import type { Env } from '../types';
+import type { Ctx } from './helpers';
+import { err, json, newId } from './helpers';
 
-type App = Hono<{ Bindings: Env; Variables: AppVariables }>;
+export async function handleSessionList(_request: Request, env: Env, ctx: Ctx): Promise<Response> {
+  const kind = ctx.url.searchParams.get('kind');
+  const trigger = ctx.url.searchParams.get('trigger');
 
-export function mountSessionsApi(app: App) {
-  app.get('/api/sessions', async (c) => {
-    return c.json(await listSessions(c.env, c.get('userId'), {
-      kind: c.req.query('kind') || '',
-      conversationId: c.req.query('conversation_id') || '',
-    }));
-  });
+  const conds: string[] = ['uid = ?'];
+  const args: unknown[] = [ctx.me.id];
+  if (kind)    { conds.push('kind = ?');    args.push(kind); }
+  if (trigger) { conds.push('trigger = ?'); args.push(trigger); }
 
-  app.get('/api/sessions/:id', async (c) => {
-    const detail = await getSessionDetail(c.env, c.get('userId'), c.req.param('id'));
-    if (!detail) return c.json({ error: 'not found' }, 404);
-    return c.json(detail);
-  });
+  const rows = await env.DB.prepare(
+    `SELECT * FROM sessions WHERE ${conds.join(' AND ')} ORDER BY updated DESC LIMIT 50`
+  ).bind(...args).all();
+  return json(rows.results);
+}
 
-  app.post('/api/sessions/direct', async (c) => {
-    const body = await c.req.json<{ text?: string; cwd?: string }>()
-      .catch(() => ({} as { text?: string; cwd?: string }));
-    return c.json({ session_id: await createDirectChat(c.env, c.get('userId'), body) });
-  });
+export async function handleSessionCreate(request: Request, env: Env, ctx: Ctx): Promise<Response> {
+  const { title = '新对话', kind = 'direct', trigger } = await request.json<any>();
+  const id = newId();
+  // 新建时不在跑 LLM，显式置为 done；status='thinking' 只在 ws/session.ts 真正发起 LLM 调用时设置
+  await env.DB.prepare('INSERT INTO sessions (id,uid,kind,status,title,trigger) VALUES (?,?,?,?,?,?)')
+    .bind(id, ctx.me.id, kind, 'done', title, trigger ?? null).run();
+  return json({ id, uid: ctx.me.id, kind, status: 'done', title, trigger: trigger ?? null }, { status: 201 });
+}
 
-  app.post('/api/sessions/:id/turn', async (c) => {
-    const { text } = await c.req.json<{ text: string }>();
-    try {
-      const eventId = await appendTurn(c.env, c.get('userId'), c.req.param('id'), text || '');
-      if (!eventId) return c.json({ error: 'not found' }, 404);
-      return c.json({ event_id: eventId });
-    } catch (err: any) {
-      return c.json({ error: err?.message || 'text required' }, 400);
+export async function handleSession(request: Request, env: Env, ctx: Ctx, sid: string): Promise<Response> {
+  const session = await env.DB.prepare('SELECT * FROM sessions WHERE id = ? AND uid = ?')
+    .bind(sid, ctx.me.id).first();
+  if (!session) return err('not found', 404);
+  if (ctx.method === 'GET') return json(session);
+  if (ctx.method === 'PATCH') {
+    const { status, title } = await request.json<any>();
+    const fields: string[] = ['updated = unixepoch()'];
+    const vals: unknown[] = [];
+    if (status) { fields.push('status = ?'); vals.push(status); }
+    if (title) { fields.push('title = ?'); vals.push(title); }
+    if (status === 'done' || status === 'cancelled' || status === 'error') {
+      fields.push('finished = unixepoch()');
     }
-  });
+    vals.push(sid, ctx.me.id);
+    await env.DB.prepare(`UPDATE sessions SET ${fields.join(',')} WHERE id = ? AND uid = ?`)
+      .bind(...vals).run();
+    return json({ ok: true });
+  }
+  return new Response('method not allowed', { status: 405 });
+}
 
-  app.post('/api/sessions/:id/events', async (c) => {
-    const body = await c.req.json<{
-      events: Array<{ kind: string; payload?: any; in_reply_to?: string }>;
-    }>();
-    if (!Array.isArray(body.events) || !body.events.length) return c.json({ error: 'events required' }, 400);
-    const rows = await addSessionEvents(c.env, c.get('userId'), c.req.param('id'), body.events);
-    if (!rows) return c.json({ error: 'not found' }, 404);
-    return c.json({ inserted: rows.length });
-  });
+export async function handleEvents(_request: Request, env: Env, ctx: Ctx, sid: string): Promise<Response> {
+  const session = await env.DB.prepare('SELECT id FROM sessions WHERE id = ? AND uid = ?')
+    .bind(sid, ctx.me.id).first();
+  if (!session) return err('not found', 404);
 
-  app.delete('/api/sessions/:id', async (c) => {
-    if (!await removeSession(c.env, c.get('userId'), c.req.param('id'))) return c.json({ error: 'not found' }, 404);
-    return c.json({ ok: true });
-  });
+  if (ctx.method === 'GET') {
+    const rows = await env.DB.prepare(
+      'SELECT id, sid, message, meta, created FROM events WHERE sid = ? ORDER BY id ASC'
+    ).bind(sid).all<{ id: number; sid: string; message: string; meta: string | null; created: number }>();
+    const out = rows.results.map((r) => ({
+      id: r.id,
+      sid: r.sid,
+      message: safeParse(r.message),
+      meta: r.meta ? safeParse(r.meta) : null,
+      created: r.created,
+    }));
+    return json(out);
+  }
 
-  app.patch('/api/sessions/:id', async (c) => {
-    const body = await c.req.json<{ status?: string; codex_thread_id?: string; title?: string | null }>()
-      .catch(() => ({} as { status?: string; codex_thread_id?: string; title?: string | null }));
-    const updated = await updateSession(c.env, c.get('userId'), c.req.param('id'), body);
-    if (!updated) return c.json({ error: 'not found' }, 404);
-    return c.json(updated);
-  });
+  return new Response('method not allowed', { status: 405 });
+}
+
+function safeParse(s: string): unknown {
+  try { return JSON.parse(s); } catch { return null; }
 }
