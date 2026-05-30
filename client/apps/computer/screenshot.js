@@ -1,6 +1,6 @@
 import { platform } from 'node:os';
 import { resolve } from 'node:path';
-import { commandExists, defaultScreenshotPath, ensureParent, fileSize, run } from './utils.js';
+import { commandExists, defaultScreenshotPath, ensureParent, fileSize, run } from '../../system/utils.js';
 
 export async function screenshot(args) {
   const outputPath = resolve(String(args.outputPath || defaultScreenshotPath()));

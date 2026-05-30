@@ -1,4 +1,4 @@
-import { amountArg, commandExists, normalizeKey, numberArg, run } from '../utils.js';
+import { amountArg, commandExists, normalizeKey, numberArg, run } from '../../../system/utils.js';
 
 export async function requireXdotool() {
   if (!(await commandExists('xdotool'))) throw new Error('missing_xdotool: install xdotool');

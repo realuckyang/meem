@@ -1,3 +1,5 @@
+import { getToken } from './api';
+
 export interface ConnStatus { computer: boolean; browser: boolean; }
 
 type Frame = any;
@@ -8,7 +10,9 @@ export const connStatus: ConnStatus = { computer: false, browser: false };
 function connect() {
   if (ws && ws.readyState <= 1) return;
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  ws = new WebSocket(`${proto}://${location.host}/meem/ws?client=meem`);
+  const token = encodeURIComponent(getToken());
+  if (!token) return;
+  ws = new WebSocket(`${proto}://${location.host}/meem/ws?client=meem&token=${token}`);
   ws.onmessage = (e) => {
     let f: Frame; try { f = JSON.parse(e.data); } catch { return; }
     if (f.type === 'connection.status') { connStatus.computer = !!f.computer; connStatus.browser = !!f.browser; }

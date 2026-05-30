@@ -5,6 +5,7 @@
 -- OpenAI-compatible assistant messages stay as a single message JSON blob.
 
 DROP TABLE IF EXISTS meem_settings;
+DROP TABLE IF EXISTS meem_users;
 DROP TABLE IF EXISTS meem_chats;
 DROP TABLE IF EXISTS meem_messages;
 DROP TABLE IF EXISTS meem_apps;
@@ -15,6 +16,17 @@ DROP TABLE IF EXISTS site_settings;
 DROP TABLE IF EXISTS site_pages;
 DROP TABLE IF EXISTS site_inbox;
 DROP TABLE IF EXISTS site_events;
+
+CREATE TABLE meem_users (
+  meem_uid  TEXT PRIMARY KEY DEFAULT 'me',
+  handle    TEXT NOT NULL DEFAULT 'me',
+  name      TEXT NOT NULL DEFAULT 'Meem',
+  salt      TEXT NOT NULL,
+  hash      TEXT NOT NULL,
+  secret    TEXT NOT NULL,
+  created   INTEGER NOT NULL DEFAULT (unixepoch()),
+  updated   INTEGER NOT NULL DEFAULT (unixepoch())
+);
 
 CREATE TABLE meem_settings (
   meem_uid      TEXT PRIMARY KEY DEFAULT 'me',

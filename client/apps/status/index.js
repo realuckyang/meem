@@ -1,7 +1,7 @@
 // 状态 + 截图 面板能力(请求/应答)
 import os from 'os';
 import fs from 'fs';
-import { screenshot } from './screenshot.js';
+import { screenshot } from '../computer/screenshot.js';
 
 let emit = () => {};
 export function setEmit(fn) { emit = fn; }

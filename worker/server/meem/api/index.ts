@@ -4,6 +4,7 @@ import * as chats from '../services/chats';
 import * as decisions from '../services/decisions';
 import * as settings from '../services/settings';
 import * as terminal from '../services/terminal';
+import { authorize, createUser, getUser, hasUser, publicUser, signToken, verifyPassword } from '../auth';
 
 const UID = 'me';
 const json = (d: unknown, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { 'content-type': 'application/json; charset=utf-8' } });
@@ -16,10 +17,39 @@ async function trigger(env: Env, chat: string | null): Promise<void> {
 }
 
 export async function handleApi(req: Request, env: Env, url: URL, ctx: ExecutionContext): Promise<Response> {
-  const repo = makeRepo(env, UID);
   const p = url.pathname.replace(/^\/meem\/api\//, '');
   const method = req.method;
   let mm: RegExpMatchArray | null;
+
+  // ── auth ──
+  if (p === 'auth/status' && method === 'GET') return json({ configured: await hasUser(env) });
+  if (p === 'auth/setup' && method === 'POST') {
+    if (await hasUser(env)) return json({ error: 'already_configured' }, 409);
+    const b = await readJson(req);
+    const password = String(b.password || '');
+    if (password.length < 8) return json({ error: 'password_too_short' }, 400);
+    const user = await createUser(env, password, String(b.name || 'Meem'));
+    return json({ token: await signToken(user), user: publicUser(user) });
+  }
+  if (p === 'auth/login' && method === 'POST') {
+    const b = await readJson(req);
+    const user = await getUser(env);
+    if (!user) return json({ error: 'not_configured' }, 409);
+    if (!(await verifyPassword(String(b.password || ''), user.salt, user.hash))) return json({ error: 'unauthorized' }, 401);
+    return json({ token: await signToken(user), user: publicUser(user) });
+  }
+
+  const user = await authorize(req, env);
+  if (!user) return json({ error: 'unauthorized' }, 401);
+  const repo = makeRepo(env, UID);
+
+  if (p === 'me' && method === 'GET') return json({ user: publicUser(user) });
+  if (p === 'install/config' && method === 'GET') {
+    const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '') || url.searchParams.get('token') || '';
+    const base = `${url.protocol}//${url.host}`;
+    const ws = `${url.protocol === 'https:' ? 'wss:' : 'ws:'}//${url.host}`;
+    return json({ baseUrl: base, wsUrl: ws, token });
+  }
 
   // ── chats / 看板 ──
   if (p === 'chats' && method === 'GET') return json(await chats.board(repo));

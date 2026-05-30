@@ -1,4 +1,4 @@
-import { amountArg, commandExists, normalizeKey, numberArg, run } from '../utils.js';
+import { amountArg, commandExists, normalizeKey, numberArg, run } from '../../../system/utils.js';
 
 const keyCodes = {
   enter: 36,

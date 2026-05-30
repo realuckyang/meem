@@ -1,5 +1,5 @@
 import { platform } from 'node:os';
-import { commandExists } from './utils.js';
+import { commandExists } from '../../system/utils.js';
 
 export async function detectDrivers() {
   const os = platform();

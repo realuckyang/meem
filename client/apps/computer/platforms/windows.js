@@ -1,4 +1,4 @@
-import { amountArg, normalizeKey, numberArg, run } from '../utils.js';
+import { amountArg, normalizeKey, numberArg, run } from '../../../system/utils.js';
 
 export async function mouseMove(args) {
   const x = numberArg(args.x, 'x');

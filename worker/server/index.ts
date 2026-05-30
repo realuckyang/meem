@@ -2,10 +2,10 @@ import type { Env } from './types';
 import { handleApi } from './meem/api';
 import { Room } from './meem/ws/room';
 import { handlePublic, handleSiteApi } from './site/public';
+import { authorize } from './meem/auth';
 
 export { Room };
 
-const UID = 'me';
 const hasFileExt = (pathname: string) => /\.[a-z0-9]+$/i.test(pathname);
 
 function assetRequest(req: Request, pathname: string): Request {
@@ -31,9 +31,11 @@ export default {
 
     // Meem 实时通道 → Room DO
     if (url.pathname === '/meem/ws') {
+      const user = await authorize(req, env);
+      if (!user) return new Response('unauthorized', { status: 401 });
       const client = url.searchParams.get('client') || 'meem';
-      const stub = env.ROOM.get(env.ROOM.idFromName(UID));
-      return stub.fetch(new Request(`https://room/connect?uid=${UID}&client=${client}`, req));
+      const stub = env.ROOM.get(env.ROOM.idFromName(user.meem_uid));
+      return stub.fetch(new Request(`https://room/connect?uid=${user.meem_uid}&client=${client}`, req));
     }
     // Meem REST
     if (url.pathname.startsWith('/meem/api/')) return handleApi(req, env, url, ctx);

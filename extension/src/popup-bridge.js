@@ -20,8 +20,8 @@ async function popupStatus() {
   };
 }
 
-async function handleLogin(handle, password) {
-  const r = await fetch(`${BASE_URL}/meem/api/login`, {
+async function handleLogin(_handle, password) {
+  const r = await fetch(`${BASE_URL}/meem/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ handle, password }),
@@ -34,7 +34,7 @@ async function handleLogin(handle, password) {
 }
 
 async function handleRegister(handle, password) {
-  const r = await fetch(`${BASE_URL}/meem/api/register`, {
+  const r = await fetch(`${BASE_URL}/meem/api/auth/setup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ handle, name: handle, password }),

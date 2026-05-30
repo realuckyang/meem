@@ -23,6 +23,8 @@ worker/gui/meem/ Meem console frontend · React + Vite + TS
 worker/gui/meem/src/apps/ all Meem apps, including chat · mounted under /meem/apps/:name
 worker/gui/meem/src/system/ global Meem shell · topbar, app panel, route state, shared clients
 client/       local computer client · shell/files/screenshot/system/computer control
+client/system/ local client runtime · WebSocket lifecycle and shared utilities
+client/apps/ local client apps · terminal/files/status/computer tools
 extension/    Chrome MV3 extension · browser tools
 dev/          reference material
 ```
@@ -62,4 +64,4 @@ Tool schemas live in `worker/server/meem/ai/tools.ts`.
 
 - Worker-side tools: `worker/server/meem/ai/functions.ts`
 - Browser tools: `extension/src/tools/`
-- Computer tools: `client/src/tools.js`
+- Computer tools: `client/apps/computer/index.js`

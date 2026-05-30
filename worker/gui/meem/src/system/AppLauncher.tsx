@@ -13,9 +13,10 @@ interface AppLauncherProps {
   open: boolean;
   onClose: () => void;
   onPick: (app: AppId) => void;
+  onInstall: (kind: 'client' | 'extension') => void;
 }
 
-export default function AppLauncher({ activeApp, open, onClose, onPick }: AppLauncherProps) {
+export default function AppLauncher({ activeApp, open, onClose, onPick, onInstall }: AppLauncherProps) {
   const status = useConnectionStatus();
 
   return (
@@ -27,9 +28,9 @@ export default function AppLauncher({ activeApp, open, onClose, onPick }: AppLau
         </SheetHeader>
         <section className="px-5 py-3">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <ConnectionStatus label="电脑" connected={status.computer} icon={<Monitor />} />
+            <ConnectionStatus label="电脑" connected={status.computer} icon={<Monitor />} onClick={() => status.computer ? onPick('status') : onInstall('client')} />
             <Separator orientation="vertical" className="h-3" />
-            <ConnectionStatus label="浏览器" connected={status.browser} icon={<Globe />} />
+            <ConnectionStatus label="浏览器" connected={status.browser} icon={<Globe />} onClick={() => status.browser ? onPick('status') : onInstall('extension')} />
           </div>
         </section>
         <Separator />
@@ -86,15 +87,20 @@ export default function AppLauncher({ activeApp, open, onClose, onPick }: AppLau
   );
 }
 
-function ConnectionStatus({ label, connected, icon }: { label: string; connected: boolean; icon: JSX.Element }) {
+function ConnectionStatus({ label, connected, icon, onClick }: { label: string; connected: boolean; icon: JSX.Element; onClick: () => void }) {
   return (
-    <span className="inline-flex min-w-0 items-center gap-1.5">
+    <button
+      type="button"
+      className="inline-flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      onClick={onClick}
+      aria-label={`查看${label}连接状态`}
+    >
       <span className="text-muted-foreground [&_svg]:size-3.5">{icon}</span>
       <span className="font-medium text-foreground">{label}</span>
       <Badge variant={connected ? 'success' : 'muted'} className="h-5 gap-1 px-1.5">
         <span className={cn('size-1.5 rounded-full', connected ? 'bg-emerald-500' : 'bg-muted-foreground/35')} />
         {connected ? '已连接' : '未连接'}
       </Badge>
-    </span>
+    </button>
   );
 }

@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     const handle = $('in-handle').value.trim().toLowerCase();
     const password = $('in-password').value;
-    if (!/^[a-z][a-z0-9_]{1,23}$/.test(handle)) return showError('账号要以字母开头 · 2-24 位 · 只允许小写字母 / 数字 / _');
+    if (mode === 'register' && !/^[a-z][a-z0-9_]{1,23}$/.test(handle)) return showError('账号要以字母开头 · 2-24 位 · 只允许小写字母 / 数字 / _');
     if (password.length < 6) return showError('密码至少 6 位');
 
     const btn = $('btn-submit');
