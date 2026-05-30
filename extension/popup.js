@@ -1,10 +1,8 @@
 // Meem extension popup
-//   · 登录 / 注册 → background 写 chrome.storage.local 的 meem_token
+//   · 登录 → background 写 chrome.storage.local 的 meem_token
 //   · 已登录 → 显示连接状态 + 提示去 Meem 网页操作
 
 const $ = (id) => document.getElementById(id);
-
-let mode = 'login';
 
 function send(message) {
   return new Promise((resolve) => {
@@ -60,31 +58,19 @@ function showError(msg) {
   el.textContent = msg;
 }
 
-function switchMode(m) {
-  mode = m;
-  $('tab-login').classList.toggle('active', m === 'login');
-  $('tab-register').classList.toggle('active', m === 'register');
-  $('btn-submit').textContent = m === 'login' ? '登录' : '注册';
-  showError('');
-}
-
 document.addEventListener('DOMContentLoaded', () => {
-  $('tab-login').addEventListener('click', () => switchMode('login'));
-  $('tab-register').addEventListener('click', () => switchMode('register'));
-
   $('form-auth').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const handle = $('in-handle').value.trim().toLowerCase();
     const password = $('in-password').value;
-    if (mode === 'register' && !/^[a-z][a-z0-9_]{1,23}$/.test(handle)) return showError('账号要以字母开头 · 2-24 位 · 只允许小写字母 / 数字 / _');
-    if (password.length < 6) return showError('密码至少 6 位');
+    if (password.length < 1) return showError('请输入密码');
 
     const btn = $('btn-submit');
     btn.disabled = true;
     showError('');
     try {
-      const r = await send({ type: 'meem.' + mode, handle, password });
+      const r = await send({ type: 'meem.login', password });
       if (!r?.ok) { showError(r?.error || '失败'); return; }
+      $('in-password').value = '';
       await refresh();
     } finally {
       btn.disabled = false;

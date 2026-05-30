@@ -1,4 +1,4 @@
-// popup ↔ background 通信 · 登录 / 注册 / 状态 / 登出
+// popup ↔ background 通信 · 登录 / 状态 / 登出
 //   · 登录成功 → setToken → reconnect()
 
 import { BASE_URL } from '../config.js';
@@ -20,27 +20,23 @@ async function popupStatus() {
   };
 }
 
-async function handleLogin(_handle, password) {
+function authError(error) {
+  const map = {
+    not_configured: '请先在 Meem 控制台设置密码',
+    unauthorized: '密码不正确',
+    password_too_short: '密码长度不足',
+  };
+  return map[error] || error || '登录失败';
+}
+
+async function handleLogin(password) {
   const r = await fetch(`${BASE_URL}/meem/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ handle, password }),
+    body: JSON.stringify({ password }),
   });
   const data = await r.json();
-  if (!r.ok) throw new Error(data?.error || `login failed (${r.status})`);
-  await setToken(data.token);
-  reconnect();
-  return { user: data.user };
-}
-
-async function handleRegister(handle, password) {
-  const r = await fetch(`${BASE_URL}/meem/api/auth/setup`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ handle, name: handle, password }),
-  });
-  const data = await r.json();
-  if (!r.ok) throw new Error(data?.error || `register failed (${r.status})`);
+  if (!r.ok) throw new Error(authError(data?.error));
   await setToken(data.token);
   reconnect();
   return { user: data.user };
@@ -59,13 +55,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
   if (message.type === 'meem.login') {
-    handleLogin(message.handle, message.password)
-      .then((r) => sendResponse({ ok: true, data: r }))
-      .catch((e) => sendResponse({ ok: false, error: e?.message || String(e) }));
-    return true;
-  }
-  if (message.type === 'meem.register') {
-    handleRegister(message.handle, message.password)
+    handleLogin(message.password)
       .then((r) => sendResponse({ ok: true, data: r }))
       .catch((e) => sendResponse({ ok: false, error: e?.message || String(e) }));
     return true;

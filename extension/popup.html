@@ -26,23 +26,18 @@
     <button id="btn-logout" class="btn-text">退出登录</button>
   </div>
 
-  <!-- 未登录 -->
   <div id="view-auth" hidden>
-    <div class="tabs">
-      <button id="tab-login" class="tab active">登录</button>
-      <button id="tab-register" class="tab">注册</button>
+    <div class="auth-note">
+      <div class="auth-title">连接 Meem</div>
+      <div class="auth-copy">使用控制台密码连接当前浏览器。</div>
     </div>
     <form id="form-auth">
-      <label>
-        <span>账号</span>
-        <input id="in-handle" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" />
-      </label>
       <label>
         <span>密码</span>
         <input id="in-password" type="password" />
       </label>
       <div id="error" class="error" hidden></div>
-      <button id="btn-submit" class="btn" type="submit">登录</button>
+      <button id="btn-submit" class="btn" type="submit">连接</button>
     </form>
   </div>
 
