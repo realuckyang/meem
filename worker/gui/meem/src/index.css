@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 60 14% 98%;
+    --foreground: 225 6% 13%;
+    --card: 0 0% 100%;
+    --card-foreground: 225 6% 13%;
+    --muted: 48 17% 92%;
+    --muted-foreground: 228 5% 57%;
+    --secondary: 45 18% 94%;
+    --secondary-foreground: 225 6% 13%;
+    --accent: 211 92% 95%;
+    --accent-foreground: 220 71% 36%;
+    --border: 45 14% 88%;
+    --input: 45 14% 88%;
+    --ring: 220 71% 56%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    @apply h-full;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Helvetica Neue", Inter, Arial, sans-serif;
+  }
+
+  button,
+  textarea,
+  input {
+    font-family: inherit;
+  }
+}
+
+@layer components {
+  .md {
+    @apply text-sm leading-7 text-foreground;
+  }
+
+  .md p {
+    @apply mb-2 last:mb-0;
+  }
+
+  .md pre {
+    @apply my-3 overflow-x-auto rounded-lg bg-[#0f1117] p-4 text-xs leading-6 text-[#e6e9f0];
+  }
+
+  .md code {
+    @apply rounded bg-muted px-1.5 py-0.5 font-mono text-xs;
+  }
+
+  .md pre code,
+  .md pre code.hljs {
+    @apply bg-transparent p-0 text-inherit;
+  }
+
+  .md ul,
+  .md ol {
+    @apply my-2 ml-5;
+  }
+
+  .md li {
+    @apply my-1;
+  }
+
+  .md h1,
+  .md h2,
+  .md h3 {
+    @apply my-3 text-base font-bold;
+  }
+
+  .md a {
+    @apply text-accent-foreground underline;
+  }
+}
+
+.xterm {
+  height: 100%;
+}

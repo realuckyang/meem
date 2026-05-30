@@ -1,0 +1,22 @@
+{
+  "name": "meem-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "build:gui": "npm --prefix gui/site run build && npm --prefix gui/meem run build",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "db:apply": "wrangler d1 execute meem --file=schema.sql --remote",
+    "db:apply-local": "wrangler d1 execute meem --file=schema.sql --local"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250101.0",
+    "typescript": "^5.4.5",
+    "wrangler": "^3.78.0"
+  },
+  "dependencies": {
+    "jose": "^6.2.3"
+  }
+}

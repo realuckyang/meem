@@ -1,0 +1,16 @@
+{
+  "name": "meem-client",
+  "version": "0.1.0",
+  "description": "Meem client · 桥接到 meem worker · 让 AI 操作电脑(鼠标 / 键盘 / 截图)",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "meem-client": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "meem",
+  "account_id": "REPLACE_WITH_CLOUDFLARE_ACCOUNT_ID",
+  "main": "server/index.ts",
+  "compatibility_date": "2025-01-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  "assets": {
+    "directory": "gui/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "none",
+    "html_handling": "none",
+    "run_worker_first": true
+  },
+
+  "vars": {
+    "LLM_URL": "https://api.deepseek.com/chat/completions",
+    "LLM_KEY": "REPLACE_WITH_YOUR_LLM_KEY",
+    "LLM_MODEL": "deepseek-v4-pro",
+    "LLM_MAX_ROUNDS": "30",
+    "LLM_TOOL_TIMEOUT_MS": "60000",
+    "LLM_VISION": "0"
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "meem",
+      "database_id": "REPLACE_WITH_REAL_D1_ID"
+    }
+  ],
+
+  "r2_buckets": [
+    {
+      "binding": "DOWNLOADS",
+      "bucket_name": "meem"
+    }
+  ],
+
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "ROOM",
+        "class_name": "Room"
+      }
+    ]
+  },
+
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["Room"]
+    }
+  ],
+
+  "observability": {
+    "enabled": true
+  },
+
+  "routes": [
+    {
+      "pattern": "REPLACE_WITH_DOMAIN",
+      "custom_domain": true
+    }
+  ]
+}

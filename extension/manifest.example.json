@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Meem Extension",
+  "version": "0.2.0",
+  "description": "登录 Meem，维持浏览器能力连接。",
+  "minimum_chrome_version": "116",
+  "action": {
+    "default_title": "Meem Extension",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "activeTab",
+    "debugger",
+    "scripting",
+    "storage",
+    "tabs",
+    "windows"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://your-meem-host.example.com wss://your-meem-host.example.com"
+  }
+}

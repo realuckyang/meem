@@ -1,0 +1,35 @@
+.DS_Store
+node_modules/
+dist/
+.wrangler/
+*.log
+*.tsbuildinfo
+
+# worker gui
+worker/gui/meem/node_modules/
+worker/gui/dist/
+
+# worker · 含真实 D1 id / R2 id / LLM key 等
+worker/node_modules/
+worker/.wrangler/
+worker/wrangler.jsonc
+
+# extension · 真实部署配置 + 打包产物
+extension/config.js
+extension/manifest.json
+extension/meem-extension.zip
+extension/dist/
+
+# client · 真实部署配置 + 本地依赖
+client/config.js
+client/node_modules/
+client/package-lock.json
+
+# 历史归档
+dev/demos/
+dev/bak/
+dev/sitegeist-main/
+dev/sitegeist-main.zip
+dev/meem-main/
+meem-extension.zip
+meem.chatnext.zip

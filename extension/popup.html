@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>Meem Extension</title>
+<link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+<div id="app">
+  <div class="brand">
+    <div class="logo">M</div>
+    <div>
+      <div class="brand-name">Meem</div>
+      <div class="brand-sub">浏览器扩展</div>
+    </div>
+  </div>
+
+  <!-- 已登录 -->
+  <div id="view-status" hidden>
+    <div class="status">
+      <span class="dot" id="dot"></span>
+      <span id="state-text">…</span>
+    </div>
+    <div class="info" id="info"></div>
+    <a class="link" href="#" target="_blank" id="site-link">打开 Meem</a>
+    <button id="btn-logout" class="btn-text">退出登录</button>
+  </div>
+
+  <!-- 未登录 -->
+  <div id="view-auth" hidden>
+    <div class="tabs">
+      <button id="tab-login" class="tab active">登录</button>
+      <button id="tab-register" class="tab">注册</button>
+    </div>
+    <form id="form-auth">
+      <label>
+        <span>账号</span>
+        <input id="in-handle" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" />
+      </label>
+      <label>
+        <span>密码</span>
+        <input id="in-password" type="password" />
+      </label>
+      <div id="error" class="error" hidden></div>
+      <button id="btn-submit" class="btn" type="submit">登录</button>
+    </form>
+  </div>
+
+  <div class="footer">v<span id="ver">0.0</span></div>
+</div>
+<script src="popup.js"></script>
+</body>
+</html>

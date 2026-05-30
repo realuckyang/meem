@@ -1,0 +1,67 @@
+import type { Env } from '../../types';
+import { makeRepo } from '../repository';
+import * as chats from '../services/chats';
+import * as decisions from '../services/decisions';
+import * as settings from '../services/settings';
+import * as terminal from '../services/terminal';
+
+const UID = 'me';
+const json = (d: unknown, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { 'content-type': 'application/json; charset=utf-8' } });
+const readJson = async (req: Request): Promise<any> => { try { return await req.json(); } catch { return {}; } };
+
+/** 通知 Room DO 跑某条会话(serialize + WS 流式) */
+async function trigger(env: Env, chat: string | null): Promise<void> {
+  const stub = env.ROOM.get(env.ROOM.idFromName(UID));
+  await stub.fetch(`https://room/trigger?uid=${UID}`, { method: 'POST', body: JSON.stringify({ chat }) });
+}
+
+export async function handleApi(req: Request, env: Env, url: URL, ctx: ExecutionContext): Promise<Response> {
+  const repo = makeRepo(env, UID);
+  const p = url.pathname.replace(/^\/meem\/api\//, '');
+  const method = req.method;
+  let mm: RegExpMatchArray | null;
+
+  // ── chats / 看板 ──
+  if (p === 'chats' && method === 'GET') return json(await chats.board(repo));
+  if (p === 'chats' && method === 'POST') { const b = await readJson(req); const r = await chats.create(repo, b); if (b.purpose) ctx.waitUntil(trigger(env, r.id)); return json({ chat: r }); }
+  if ((mm = p.match(/^chats\/([^/]+)$/)) && method === 'GET') return json(await chats.detail(repo, mm[1]));
+  if ((mm = p.match(/^chats\/([^/]+)\/send$/)) && method === 'POST') {
+    const b = await readJson(req);
+    await repo.addMessage({ chatId: mm[1], message: { role: 'user', content: String(b.text ?? '') } });
+    ctx.waitUntil(trigger(env, mm[1]));
+    return json({ ok: true });
+  }
+  if (p === 'send' && method === 'POST') {
+    const b = await readJson(req);
+    await repo.addMessage({ chatId: null, message: { role: 'user', content: String(b.text ?? '') } });
+    ctx.waitUntil(trigger(env, null));
+    return json({ ok: true });
+  }
+
+  // ── decisions ──
+  if (p === 'decisions' && method === 'GET') return json({ decisions: await decisions.open(repo) });
+  if ((mm = p.match(/^decisions\/([^/]+)\/decide$/)) && method === 'POST') {
+    const b = await readJson(req);
+    const chatId = await decisions.decide(repo, mm[1], String(b.chosen ?? ''));
+    if (chatId) ctx.waitUntil(trigger(env, chatId));
+    return json({ ok: true });
+  }
+
+  // ── terminal snippets ──
+  if (p === 'terminal/snippets' && method === 'GET') return json(await terminal.listSnippets(repo));
+  if (p === 'terminal/snippets' && method === 'POST') {
+    const r = await terminal.createSnippet(repo, await readJson(req));
+    return 'error' in r ? json({ error: r.error }, r.status) : json(r);
+  }
+  if ((mm = p.match(/^terminal\/snippets\/([^/]+)$/)) && method === 'PUT') {
+    const r = await terminal.updateSnippet(repo, mm[1], await readJson(req));
+    return 'error' in r ? json({ error: r.error }, r.status) : json(r);
+  }
+  if ((mm = p.match(/^terminal\/snippets\/([^/]+)$/)) && method === 'DELETE') return json(await terminal.deleteSnippet(repo, mm[1]));
+
+  // ── settings(连接状态走 WS connection.status,不走 REST) ──
+  if (p === 'settings' && method === 'GET') return json(await settings.get(repo));
+  if (p === 'settings' && method === 'PUT') { await settings.update(repo, await readJson(req)); return json({ ok: true }); }
+
+  return json({ error: 'not found' }, 404);
+}

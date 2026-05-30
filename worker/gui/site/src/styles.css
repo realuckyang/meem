@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply min-w-80 bg-[#f7f8fb] font-sans text-[#202124] antialiased;
+  }
+}
