@@ -20,6 +20,8 @@ DROP TABLE IF EXISTS site_content;
 DROP TABLE IF EXISTS site_ratelimit;
 DROP TABLE IF EXISTS site_visitors;
 DROP TABLE IF EXISTS site_visitor_msgs;
+DROP TABLE IF EXISTS doc_notebooks;
+DROP TABLE IF EXISTS doc_pages;
 
 CREATE TABLE meem_users (
   meem_uid  TEXT PRIMARY KEY DEFAULT 'me',
@@ -204,6 +206,32 @@ CREATE TABLE site_visitor_msgs (
   created    INTEGER NOT NULL DEFAULT (unixepoch())
 );
 CREATE INDEX idx_site_visitor_msgs ON site_visitor_msgs(visitor_id, created);
+
+-- 文档(私有,控制台「文档」应用;由 mindbase 笔记迁入)· 笔记本树 + 页面
+CREATE TABLE doc_notebooks (
+  id         TEXT PRIMARY KEY,
+  meem_uid   TEXT NOT NULL DEFAULT 'me',
+  parent_id  TEXT,
+  name       TEXT NOT NULL DEFAULT '',
+  icon       TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created    INTEGER NOT NULL DEFAULT (unixepoch()),
+  updated    INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE INDEX idx_doc_notebooks ON doc_notebooks(meem_uid, parent_id, sort_order);
+
+CREATE TABLE doc_pages (
+  id          TEXT PRIMARY KEY,
+  meem_uid    TEXT NOT NULL DEFAULT 'me',
+  notebook_id TEXT,
+  title       TEXT NOT NULL DEFAULT '',
+  content     TEXT NOT NULL DEFAULT '',
+  icon        TEXT,
+  sort_order  INTEGER NOT NULL DEFAULT 0,
+  created     INTEGER NOT NULL DEFAULT (unixepoch()),
+  updated     INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE INDEX idx_doc_pages ON doc_pages(meem_uid, notebook_id, sort_order);
 
 INSERT INTO meem_settings (meem_uid) VALUES ('me');
 INSERT INTO site_settings (site_uid, title, description)

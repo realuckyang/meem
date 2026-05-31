@@ -36,7 +36,20 @@ export const api = {
   contentCreate: (b: Partial<ContentItem>) => J<{ item: ContentItem }>(post(`${API}/content`, b)),
   contentUpdate: (id: string, b: Partial<ContentItem>) => put(`${API}/content/${id}`, b),
   contentDelete: (id: string) => del(`${API}/content/${id}`),
+  docsNotebooks: () => J<{ notebooks: DocNotebook[] }>(get(`${API}/docs/notebooks`)),
+  docsPages: (nb: string | null) => J<{ pages: DocPageMeta[] }>(get(`${API}/docs/pages${nb ? `?notebook=${encodeURIComponent(nb)}` : ''}`)),
+  docsPage: (id: string) => J<{ page: DocPage }>(get(`${API}/docs/pages/${id}`)),
+  docsCreateNotebook: (b: { name: string; parentId?: string | null }) => J<{ notebook: DocNotebook }>(post(`${API}/docs/notebooks`, b)),
+  docsRenameNotebook: (id: string, name: string) => put(`${API}/docs/notebooks/${id}`, { name }),
+  docsDeleteNotebook: (id: string) => del(`${API}/docs/notebooks/${id}`),
+  docsCreatePage: (b: { notebookId: string | null; title: string }) => J<{ page: DocPage }>(post(`${API}/docs/pages`, b)),
+  docsUpdatePage: (id: string, b: Partial<{ title: string; content: string }>) => put(`${API}/docs/pages/${id}`, b),
+  docsDeletePage: (id: string) => del(`${API}/docs/pages/${id}`),
 };
+
+export interface DocNotebook { id: string; parent_id: string | null; name: string; icon: string | null; sort_order: number; created: number; updated: number; }
+export interface DocPageMeta { id: string; notebook_id: string | null; title: string; icon: string | null; sort_order: number; updated: number; }
+export interface DocPage extends DocPageMeta { content: string; created: number; }
 
 export interface ContentItem {
   id: string; site_uid: string; kind: 'dynamic' | 'article' | 'project';

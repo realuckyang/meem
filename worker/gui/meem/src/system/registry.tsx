@@ -1,4 +1,4 @@
-import { Activity, MessageSquare, Monitor, TerminalSquare, Folder, SlidersHorizontal, Newspaper } from 'lucide-react';
+import { Activity, MessageSquare, Monitor, TerminalSquare, Folder, SlidersHorizontal, Newspaper, BookText } from 'lucide-react';
 import type React from 'react';
 import ChatApp from '../apps/chat';
 import TerminalApp from '../apps/terminal';
@@ -6,9 +6,10 @@ import FilesApp from '../apps/files';
 import StatusApp from '../apps/status';
 import ScreenApp from '../apps/screen';
 import ContentApp from '../apps/content';
+import DocsApp from '../apps/docs';
 import SettingsApp from '../apps/settings';
 
-export type AppId = 'chat' | 'terminal' | 'files' | 'status' | 'screen' | 'content' | 'settings';
+export type AppId = 'chat' | 'terminal' | 'files' | 'status' | 'screen' | 'content' | 'docs' | 'settings';
 
 export interface MeemApp {
   id: AppId;
@@ -29,6 +30,7 @@ export const APPS: MeemApp[] = [
   { id: 'status', label: '状态', path: '/meem/apps/status', icon: <Activity />, Component: StatusApp },
   { id: 'screen', label: '截图', path: '/meem/apps/screen', icon: <Monitor />, Component: ScreenApp },
   { id: 'content', label: '内容', path: '/meem/apps/content', icon: <Newspaper />, Component: ContentApp },
+  { id: 'docs', label: '文档', path: '/meem/apps/docs', icon: <BookText />, Component: DocsApp },
   { id: 'settings', label: '设置', path: '/meem/apps/settings', icon: <SlidersHorizontal />, Component: SettingsApp },
 ];
 

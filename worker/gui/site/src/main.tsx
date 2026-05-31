@@ -11,7 +11,7 @@ const applyTheme = (t: Theme) => { document.documentElement.setAttribute('data-t
 const getTheme = (): Theme => (localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark');
 applyTheme(getTheme());
 
-interface Item { id: string; kind: 'dynamic' | 'article' | 'project'; title: string; body: string; url: string; tags: string; created: number; }
+interface Item { id: string; kind: 'dynamic' | 'article' | 'project' | 'about'; title: string; body: string; url: string; tags: string; created: number; }
 type Msg = { role: 'user' | 'assistant'; content: string };
 
 const pageX = 'px-5 sm:px-8 lg:px-[72px]';
@@ -40,7 +40,9 @@ function App() {
       .catch(() => {});
   }, []);
 
+  const [article, setArticle] = useState<Item | null>(null);
   const by = (k: Item['kind']) => items.filter((i) => i.kind === k);
+  const about = items.find((i) => i.kind === 'about');
   function onAuthed(a: Auth) { vSetToken(a.token); setAuth(a); setAuthOpen(false); }
   function logout() { vClearToken(); setAuth(null); }
 
@@ -51,8 +53,9 @@ function App() {
         <Header auth={auth} onLogin={() => setAuthOpen(true)} onLogout={logout} />
         <Hero auth={auth} onNeedLogin={() => setAuthOpen(true)} />
         <Dynamics items={by('dynamic')} />
-        <Articles items={by('article')} />
+        <Articles items={by('article')} onOpen={setArticle} />
         <Projects items={by('project')} />
+        <About item={about} />
         <Contact />
         <footer className={`${pageX} flex justify-between gap-5 pb-10 pt-6 text-sm text-muted-foreground`}>
           <span>Powered by Meem</span>
@@ -60,6 +63,7 @@ function App() {
       </main>
       <div className="neon-scan" aria-hidden />
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} onAuthed={onAuthed} />}
+      {article && <ArticleModal item={article} onClose={() => setArticle(null)} />}
     </div>
   );
 }
@@ -81,7 +85,7 @@ function Header({ auth, onLogin, onLogout }: { auth: Auth | null; onLogin: () =>
       <a className="inline-flex items-center gap-2.5 font-bold tracking-wide" href="/"><img className="size-8 rounded-lg shadow-glow-sm" src="/favicon.svg" alt="" /><span>Meem Site</span></a>
       <div className="flex items-center gap-2">
         <nav className="hidden gap-1.5 sm:flex">
-          {[['欢迎', '#welcome'], ['动态', '#dynamics'], ['文章', '#articles'], ['项目', '#projects']].map(([l, h]) => (
+          {[['欢迎', '#welcome'], ['动态', '#dynamics'], ['文章', '#articles'], ['项目', '#projects'], ['关于', '#about']].map(([l, h]) => (
             <a className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-card hover:text-foreground" href={h} key={h}>{l}</a>
           ))}
         </nav>
@@ -232,22 +236,22 @@ function Projects({ items }: { items: Item[] }) {
   );
 }
 
-function Articles({ items }: { items: Item[] }) {
+function Articles({ items, onOpen }: { items: Item[]; onOpen: (i: Item) => void }) {
   if (!items.length) return null;
   return (
     <section className={`${pageX} py-12`} id="articles">
       <SectionHead label="Articles" title="文章" />
       <div className="grid gap-2.5">
         {items.map((a) => (
-          <article className="rounded-xl border border-border bg-card/70 p-5 backdrop-blur-sm sm:p-6" key={a.id}>
+          <button onClick={() => onOpen(a)} className="rounded-xl border border-border bg-card/70 p-5 text-left backdrop-blur-sm transition-all hover:border-cyan/60 hover:shadow-glow-sm sm:p-6" key={a.id}>
             <div className="flex items-baseline justify-between gap-3">
               <h3 className="text-lg font-bold sm:text-xl">{a.title}</h3>
               <span className="shrink-0 font-mono text-xs text-muted-foreground">{fmtDate(a.created)}</span>
             </div>
             <p className="mt-2 line-clamp-3 whitespace-pre-wrap text-sm leading-7 text-muted-foreground">{a.body}</p>
-            {a.url && <a href={a.url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-cyan hover:brightness-110">阅读全文<ArrowUpRight className="size-3.5" /></a>}
+            <span className="mt-2 inline-flex items-center gap-1 text-xs text-cyan">阅读全文<ArrowUpRight className="size-3.5" /></span>
             <Tags tags={a.tags} />
-          </article>
+          </button>
         ))}
       </div>
     </section>
@@ -340,6 +344,52 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       <span>{label}</span>
       {children}
     </label>
+  );
+}
+
+interface Contact { label: string; value: string; url?: string; code?: boolean }
+function About({ item }: { item?: Item }) {
+  if (!item) return null;
+  let contacts: Contact[] = [];
+  try { contacts = JSON.parse(item.tags || '[]'); } catch { /* */ }
+  return (
+    <section className={`${pageX} py-12`} id="about">
+      <SectionHead label="About" title="关于" />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,.62fr)]">
+        <div className="whitespace-pre-wrap rounded-xl border border-border bg-card/70 p-6 text-base leading-8 text-foreground backdrop-blur-sm">{item.body}</div>
+        {contacts.length > 0 && (
+          <div className="rounded-xl border border-border bg-card/70 p-6 backdrop-blur-sm">
+            <h3 className="mb-4 text-sm font-bold tracking-widest text-cyan">联系</h3>
+            <div className="grid gap-3">
+              {contacts.map((c) => (
+                <div className="flex items-baseline justify-between gap-3" key={c.label}>
+                  <span className="text-sm text-muted-foreground">{c.label}</span>
+                  {c.url
+                    ? <a href={c.url} target="_blank" rel="noreferrer" className="text-sm text-foreground transition-colors hover:text-cyan">{c.value}</a>
+                    : <span className={`text-sm text-foreground ${c.code ? 'font-mono' : ''}`}>{c.value}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function ArticleModal({ item, onClose }: { item: Item; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm" onClick={onClose}>
+      <div className="mx-auto my-8 w-full max-w-2xl rounded-2xl border border-cyan/40 bg-card p-6 shadow-glow-sm sm:p-9" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-1 flex items-start justify-between gap-4">
+          <h2 className="text-2xl font-bold leading-tight sm:text-3xl">{item.title}</h2>
+          <button onClick={onClose} aria-label="关闭" className="grid size-8 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-cyan hover:text-cyan">✕</button>
+        </div>
+        <div className="mb-5 font-mono text-xs text-muted-foreground">{fmtDate(item.created)}</div>
+        <div className="whitespace-pre-wrap text-[15px] leading-8 text-foreground">{item.body}</div>
+        {item.url && <a href={item.url} target="_blank" rel="noreferrer" className="mt-6 inline-flex items-center gap-1 text-sm text-cyan hover:brightness-110">原文链接<ArrowUpRight className="size-4" /></a>}
+      </div>
+    </div>
   );
 }
 

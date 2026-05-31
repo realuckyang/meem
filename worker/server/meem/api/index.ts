@@ -58,6 +58,17 @@ export async function handleApi(req: Request, env: Env, url: URL, _ctx: Executio
   }
   if ((mm = p.match(/^content\/([^/]+)$/)) && method === 'DELETE') { await repo.deleteContent(mm[1]); return json({ ok: true }); }
 
+  // ── 文档(私有) ──
+  if (p === 'docs/notebooks' && method === 'GET') return json({ notebooks: await repo.docNotebooks() });
+  if (p === 'docs/notebooks' && method === 'POST') { const b = await readJson(req); if (!String(b.name || '').trim()) return json({ error: 'name_required' }, 400); return json({ notebook: await repo.docCreateNotebook({ name: b.name, parentId: b.parentId ?? null, icon: b.icon }) }); }
+  if ((mm = p.match(/^docs\/notebooks\/([^/]+)$/)) && method === 'PUT') { const b = await readJson(req); await repo.docRenameNotebook(mm[1], String(b.name || '')); return json({ ok: true }); }
+  if ((mm = p.match(/^docs\/notebooks\/([^/]+)$/)) && method === 'DELETE') { await repo.docDeleteNotebook(mm[1]); return json({ ok: true }); }
+  if (p === 'docs/pages' && method === 'GET') return json({ pages: await repo.docPagesList(url.searchParams.get('notebook') || null) });
+  if (p === 'docs/pages' && method === 'POST') { const b = await readJson(req); return json({ page: await repo.docCreatePage({ notebookId: b.notebookId ?? null, title: String(b.title || '新页面') }) }); }
+  if ((mm = p.match(/^docs\/pages\/([^/]+)$/)) && method === 'GET') { const pg = await repo.docGetPage(mm[1]); return pg ? json({ page: pg }) : json({ error: 'not_found' }, 404); }
+  if ((mm = p.match(/^docs\/pages\/([^/]+)$/)) && method === 'PUT') { const b = await readJson(req); await repo.docUpdatePage(mm[1], { title: b.title, content: b.content, icon: b.icon }); return json({ ok: true }); }
+  if ((mm = p.match(/^docs\/pages\/([^/]+)$/)) && method === 'DELETE') { await repo.docDeletePage(mm[1]); return json({ ok: true }); }
+
   // ── terminal snippets ──
   if (p === 'terminal/snippets' && method === 'GET') return json(await terminal.listSnippets(repo));
   if (p === 'terminal/snippets' && method === 'POST') {

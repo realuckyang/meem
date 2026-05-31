@@ -11,6 +11,9 @@ export interface ChatRow {
 }
 export interface MessageRow { id: string; chat_id: string | null; message: string; meta: string | null; created: number; }
 export interface ContentRow { id: string; site_uid: string; kind: string; title: string; body: string; url: string; tags: string; status: string; pinned: number; created: number; updated: number; }
+export interface DocNotebook { id: string; parent_id: string | null; name: string; icon: string | null; sort_order: number; created: number; updated: number; }
+export interface DocPageMeta { id: string; notebook_id: string | null; title: string; icon: string | null; sort_order: number; updated: number; }
+export interface DocPage extends DocPageMeta { content: string; created: number; }
 export interface OpenDecision { chat_id: string; ask: string; options: unknown[]; rationale: string; }
 export interface TerminalSnippetRow { id: string; name: string; command: string; auto_send: number; position: number; created: number; updated: number; }
 
@@ -33,6 +36,16 @@ export interface Repo {
   deleteContent(id: string): Promise<void>;
   // 公网限流:true=放行
   rateHit(bucket: string, windowSec: number, limit: number): Promise<boolean>;
+  // 文档(私有)
+  docNotebooks(): Promise<DocNotebook[]>;
+  docPagesList(notebookId: string | null): Promise<DocPageMeta[]>;
+  docGetPage(id: string): Promise<DocPage | null>;
+  docCreateNotebook(p: { name: string; parentId?: string | null; icon?: string | null }): Promise<DocNotebook>;
+  docCreatePage(p: { notebookId: string | null; title: string }): Promise<DocPage>;
+  docUpdatePage(id: string, p: Partial<{ title: string; content: string; icon: string }>): Promise<void>;
+  docDeletePage(id: string): Promise<void>;
+  docRenameNotebook(id: string, name: string): Promise<void>;
+  docDeleteNotebook(id: string): Promise<void>;
   sql(query: string): Promise<unknown[]>;
   r2Put(path: string, content: string): Promise<void>;
   r2Get(path: string): Promise<string | null>;
@@ -176,6 +189,46 @@ export function makeRepo(env: Env, uid: string): Repo {
       if (row.count >= limit) return false;
       await DB.prepare('UPDATE site_ratelimit SET count=count+1 WHERE bucket=?').bind(bucket).run();
       return true;
+    },
+
+    // ── 文档(私有) ──
+    async docNotebooks() {
+      const r = await DB.prepare('SELECT id,parent_id,name,icon,sort_order,created,updated FROM doc_notebooks WHERE meem_uid=? ORDER BY sort_order, created').bind(uid).all<DocNotebook>();
+      return r.results;
+    },
+    async docPagesList(notebookId) {
+      const r = notebookId === null
+        ? await DB.prepare('SELECT id,notebook_id,title,icon,sort_order,updated FROM doc_pages WHERE meem_uid=? AND notebook_id IS NULL ORDER BY sort_order, updated DESC').bind(uid).all<DocPageMeta>()
+        : await DB.prepare('SELECT id,notebook_id,title,icon,sort_order,updated FROM doc_pages WHERE meem_uid=? AND notebook_id=? ORDER BY sort_order, updated DESC').bind(uid, notebookId).all<DocPageMeta>();
+      return r.results;
+    },
+    async docGetPage(id) {
+      return DB.prepare('SELECT id,notebook_id,title,content,icon,sort_order,created,updated FROM doc_pages WHERE id=? AND meem_uid=?').bind(id, uid).first<DocPage>();
+    },
+    async docCreateNotebook(p) {
+      const id = uuid();
+      await DB.prepare('INSERT INTO doc_notebooks (id,meem_uid,parent_id,name,icon,sort_order,created,updated) VALUES (?,?,?,?,?,?,?,?)')
+        .bind(id, uid, p.parentId ?? null, p.name, p.icon ?? null, now(), now(), now()).run();
+      return { id, parent_id: p.parentId ?? null, name: p.name, icon: p.icon ?? null, sort_order: now(), created: now(), updated: now() };
+    },
+    async docCreatePage(p) {
+      const id = uuid();
+      await DB.prepare('INSERT INTO doc_pages (id,meem_uid,notebook_id,title,content,icon,sort_order,created,updated) VALUES (?,?,?,?,?,?,?,?,?)')
+        .bind(id, uid, p.notebookId ?? null, p.title, '', null, now(), now(), now()).run();
+      return (await this.docGetPage(id))!;
+    },
+    async docUpdatePage(id, p) {
+      const cols: string[] = []; const vals: unknown[] = [];
+      for (const k of ['title', 'content', 'icon'] as const) if ((p as any)[k] !== undefined) { cols.push(`${k}=?`); vals.push((p as any)[k]); }
+      if (!cols.length) return;
+      cols.push('updated=?'); vals.push(now(), id, uid);
+      await DB.prepare(`UPDATE doc_pages SET ${cols.join(',')} WHERE id=? AND meem_uid=?`).bind(...vals).run();
+    },
+    async docDeletePage(id) { await DB.prepare('DELETE FROM doc_pages WHERE id=? AND meem_uid=?').bind(id, uid).run(); },
+    async docRenameNotebook(id, name) { await DB.prepare('UPDATE doc_notebooks SET name=?,updated=? WHERE id=? AND meem_uid=?').bind(name, now(), id, uid).run(); },
+    async docDeleteNotebook(id) {
+      await DB.prepare('DELETE FROM doc_pages WHERE notebook_id=? AND meem_uid=?').bind(id, uid).run();
+      await DB.prepare('DELETE FROM doc_notebooks WHERE id=? AND meem_uid=?').bind(id, uid).run();
     },
 
     // ── 数据库 / 云存储 ──
