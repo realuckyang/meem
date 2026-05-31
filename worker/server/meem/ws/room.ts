@@ -4,6 +4,8 @@ import { Broadcaster } from './broadcast';
 import { DEFAULT_TOOL_TIMEOUT_MS } from './frames';
 import type { ClientKind, ToolEndpointKind, InFrame } from './frames';
 import { runChat } from '../services/chat';
+import * as chatsSvc from '../services/chats';
+import * as decisionsSvc from '../services/decisions';
 import { makeRepo } from '../repository';
 
 const taskKey = (chat: string | null) => chat || 'main';
@@ -38,11 +40,6 @@ export class Room implements DurableObject {
     if (url.pathname.endsWith('/connect')) {
       if (req.headers.get('Upgrade') !== 'websocket') return new Response('expected ws', { status: 426 });
       return this.accept((url.searchParams.get('client') || 'meem') as ClientKind);
-    }
-    if (url.pathname.endsWith('/trigger') && req.method === 'POST') {
-      const body = await req.json<{ chat: string | null }>().catch(() => ({ chat: null }));
-      this.ensureRunning(body?.chat ?? null);
-      return new Response('ok');
     }
     return new Response('not found', { status: 404 });
   }
@@ -82,6 +79,10 @@ export class Room implements DurableObject {
       case 'ping': try { ws.send(JSON.stringify({ type: 'pong' })); } catch { /* */ } return;
       case 'send': void this.handleSend(f.chat ?? null, f.text); return;
       case 'abort': this.tasks.get(taskKey(f.chat ?? null))?.abort(); return;
+      case 'chats.list': void this.sendList(ws); return;
+      case 'chat.open': void this.sendHistory(ws, f.chat ?? null); return;
+      case 'chat.new': void this.handleNew(ws, f.title, f.purpose); return;
+      case 'decide': void this.handleDecide(f.chat ?? null, f.chosen); return;
     }
 
     // 工具面板穿透转发(终端/文件/状态/截图)· terminal.* / data.* / fs.* / system.* / screen.* / status.*
@@ -103,6 +104,38 @@ export class Room implements DurableObject {
     const repo = makeRepo(this.env, this.uid);
     await repo.addMessage({ chatId: chat, message: { role: 'user', content: text.trim() } });
     this.bc.send({ type: 'message', chat, role: 'user', content: text.trim() });
+    this.ensureRunning(chat);
+  }
+
+  /** WS:返回会话列表(只发给请求的控制台) */
+  private async sendList(ws: WebSocket): Promise<void> {
+    if (!this.uid) return;
+    const data = await chatsSvc.board(makeRepo(this.env, this.uid));
+    try { ws.send(JSON.stringify({ type: 'chats.list.ok', chats: data.chats, decisions: data.decisions })); } catch { /* */ }
+  }
+
+  /** WS:返回某会话完整历史(只发给请求方) */
+  private async sendHistory(ws: WebSocket, chat: string | null): Promise<void> {
+    if (!this.uid || !chat) return;
+    const data = await chatsSvc.detail(makeRepo(this.env, this.uid), chat);
+    try { ws.send(JSON.stringify({ type: 'chat.history', chat, messages: data.messages })); } catch { /* */ }
+  }
+
+  /** WS:新建会话,回执 id,有 purpose 则立即开跑 */
+  private async handleNew(ws: WebSocket, title?: string, purpose?: string): Promise<void> {
+    if (!this.uid) return;
+    const repo = makeRepo(this.env, this.uid);
+    const chat = await chatsSvc.create(repo, { title, purpose });
+    try { ws.send(JSON.stringify({ type: 'chat.new.ok', chat })); } catch { /* */ }
+    this.bc.send({ type: 'chats.update' });
+    if (purpose) this.ensureRunning(chat.id);
+  }
+
+  /** WS:对决策拍板 → 落"采纳"消息并继续跑 */
+  private async handleDecide(chat: string | null, chosen: unknown): Promise<void> {
+    if (!this.uid || !chat) return;
+    await decisionsSvc.decide(makeRepo(this.env, this.uid), chat, String(chosen ?? ''));
+    this.bc.send({ type: 'message', chat, role: 'user', content: `采纳:${String(chosen ?? '')}` });
     this.ensureRunning(chat);
   }
 

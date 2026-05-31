@@ -24,10 +24,22 @@ export async function runChat(d: RunDeps): Promise<void> {
   const history = await d.repo.loadHistory(d.chatId);
   const system: ChatMessage = { role: 'system', content: buildSystem(currentChat, s.persona, d.connections) };
 
+  const apiUrl = (s.llm_url || d.env.LLM_URL || '').trim();
+  const apiKey = (s.llm_key || d.env.LLM_KEY || '').trim();
+  const model = (s.llm_model || d.env.LLM_MODEL || '').trim();
+  const missing = [
+    !apiUrl && '接口地址',
+    !apiKey && 'API Key',
+    !model && '模型名',
+  ].filter(Boolean);
+  if (missing.length) {
+    throw new Error(`模型未配置:请到「设置 → 模型配置」填写 ${missing.join('、')}(注意灰色占位文字不是已填的值,需手动输入)。`);
+  }
+
   const result = await runAiChat([system, ...history], {
-    apiUrl: s.llm_url || d.env.LLM_URL,
-    apiKey: s.llm_key || d.env.LLM_KEY,
-    model: s.llm_model || d.env.LLM_MODEL,
+    apiUrl,
+    apiKey,
+    model,
     tools: toolsFor(d.connections),
     maxRounds: s.max_rounds || Number(d.env.LLM_MAX_ROUNDS) || 30,
     signal: d.signal,

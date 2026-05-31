@@ -5,10 +5,11 @@ export interface Env {
   DOWNLOADS: R2Bucket;
   ROOM: DurableObjectNamespace;
   ASSETS: Fetcher;
-  LLM_URL: string;
-  LLM_KEY: string;
-  LLM_MODEL: string;
-  LLM_MAX_ROUNDS: string;
+  // 模型配置改由「设置」应用写入 D1(meem_settings),不再放 wrangler.jsonc;以下保留为可选兜底。
+  LLM_URL?: string;
+  LLM_KEY?: string;
+  LLM_MODEL?: string;
+  LLM_MAX_ROUNDS?: string;
   LLM_TOOL_TIMEOUT_MS: string;
   LLM_VISION: string;
 }

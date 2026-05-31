@@ -4,19 +4,48 @@
 
 @layer base {
   :root {
-    --background: 60 14% 98%;
-    --foreground: 225 6% 13%;
+    /* ===== Neon dark · cyberpunk console ===== */
+    --background: 228 33% 3%;
+    --foreground: 216 100% 93%;
+    --card: 222 38% 6%;
+    --card-foreground: 216 100% 93%;
+    --muted: 220 34% 10%;
+    --muted-foreground: 214 23% 47%;
+    --secondary: 221 36% 8%;
+    --secondary-foreground: 216 100% 93%;
+    --accent: 190 70% 13%;
+    --accent-foreground: 187 100% 62%;
+    --border: 212 45% 18%;
+    --input: 212 45% 18%;
+    --ring: 187 100% 58%;
+
+    /* neon accents (also exposed as tailwind colors) */
+    --cyan: 187 100% 58%;
+    --magenta: 312 100% 58%;
+    --lime: 96 100% 65%;
+    --amber: 38 100% 60%;
+  }
+
+  /* ===== Light · 明亮主题 ===== */
+  [data-theme='light'] {
+    --background: 210 36% 97%;
+    --foreground: 222 32% 14%;
     --card: 0 0% 100%;
-    --card-foreground: 225 6% 13%;
-    --muted: 48 17% 92%;
-    --muted-foreground: 228 5% 57%;
-    --secondary: 45 18% 94%;
-    --secondary-foreground: 225 6% 13%;
-    --accent: 211 92% 95%;
-    --accent-foreground: 220 71% 36%;
-    --border: 45 14% 88%;
-    --input: 45 14% 88%;
-    --ring: 220 71% 56%;
+    --card-foreground: 222 32% 14%;
+    --muted: 214 32% 93%;
+    --muted-foreground: 216 14% 42%;
+    --secondary: 214 34% 95%;
+    --secondary-foreground: 222 32% 14%;
+    --accent: 199 90% 92%;
+    --accent-foreground: 199 90% 30%;
+    --border: 214 24% 85%;
+    --input: 214 24% 85%;
+    --ring: 199 89% 46%;
+
+    --cyan: 199 89% 42%;
+    --magenta: 320 72% 48%;
+    --lime: 142 64% 34%;
+    --amber: 33 92% 42%;
   }
 
   * {
@@ -31,7 +60,8 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Helvetica Neue", Inter, Arial, sans-serif;
+    font-family: "SFMono-Regular", ui-monospace, "JetBrains Mono", Menlo, Consolas,
+      "PingFang SC", "Microsoft YaHei", monospace;
   }
 
   button,
@@ -39,47 +69,140 @@
   input {
     font-family: inherit;
   }
+
+  /* dark neon scrollbars */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 5px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(212 45% 26%);
+    background-clip: padding-box;
+  }
 }
 
 @layer components {
+  /* ===== ambient layers (mounted once in App shell) ===== */
+  .neon-field {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .neon-field::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    background:
+      linear-gradient(hsl(212 45% 18% / 0.6) 1px, transparent 1px) 0 0 / 42px 42px,
+      linear-gradient(90deg, hsl(212 45% 18% / 0.6) 1px, transparent 1px) 0 0 / 42px 42px;
+    mask: radial-gradient(125% 95% at 50% 0%, #000 28%, transparent 82%);
+    -webkit-mask: radial-gradient(125% 95% at 50% 0%, #000 28%, transparent 82%);
+    opacity: 0.45;
+    animation: neon-drift 20s linear infinite;
+  }
+  .neon-field::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(40% 50% at 12% 8%, hsl(var(--cyan) / 0.16), transparent 70%),
+      radial-gradient(45% 55% at 92% 4%, hsl(var(--magenta) / 0.13), transparent 70%),
+      radial-gradient(60% 60% at 50% 112%, hsl(var(--lime) / 0.06), transparent 70%);
+  }
+  @keyframes neon-drift {
+    to {
+      background-position: 0 42px, 42px 0;
+    }
+  }
+  .neon-scan {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    pointer-events: none;
+    mix-blend-mode: overlay;
+    opacity: 0.5;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.05) 0 1px,
+      transparent 1px 3px
+    );
+  }
+
+  /* 明亮主题下去掉霓虹环境层,回到清爽白昼 */
+  [data-theme='light'] .neon-field,
+  [data-theme='light'] .neon-scan {
+    display: none;
+  }
+
+  /* 全局宫格按钮:底色压暗 + 凹陷感,图标靠暗底反衬 */
+  .waffle-btn {
+    background: linear-gradient(180deg, #0a111c, #03050a);
+    box-shadow: inset 0 -7px 12px -6px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+  [data-theme='light'] .waffle-btn {
+    background: linear-gradient(180deg, #eef3f9, #dbe4ee);
+    box-shadow: inset 0 -6px 12px -6px rgba(15, 30, 60, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  }
+
+  /* reusable neon motifs */
+  .neon-panel {
+    @apply rounded-xl border border-border bg-card/80 backdrop-blur-sm;
+  }
+  .neon-glow-border {
+    @apply border-[hsl(var(--cyan))];
+    box-shadow: 0 0 12px hsl(var(--cyan) / 0.45);
+  }
+  .neon-caret {
+    @apply inline-block w-2 align-[-2px];
+    height: 0.95em;
+    background: hsl(var(--cyan));
+    box-shadow: 0 0 10px hsl(var(--cyan) / 0.7);
+    animation: neon-blink 1s steps(1) infinite;
+  }
+  @keyframes neon-blink {
+    50% {
+      opacity: 0;
+    }
+  }
+
+  /* ===== markdown ===== */
   .md {
     @apply text-sm leading-7 text-foreground;
   }
-
   .md p {
     @apply mb-2 last:mb-0;
   }
-
   .md pre {
-    @apply my-3 overflow-x-auto rounded-lg bg-[#0f1117] p-4 text-xs leading-6 text-[#e6e9f0];
+    @apply my-3 overflow-x-auto rounded-lg border border-border bg-[#06090f] p-4 text-xs leading-6 text-[#cfe6ff];
   }
-
   .md code {
-    @apply rounded bg-muted px-1.5 py-0.5 font-mono text-xs;
+    @apply rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-[hsl(var(--cyan))];
   }
-
   .md pre code,
   .md pre code.hljs {
     @apply bg-transparent p-0 text-inherit;
   }
-
   .md ul,
   .md ol {
     @apply my-2 ml-5;
   }
-
   .md li {
     @apply my-1;
   }
-
   .md h1,
   .md h2,
   .md h3 {
     @apply my-3 text-base font-bold;
   }
-
   .md a {
-    @apply text-accent-foreground underline;
+    @apply text-[hsl(var(--cyan))] underline;
   }
 }
 

@@ -6,7 +6,7 @@ import { Button } from '../../system/ui/button';
 import ConnectionGuide from '../../system/ConnectionGuide';
 import { useConnectionStatus } from '../../system/useConnectionStatus';
 
-export default function ScreenApp({ openApps }: SystemAppProps) {
+export default function ScreenApp(_: SystemAppProps) {
   const [img, setImg] = useState('');
   const [loading, setLoading] = useState(false);
   const reqId = useRef('');
@@ -27,8 +27,8 @@ export default function ScreenApp({ openApps }: SystemAppProps) {
   }, [status.computer]);
 
   return (
-    <main className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
-      <Topbar title="截图" openApps={openApps} />
+    <main className="flex h-full min-h-0 flex-col overflow-hidden">
+      <Topbar title="截图" />
       <div className="min-h-0 flex-1 overflow-y-auto">
         {!status.computer ? <ConnectionGuide kind="computer" className="h-full" onRetry={() => location.reload()} /> : (
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-5">

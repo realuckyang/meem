@@ -8,7 +8,7 @@ import { Button } from '../../system/ui/button';
 
 type InstallKind = 'client' | 'extension';
 
-export default function InstallApp({ kind, openApps }: SystemAppProps & { kind: InstallKind }) {
+export default function InstallApp({ kind }: SystemAppProps & { kind: InstallKind }) {
   const [config, setConfig] = useState<{ baseUrl: string; wsUrl: string; token: string } | null>(null);
   const [copied, setCopied] = useState(false);
   useEffect(() => { api.installConfig().then(setConfig).catch(() => {}); }, []);
@@ -43,11 +43,11 @@ export const TOKEN    = '${config.token}';
   const isClient = kind === 'client';
 
   return (
-    <main className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
-      <Topbar title={isClient ? '安装本机客户端' : '安装浏览器扩展'} openApps={openApps} />
+    <main className="flex h-full min-h-0 flex-col overflow-hidden">
+      <Topbar title={isClient ? '安装本机客户端' : '安装浏览器扩展'} />
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto grid w-full max-w-5xl gap-4 p-5 lg:grid-cols-[0.9fr_1.1fr]">
-          <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+          <section className="min-w-0 rounded-lg border border-border bg-card p-5 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="grid size-12 place-items-center rounded-lg bg-secondary text-foreground [&_svg]:size-6">
                 {isClient ? <Monitor /> : <Puzzle />}
@@ -70,13 +70,13 @@ export const TOKEN    = '${config.token}';
                   <Step n={1}>下载并解压扩展包，或直接使用仓库里的 <code>extension</code> 目录。</Step>
                   <Step n={2}>打开 <code>chrome://extensions</code> 并开启开发者模式。</Step>
                   <Step n={3}>点击“加载已解压的扩展程序”，选择解压目录。</Step>
-                  <Step n={4}>打开扩展 popup，输入 Meem 密码完成登录。</Step>
+                  <Step n={4}>打开扩展 popup，把右侧 <code>接口地址 / WebSocket / 令牌</code> 三项粘进去,点连接。</Step>
                 </>
               )}
             </div>
           </section>
 
-          <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+          <section className="min-w-0 rounded-lg border border-border bg-card p-5 shadow-sm">
             {isClient ? (
               <>
                 <div className="mb-3 flex items-center justify-between gap-3">
@@ -94,8 +94,13 @@ export const TOKEN    = '${config.token}';
               </>
             ) : (
               <>
-                <h2 className="font-semibold">扩展包</h2>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">下载 zip 后解压，再用 Chrome 加载解压后的目录。开发环境也可以直接加载仓库里的 extension 目录。</p>
+                <h2 className="font-semibold">扩展连接配置</h2>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">和电脑端一样,把这三项粘进扩展 popup 即可连接(无需密码)。</p>
+                <div className="mt-4 space-y-2">
+                  <CopyField label="接口地址 · BASE_URL" value={config?.baseUrl} />
+                  <CopyField label="WebSocket · WS_URL" value={config?.wsUrl} />
+                  <CopyField label="令牌 · TOKEN" value={config?.token} secret />
+                </div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Button asChild>
                     <a href="/downloads/extension/meem-extension.zip" download="meem-extension.zip"><Download />下载扩展包</a>
@@ -110,6 +115,24 @@ export const TOKEN    = '${config.token}';
         </div>
       </div>
     </main>
+  );
+}
+
+function CopyField({ label, value, secret }: { label: string; value?: string; secret?: boolean }) {
+  const [copied, setCopied] = useState(false);
+  const v = value || '';
+  function copy() {
+    if (!v) return;
+    navigator.clipboard?.writeText(v).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1400); }).catch(() => {});
+  }
+  return (
+    <div className="rounded-md border border-border bg-background px-3 py-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
+        <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={copy} disabled={!v}>{copied ? '已复制' : '复制'}</Button>
+      </div>
+      <div className="mt-1 truncate font-mono text-xs text-foreground">{v ? (secret ? '•'.repeat(Math.min(v.length, 28)) : v) : '生成中...'}</div>
+    </div>
   );
 }
 

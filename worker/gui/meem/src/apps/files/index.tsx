@@ -11,7 +11,7 @@ interface Item { name: string; path: string; isDir: boolean; size: number; mtime
 let seq = 0;
 const nextReq = () => 'r' + (++seq) + '_' + Date.now();
 
-export default function FilesApp({ openApps }: SystemAppProps) {
+export default function FilesApp(_: SystemAppProps) {
   const [cwd, setCwd] = useState('');
   const [items, setItems] = useState<Item[]>([]);
   const [preview, setPreview] = useState<{ name: string; content: string } | null>(null);
@@ -54,8 +54,8 @@ export default function FilesApp({ openApps }: SystemAppProps) {
   function up() { const p = cwd.replace(/\/+$/, '').split('/').slice(0, -1).join('/') || '/'; open(p); }
 
   return (
-    <main className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
-      <Topbar title="文件" openApps={openApps} />
+    <main className="flex h-full min-h-0 flex-col overflow-hidden">
+      <Topbar title="文件" />
       <div className="min-h-0 flex-1 overflow-hidden">
         {!status.computer ? <ConnectionGuide kind="computer" className="h-full" onRetry={() => location.reload()} /> : (
         <div className="flex h-full min-h-0 flex-col">

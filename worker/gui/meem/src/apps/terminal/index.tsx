@@ -17,7 +17,7 @@ import { useTerminalSessions } from './useTerminalSessions';
 import { clamp, parseJson } from './utils';
 import type { PanelTab } from './types';
 
-export default function TerminalApp({ openApps }: SystemAppProps) {
+export default function TerminalApp(_: SystemAppProps) {
   const [fontSize, setFontSize] = useState(() => clamp(Number(localStorage.getItem(FONT_KEY)) || 13, 10, 24));
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelTab, setPanelTab] = useState<PanelTab>(() => (localStorage.getItem(PANEL_KEY) === 'commands' ? 'commands' : 'keys'));
@@ -100,8 +100,8 @@ export default function TerminalApp({ openApps }: SystemAppProps) {
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
-      <Topbar title="终端" openApps={openApps} />
+    <main className="flex h-full min-h-0 flex-col overflow-hidden">
+      <Topbar title="终端" />
       <div className="min-h-0 flex-1 overflow-hidden">
         <div className="relative flex h-full min-h-0 flex-col bg-[#111318]">
           {!status.computer ? (

@@ -16,6 +16,10 @@ DROP TABLE IF EXISTS site_settings;
 DROP TABLE IF EXISTS site_pages;
 DROP TABLE IF EXISTS site_inbox;
 DROP TABLE IF EXISTS site_events;
+DROP TABLE IF EXISTS site_content;
+DROP TABLE IF EXISTS site_ratelimit;
+DROP TABLE IF EXISTS site_visitors;
+DROP TABLE IF EXISTS site_visitor_msgs;
 
 CREATE TABLE meem_users (
   meem_uid  TEXT PRIMARY KEY DEFAULT 'me',
@@ -155,6 +159,51 @@ CREATE TABLE site_events (
   created   INTEGER NOT NULL DEFAULT (unixepoch())
 );
 CREATE INDEX idx_site_events_kind ON site_events(site_uid, kind, created DESC);
+
+-- 对外内容:动态 / 文章 / 项目(站主发布,公网展示 + 门童机器人只读)
+CREATE TABLE site_content (
+  id        TEXT PRIMARY KEY,
+  site_uid  TEXT NOT NULL DEFAULT 'me',
+  kind      TEXT NOT NULL DEFAULT 'dynamic',   -- dynamic | article | project
+  title     TEXT NOT NULL DEFAULT '',
+  body      TEXT NOT NULL DEFAULT '',
+  url       TEXT NOT NULL DEFAULT '',
+  tags      TEXT NOT NULL DEFAULT '',
+  status    TEXT NOT NULL DEFAULT 'published',  -- draft | published
+  pinned    INTEGER NOT NULL DEFAULT 0,
+  created   INTEGER NOT NULL DEFAULT (unixepoch()),
+  updated   INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE INDEX idx_site_content ON site_content(site_uid, kind, status, pinned DESC, created DESC);
+
+-- 公网门童限流(按 IP + 全局)
+CREATE TABLE site_ratelimit (
+  bucket    TEXT PRIMARY KEY,
+  win_start INTEGER NOT NULL DEFAULT 0,
+  count     INTEGER NOT NULL DEFAULT 0
+);
+
+-- 访客账号(对外网站登录注册;与站主 meem_users 完全分离)
+CREATE TABLE site_visitors (
+  id         TEXT PRIMARY KEY,
+  email      TEXT NOT NULL UNIQUE,
+  name       TEXT NOT NULL DEFAULT '',
+  salt       TEXT NOT NULL,
+  hash       TEXT NOT NULL,
+  status     TEXT NOT NULL DEFAULT 'active',
+  created    INTEGER NOT NULL DEFAULT (unixepoch()),
+  last_seen  INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+-- 每个访客一个对话
+CREATE TABLE site_visitor_msgs (
+  id         TEXT PRIMARY KEY,
+  visitor_id TEXT NOT NULL,
+  role       TEXT NOT NULL DEFAULT 'user',
+  content    TEXT NOT NULL DEFAULT '',
+  created    INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE INDEX idx_site_visitor_msgs ON site_visitor_msgs(visitor_id, created);
 
 INSERT INTO meem_settings (meem_uid) VALUES ('me');
 INSERT INTO site_settings (site_uid, title, description)

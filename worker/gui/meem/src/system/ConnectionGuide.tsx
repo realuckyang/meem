@@ -41,7 +41,7 @@ export default function ConnectionGuide({ kind, connected = false, dark = false,
       <div className={cn('w-full max-w-md rounded-lg border p-5 shadow-sm', dark ? 'border-zinc-800 bg-zinc-950 text-zinc-100' : 'border-border bg-card')}>
         <div className="flex items-start gap-3">
           <div className={cn('grid size-10 shrink-0 place-items-center rounded-lg', dark ? 'bg-zinc-900 text-zinc-100' : 'bg-secondary text-foreground')}>
-            {connected ? <CheckCircle2 className="size-5 text-emerald-500" /> : <Icon className="size-5" />}
+            {connected ? <CheckCircle2 className="size-5 text-lime" /> : <Icon className="size-5" />}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">

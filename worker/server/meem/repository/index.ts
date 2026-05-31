@@ -10,6 +10,7 @@ export interface ChatRow {
   status: string; preview: string; peer: string | null; created: number; updated: number; closed: number | null;
 }
 export interface MessageRow { id: string; chat_id: string | null; message: string; meta: string | null; created: number; }
+export interface ContentRow { id: string; site_uid: string; kind: string; title: string; body: string; url: string; tags: string; status: string; pinned: number; created: number; updated: number; }
 export interface OpenDecision { chat_id: string; ask: string; options: unknown[]; rationale: string; }
 export interface TerminalSnippetRow { id: string; name: string; command: string; auto_send: number; position: number; created: number; updated: number; }
 
@@ -23,6 +24,15 @@ export interface Repo {
   loadHistory(chatId: string | null): Promise<ChatMessage[]>;
   listMessages(chatId: string | null): Promise<MessageRow[]>;
   openDecisions(): Promise<OpenDecision[]>;
+  // 对外内容(动态/文章/项目)
+  listContent(kind?: string): Promise<ContentRow[]>;
+  publicContent(kind?: string): Promise<ContentRow[]>;
+  getContent(id: string): Promise<ContentRow | null>;
+  createContent(p: { kind: string; title: string; body?: string; url?: string; tags?: string; status?: string; pinned?: number }): Promise<ContentRow>;
+  updateContent(id: string, p: Partial<{ kind: string; title: string; body: string; url: string; tags: string; status: string; pinned: number }>): Promise<void>;
+  deleteContent(id: string): Promise<void>;
+  // 公网限流:true=放行
+  rateHit(bucket: string, windowSec: number, limit: number): Promise<boolean>;
   sql(query: string): Promise<unknown[]>;
   r2Put(path: string, content: string): Promise<void>;
   r2Get(path: string): Promise<string | null>;
@@ -118,6 +128,54 @@ export function makeRepo(env: Env, uid: string): Repo {
         out.push({ chat_id: t.id, ask: msg.content ?? '', options: meta.options ?? [], rationale: meta.rationale ?? '' });
       }
       return out;
+    },
+
+    // ── 对外内容(动态/文章/项目) ──
+    async listContent(kind) {
+      const sql = 'SELECT id,site_uid,kind,title,body,url,tags,status,pinned,created,updated FROM site_content WHERE site_uid=?'
+        + (kind ? ' AND kind=?' : '') + ' ORDER BY pinned DESC, created DESC';
+      const stmt = kind ? DB.prepare(sql).bind(uid, kind) : DB.prepare(sql).bind(uid);
+      return (await stmt.all<ContentRow>()).results;
+    },
+    async publicContent(kind) {
+      const sql = "SELECT id,site_uid,kind,title,body,url,tags,status,pinned,created,updated FROM site_content WHERE site_uid=? AND status='published'"
+        + (kind ? ' AND kind=?' : '') + ' ORDER BY pinned DESC, created DESC LIMIT 100';
+      const stmt = kind ? DB.prepare(sql).bind(uid, kind) : DB.prepare(sql).bind(uid);
+      return (await stmt.all<ContentRow>()).results;
+    },
+    async getContent(id) {
+      return DB.prepare('SELECT id,site_uid,kind,title,body,url,tags,status,pinned,created,updated FROM site_content WHERE id=? AND site_uid=?').bind(id, uid).first<ContentRow>();
+    },
+    async createContent(p) {
+      const id = uuid();
+      await DB.prepare('INSERT INTO site_content (id,site_uid,kind,title,body,url,tags,status,pinned,created,updated) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+        .bind(id, uid, p.kind, p.title, p.body ?? '', p.url ?? '', p.tags ?? '', p.status ?? 'published', p.pinned ?? 0, now(), now()).run();
+      return (await this.getContent(id))!;
+    },
+    async updateContent(id, p) {
+      const cols: string[] = []; const vals: unknown[] = [];
+      for (const k of ['kind', 'title', 'body', 'url', 'tags', 'status', 'pinned'] as const) {
+        if ((p as any)[k] !== undefined) { cols.push(`${k}=?`); vals.push((p as any)[k]); }
+      }
+      if (!cols.length) return;
+      cols.push('updated=?'); vals.push(now(), id, uid);
+      await DB.prepare(`UPDATE site_content SET ${cols.join(',')} WHERE id=? AND site_uid=?`).bind(...vals).run();
+    },
+    async deleteContent(id) {
+      await DB.prepare('DELETE FROM site_content WHERE id=? AND site_uid=?').bind(id, uid).run();
+    },
+
+    // ── 公网限流(固定窗口) ──
+    async rateHit(bucket, windowSec, limit) {
+      const t = now();
+      const row = await DB.prepare('SELECT win_start,count FROM site_ratelimit WHERE bucket=?').bind(bucket).first<{ win_start: number; count: number }>();
+      if (!row || t - row.win_start >= windowSec) {
+        await DB.prepare('INSERT INTO site_ratelimit (bucket,win_start,count) VALUES (?,?,1) ON CONFLICT(bucket) DO UPDATE SET win_start=excluded.win_start, count=1').bind(bucket, t).run();
+        return true;
+      }
+      if (row.count >= limit) return false;
+      await DB.prepare('UPDATE site_ratelimit SET count=count+1 WHERE bucket=?').bind(bucket).run();
+      return true;
     },
 
     // ── 数据库 / 云存储 ──

@@ -4,6 +4,20 @@
 
 const $ = (id) => document.getElementById(id);
 
+// ── 主题(暗/亮)──
+const THEME_KEY = 'meem_theme';
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  try { localStorage.setItem(THEME_KEY, t); } catch { /* */ }
+}
+function initTheme() {
+  applyTheme(localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark');
+}
+function toggleTheme() {
+  applyTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+}
+initTheme();
+
 function send(message) {
   return new Promise((resolve) => {
     chrome.runtime.sendMessage(message, (r) => resolve(r));
@@ -16,11 +30,17 @@ async function refresh() {
   if (!data) return;
 
   $('ver').textContent = data.version || '?';
-  const site = data.baseUrl || '#';
+  const site = data.base || '#';
   $('site-link').href = site;
   $('site-link').textContent = site === '#' ? '打开 Meem' : `打开 ${site.replace(/^https?:\/\//, '')}`;
 
-  if (data.hasToken) {
+  // 未连接时,用已存的 base/ws 预填表单(token 不回填)
+  if (!data.configured) {
+    if ($('in-base') && !$('in-base').value && data.base) $('in-base').value = data.base;
+    if ($('in-ws') && !$('in-ws').value && data.ws) $('in-ws').value = data.ws;
+  }
+
+  if (data.configured) {
     $('view-status').hidden = false;
     $('view-auth').hidden = true;
 
@@ -61,16 +81,19 @@ function showError(msg) {
 document.addEventListener('DOMContentLoaded', () => {
   $('form-auth').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const password = $('in-password').value;
-    if (password.length < 1) return showError('请输入密码');
+    const base = $('in-base').value.trim();
+    const ws = $('in-ws').value.trim();
+    const token = $('in-token').value.trim();
+    if (!token) return showError('请粘贴令牌 Token');
+    if (!ws) return showError('请填写 WebSocket 地址');
 
     const btn = $('btn-submit');
     btn.disabled = true;
     showError('');
     try {
-      const r = await send({ type: 'meem.login', password });
-      if (!r?.ok) { showError(r?.error || '失败'); return; }
-      $('in-password').value = '';
+      const r = await send({ type: 'meem.connect', config: { base, ws, token } });
+      if (!r?.ok) { showError(r?.error || '连接失败'); return; }
+      $('in-token').value = '';
       await refresh();
     } finally {
       btn.disabled = false;
@@ -81,6 +104,8 @@ document.addEventListener('DOMContentLoaded', () => {
     await send({ type: 'meem.logout' });
     setTimeout(refresh, 100);
   });
+
+  $('btn-theme').addEventListener('click', toggleTheme);
 
   refresh();
   // 状态轮询(同时让 popup 一直保持 background 活着)

@@ -32,8 +32,8 @@ export default function AuthScreen({ onReady }: { onReady: () => void }) {
   const setup = configured === false;
 
   return (
-    <main className="grid min-h-full place-items-center bg-background px-5 py-10">
-      <form className="w-full max-w-sm rounded-lg border border-border bg-card p-5 shadow-card" onSubmit={submit}>
+    <main className="grid min-h-full place-items-center px-5 py-10">
+      <form className="w-full max-w-sm rounded-2xl border border-border bg-card/80 p-6 shadow-glow-lg backdrop-blur" onSubmit={submit}>
         <div className="mb-5 flex items-center gap-3">
           <LogoMark className="size-11 rounded-xl text-base" />
           <div>
@@ -51,7 +51,7 @@ export default function AuthScreen({ onReady }: { onReady: () => void }) {
           <span className="mb-1.5 block text-muted-foreground">密码</span>
           <Input type="password" autoFocus value={password} onChange={(event) => setPassword(event.target.value)} minLength={setup ? 8 : undefined} />
         </label>
-        {error && <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+        {error && <div className="mt-3 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</div>}
         <Button className="mt-5 w-full" disabled={busy || configured === null || !password} type="submit">
           {busy ? '处理中' : setup ? '完成设置' : '登录'}
         </Button>

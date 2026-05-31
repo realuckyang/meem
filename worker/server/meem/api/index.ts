@@ -1,7 +1,5 @@
 import type { Env } from '../../types';
 import { makeRepo } from '../repository';
-import * as chats from '../services/chats';
-import * as decisions from '../services/decisions';
 import * as settings from '../services/settings';
 import * as terminal from '../services/terminal';
 import { authorize, createUser, getUser, hasUser, publicUser, signToken, verifyPassword } from '../auth';
@@ -10,13 +8,8 @@ const UID = 'me';
 const json = (d: unknown, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { 'content-type': 'application/json; charset=utf-8' } });
 const readJson = async (req: Request): Promise<any> => { try { return await req.json(); } catch { return {}; } };
 
-/** 通知 Room DO 跑某条会话(serialize + WS 流式) */
-async function trigger(env: Env, chat: string | null): Promise<void> {
-  const stub = env.ROOM.get(env.ROOM.idFromName(UID));
-  await stub.fetch(`https://room/trigger?uid=${UID}`, { method: 'POST', body: JSON.stringify({ chat }) });
-}
-
-export async function handleApi(req: Request, env: Env, url: URL, ctx: ExecutionContext): Promise<Response> {
+// 聊天 / 会话 / 决策全部走 WS(见 server/meem/ws/room.ts);REST 只保留 auth、安装、终端片段、设置。
+export async function handleApi(req: Request, env: Env, url: URL, _ctx: ExecutionContext): Promise<Response> {
   const p = url.pathname.replace(/^\/meem\/api\//, '');
   const method = req.method;
   let mm: RegExpMatchArray | null;
@@ -51,31 +44,19 @@ export async function handleApi(req: Request, env: Env, url: URL, ctx: Execution
     return json({ baseUrl: base, wsUrl: ws, token });
   }
 
-  // ── chats / 看板 ──
-  if (p === 'chats' && method === 'GET') return json(await chats.board(repo));
-  if (p === 'chats' && method === 'POST') { const b = await readJson(req); const r = await chats.create(repo, b); if (b.purpose) ctx.waitUntil(trigger(env, r.id)); return json({ chat: r }); }
-  if ((mm = p.match(/^chats\/([^/]+)$/)) && method === 'GET') return json(await chats.detail(repo, mm[1]));
-  if ((mm = p.match(/^chats\/([^/]+)\/send$/)) && method === 'POST') {
+  // ── 对外内容(动态/文章/项目) ──
+  if (p === 'content' && method === 'GET') return json({ items: await repo.listContent(url.searchParams.get('kind') || undefined) });
+  if (p === 'content' && method === 'POST') {
     const b = await readJson(req);
-    await repo.addMessage({ chatId: mm[1], message: { role: 'user', content: String(b.text ?? '') } });
-    ctx.waitUntil(trigger(env, mm[1]));
+    if (!String(b.kind || '').trim() || !String(b.title || '').trim()) return json({ error: 'kind_and_title_required' }, 400);
+    return json({ item: await repo.createContent({ kind: b.kind, title: b.title, body: b.body, url: b.url, tags: b.tags, status: b.status, pinned: b.pinned ? 1 : 0 }) });
+  }
+  if ((mm = p.match(/^content\/([^/]+)$/)) && method === 'PUT') {
+    const b = await readJson(req);
+    await repo.updateContent(mm[1], { kind: b.kind, title: b.title, body: b.body, url: b.url, tags: b.tags, status: b.status, pinned: b.pinned === undefined ? undefined : (b.pinned ? 1 : 0) });
     return json({ ok: true });
   }
-  if (p === 'send' && method === 'POST') {
-    const b = await readJson(req);
-    await repo.addMessage({ chatId: null, message: { role: 'user', content: String(b.text ?? '') } });
-    ctx.waitUntil(trigger(env, null));
-    return json({ ok: true });
-  }
-
-  // ── decisions ──
-  if (p === 'decisions' && method === 'GET') return json({ decisions: await decisions.open(repo) });
-  if ((mm = p.match(/^decisions\/([^/]+)\/decide$/)) && method === 'POST') {
-    const b = await readJson(req);
-    const chatId = await decisions.decide(repo, mm[1], String(b.chosen ?? ''));
-    if (chatId) ctx.waitUntil(trigger(env, chatId));
-    return json({ ok: true });
-  }
+  if ((mm = p.match(/^content\/([^/]+)$/)) && method === 'DELETE') { await repo.deleteContent(mm[1]); return json({ ok: true }); }
 
   // ── terminal snippets ──
   if (p === 'terminal/snippets' && method === 'GET') return json(await terminal.listSnippets(repo));

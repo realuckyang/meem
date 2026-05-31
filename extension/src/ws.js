@@ -1,8 +1,7 @@
 // 到 meem worker 的 WebSocket(client=extension)· 心跳 · 重连
 //   · 收到 tool.call → runTool → tool.result / tool.error
 
-import { WS_URL } from '../config.js';
-import { getToken } from './token.js';
+import { getConfig } from './store.js';
 import { runTool } from './tools/index.js';
 
 let ws = null;
@@ -37,9 +36,9 @@ function scheduleReconnect() {
 }
 
 export async function connect() {
-  const token = await getToken();
-  if (!token) { lastError = 'no_token'; return; }
-  const url = `${WS_URL}/meem/ws?token=${encodeURIComponent(token)}&client=extension`;
+  const { ws: wsUrl, token } = await getConfig();
+  if (!token || !wsUrl) { lastError = 'not_configured'; return; }
+  const url = `${wsUrl}/meem/ws?token=${encodeURIComponent(token)}&client=extension`;
   try { ws = new WebSocket(url); }
   catch (e) { lastError = e?.message || String(e); scheduleReconnect(); return; }
 

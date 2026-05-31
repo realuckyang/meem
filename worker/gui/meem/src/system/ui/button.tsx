@@ -4,15 +4,15 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
   {
     variants: {
       variant: {
-        default: 'bg-foreground text-background hover:bg-foreground/90',
-        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        ghost: 'hover:bg-accent hover:text-accent-foreground',
-        outline: 'border border-border bg-background hover:bg-accent hover:text-accent-foreground',
-        subtle: 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground',
+        default: 'bg-cyan text-cyan-foreground font-semibold shadow-glow-sm hover:brightness-110',
+        secondary: 'border border-border bg-secondary text-secondary-foreground hover:border-cyan/60',
+        ghost: 'text-muted-foreground hover:bg-white/5 hover:text-foreground',
+        outline: 'border border-border bg-card/50 text-foreground hover:border-cyan hover:text-foreground hover:shadow-glow-sm',
+        subtle: 'bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground',
       },
       size: {
         default: 'h-10 px-4 py-2',

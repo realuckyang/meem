@@ -1,14 +1,17 @@
-// popup ↔ background 通信 · 登录 / 状态 / 登出
-//   · 登录成功 → setToken → reconnect()
+// popup ↔ background 通信 · 配置(三字段)/ 状态 / 断开
+//   · 与电脑端一致:接口地址 / WebSocket / 令牌 Token
+//   · 保存配置 → setConfig → reconnect()
 
-import { BASE_URL } from '../config.js';
-import { getToken, setToken, clearToken } from './token.js';
+import { getConfig, setConfig, clearConfig } from './store.js';
 import { bridgeState, reconnect, lastConnectedAt, lastDisconnectedAt, lastError } from './ws.js';
 
 async function popupStatus() {
-  const token = await getToken();
+  const cfg = await getConfig();
   return {
-    hasToken: !!token,
+    configured: !!cfg.token && !!cfg.ws,
+    hasToken: !!cfg.token,
+    base: cfg.base,
+    ws: cfg.ws,
     bridge: bridgeState(),
     ready: bridgeState() === 'connected',
     extensionId: chrome.runtime.id,
@@ -16,35 +19,22 @@ async function popupStatus() {
     lastConnectedAt,
     lastDisconnectedAt,
     lastError,
-    baseUrl: BASE_URL,
   };
 }
 
-function authError(error) {
-  const map = {
-    not_configured: '请先在 Meem 控制台设置密码',
-    unauthorized: '密码不正确',
-    password_too_short: '密码长度不足',
-  };
-  return map[error] || error || '登录失败';
-}
-
-async function handleLogin(password) {
-  const r = await fetch(`${BASE_URL}/meem/api/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password }),
-  });
-  const data = await r.json();
-  if (!r.ok) throw new Error(authError(data?.error));
-  await setToken(data.token);
+async function handleConnect({ base, ws, token }) {
+  const t = (token || '').trim();
+  const w = (ws || '').trim();
+  if (!t) throw new Error('请填写令牌 Token');
+  if (!w) throw new Error('请填写 WebSocket 地址');
+  await setConfig({ base, ws: w, token: t });
   reconnect();
-  return { user: data.user };
+  return { ok: true };
 }
 
-async function handleLogout() {
-  await clearToken();
-  reconnect(); // 触发一次 connect · 无 token 会自然不连
+async function handleDisconnect() {
+  await clearConfig();
+  reconnect(); // 无配置会自然不连
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -54,14 +44,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     popupStatus().then((data) => sendResponse({ ok: true, data }));
     return true;
   }
-  if (message.type === 'meem.login') {
-    handleLogin(message.password)
+  if (message.type === 'meem.connect') {
+    handleConnect(message.config || {})
       .then((r) => sendResponse({ ok: true, data: r }))
       .catch((e) => sendResponse({ ok: false, error: e?.message || String(e) }));
     return true;
   }
-  if (message.type === 'meem.logout') {
-    handleLogout().then(() => sendResponse({ ok: true }));
+  if (message.type === 'meem.logout' || message.type === 'meem.disconnect') {
+    handleDisconnect().then(() => sendResponse({ ok: true }));
     return true;
   }
   return false;
