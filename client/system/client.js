@@ -5,6 +5,7 @@ import { TOKEN, WS_URL } from '../config.js';
 import * as files from '../apps/files/index.js';
 import * as status from '../apps/status/index.js';
 import * as terminal from '../apps/terminal/index.js';
+import * as codex from '../apps/codex/index.js';
 import { callTool } from '../apps/computer/index.js';
 
 let ws = null;
@@ -15,6 +16,7 @@ let heartbeatTimer = null;
 terminal.setEmit((frame) => send(frame));
 files.setEmit((frame) => send(frame));
 status.setEmit((frame) => send(frame));
+codex.setEmit((frame) => send(frame));
 
 const isTermFrame = (type) => type.startsWith('terminal.') || type.startsWith('data.') || type.startsWith('system.');
 
@@ -26,11 +28,11 @@ export function startClient() {
 function validateConfig() {
   if (!TOKEN) {
     console.error('config.js 里 TOKEN 是空的');
-    console.error('去 meem 网页下载新的 config.js 覆盖');
+    console.error('去 meem 控制台「设备」应用添加一台电脑设备,复制它的连接配置覆盖 config.js');
     process.exit(1);
   }
   if (!WS_URL) {
-    console.error('config.js 里 WS_URL 没设 · 去 meem 网页下载完整 config.js');
+    console.error('config.js 里 WS_URL 没设');
     process.exit(1);
   }
 }
@@ -45,8 +47,8 @@ function scheduleReconnect() {
 }
 
 function connect() {
-  const url = `${WS_URL}/meem/ws?token=${encodeURIComponent(TOKEN)}&client=client`;
-  console.log(`[client] connecting -> ${WS_URL}/meem/ws?...&client=client`);
+  const url = `${WS_URL}/meem/ws?client=client&token=${encodeURIComponent(TOKEN)}`;
+  console.log(`[client] connecting -> ${WS_URL}/meem/ws?client=client`);
 
   try { ws = new WebSocket(url); }
   catch (error) { console.error('[client] new WebSocket throw:', error?.message ?? error); scheduleReconnect(); return; }
@@ -78,6 +80,7 @@ function connect() {
 
     if (isTermFrame(type)) { terminal.handle(frame); return; }
     if (type.startsWith('fs.')) { files.handle(frame); return; }
+    if (type.startsWith('codex.')) { codex.handle(frame); return; }
     if (type.startsWith('status.') || type.startsWith('screen.')) { status.handle(frame); }
   });
 
@@ -110,5 +113,6 @@ function startHeartbeat() {
 export function shutdownClient() {
   if (heartbeatTimer) clearInterval(heartbeatTimer);
   try { terminal.shutdown(); } catch {}
+  try { codex.shutdown(); } catch {}
   try { ws?.close(); } catch {}
 }

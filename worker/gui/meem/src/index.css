@@ -209,3 +209,13 @@
 .xterm {
   height: 100%;
 }
+/* 强制 xterm 内部视口可滚动:避免被全局样式覆盖 */
+.xterm .xterm-viewport {
+  overflow-y: auto !important;
+  scrollbar-gutter: stable;
+}
+.xterm .xterm-viewport::-webkit-scrollbar { width: 10px; }
+.xterm .xterm-viewport::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 5px;
+}

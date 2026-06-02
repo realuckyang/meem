@@ -4,8 +4,7 @@ import { api } from '../../system/lib/api';
 import Topbar from '../../system/Topbar';
 import type { SystemAppProps } from '../../system/registry';
 import { cn } from '../../system/lib/utils';
-import ConnectionGuide from '../../system/ConnectionGuide';
-import { useConnectionStatus } from '../../system/useConnectionStatus';
+import { useSelectedDevice, DeviceSelect, DeviceGuide } from '../../system/useDevices';
 import AssistPanel from './AssistPanel';
 import ControlStrip from './ControlStrip';
 import InputBar from './InputBar';
@@ -30,9 +29,10 @@ export default function TerminalApp(_: SystemAppProps) {
   const [recentDirs, setRecentDirs] = useState<string[]>(() => parseJson(localStorage.getItem(RECENT_DIRS_KEY), []));
   const historyIdx = useRef(history.length);
   const historyDraft = useRef('');
-  const status = useConnectionStatus();
+  const [device, setDevice, devices] = useSelectedDevice('computer');
+  const online = !!devices.find((d) => d.id === device)?.online;
 
-  const terminal = useTerminalSessions(fontSize, status.computer);
+  const terminal = useTerminalSessions(fontSize, online, device);
   const activeTab = useMemo(() => terminal.tabs.find((tab) => tab.id === terminal.active), [terminal.tabs, terminal.active]);
 
   useEffect(() => { void loadSnippets(); }, []);
@@ -101,11 +101,11 @@ export default function TerminalApp(_: SystemAppProps) {
 
   return (
     <main className="flex h-full min-h-0 flex-col overflow-hidden">
-      <Topbar title="终端" />
+      <Topbar title="终端" left={devices.length ? <DeviceSelect value={device} onChange={setDevice} devices={devices} /> : undefined} />
       <div className="min-h-0 flex-1 overflow-hidden">
         <div className="relative flex h-full min-h-0 flex-col bg-[#111318]">
-          {!status.computer ? (
-            <ConnectionGuide kind="computer" dark onRetry={() => location.reload()} />
+          {!online ? (
+            <DeviceGuide devices={devices} selected={device} kind="computer" />
           ) : (
             <>
               <TerminalTabs tabs={terminal.tabs} active={terminal.active} onPick={terminal.activate} onClose={terminal.close} onNew={() => setNewTerminalOpen(true)} />

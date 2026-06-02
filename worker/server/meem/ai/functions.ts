@@ -44,7 +44,7 @@ const worker: Record<string, Fn> = {
   // ===== 数据库系列 =====
   async sql(a, ctx) {
     const q = String(a.query ?? '');
-    if (!/^\s*select/i.test(q)) return '只允许 SELECT 查询';
+    if (!/^\s*select/i.test(q)) return "只允许 SELECT 查询;查表用 SELECT name FROM sqlite_master WHERE type='table',查字段用 SELECT sql FROM sqlite_master WHERE name='表名'";
     try {
       const rows = await ctx.store.sql(q);
       return asText(rows);
@@ -60,8 +60,12 @@ const worker: Record<string, Fn> = {
 
 /** 工具分发:电脑/浏览器经 client/extension 执行,其余在 Worker 端执行 */
 export async function runFunction(name: string, args: any, ctx: ToolCtx): Promise<FnResult> {
-  if (name.startsWith('computer_')) return ctx.callToolEndpoint('computer', name, args);
-  if (name.startsWith('browser_')) return ctx.callToolEndpoint('browser', name, args);
+  // 电脑/浏览器工具:必须带 device(目标设备 id),转发到该设备执行
+  if (name.startsWith('computer_') || name.startsWith('browser_')) {
+    const deviceId = String(args?.device || '');
+    if (!deviceId) return `缺少 device 参数:请在工具参数里填写目标设备 id(见系统提示里的「可用设备」清单)。`;
+    return ctx.callToolEndpoint(deviceId, name, args);
+  }
   const fn = worker[name];
   if (!fn) return `未知工具: ${name}`;
   return fn(args, ctx);

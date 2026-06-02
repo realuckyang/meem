@@ -1,27 +1,30 @@
-import type { ToolEndpointKind } from './frames';
-
 interface Pending {
   resolve: (v: string) => void;
   reject: (e: Error) => void;
   timer: ReturnType<typeof setTimeout>;
 }
+type DeviceConn = { ws: WebSocket; kind: string } | null;
 
 /**
- * 工具端调度引擎 —— "发出去 → 挂起等 → 收回来按 id 配对"。
+ * 工具端调度引擎 —— 按设备 id 找连接,"发出去 → 挂起等 → 收回来按 id 配对"。
  * 这就是 ai 层 callToolEndpoint 的本体;ai/functions 只是 await 它的返回值。
  */
 export class ToolDispatch {
   private pending = new Map<string, Pending>();
 
   constructor(
-    private getSocket: (kind: ToolEndpointKind) => WebSocket | null,
+    private getDevice: (deviceId: string) => DeviceConn,
     private timeoutMs = 60_000,
   ) {}
 
-  /** 发 tool.call,返回一个等 tool.result 的 Promise */
-  call(kind: ToolEndpointKind, name: string, args: unknown): Promise<string> {
-    const conn = this.getSocket(kind);
-    if (!conn) return Promise.reject(new Error(`${kind} 未连接`));
+  /** 发 tool.call 到指定设备,返回一个等 tool.result 的 Promise */
+  call(deviceId: string, name: string, args: unknown): Promise<string> {
+    if (!deviceId) return Promise.reject(new Error('缺少设备 id(请在参数 device 里填写目标设备)'));
+    const dev = this.getDevice(deviceId);
+    if (!dev) return Promise.reject(new Error(`设备 ${deviceId} 未连接`));
+    const wantKind = name.startsWith('browser_') ? 'browser' : 'computer';
+    if (dev.kind !== wantKind) return Promise.reject(new Error(`设备 ${deviceId} 是「${dev.kind}」,无法执行 ${name}`));
+    const conn = dev.ws;
 
     const id = crypto.randomUUID();
     return new Promise<string>((resolve, reject) => {

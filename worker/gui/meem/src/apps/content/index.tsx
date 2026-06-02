@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Check, Pin, Plus, Trash2 } from 'lucide-react';
+import { Check, ChevronLeft, Pin, Plus, Trash2 } from 'lucide-react';
 import Topbar from '../../system/Topbar';
 import type { SystemAppProps } from '../../system/registry';
 import { api, type ContentItem } from '../../system/lib/api';
@@ -43,6 +43,55 @@ export default function ContentApp(_: SystemAppProps) {
     await load();
   }
 
+  const kindLabel = (k?: string) => KINDS.find((x) => x.id === k)?.label;
+
+  // ───────── 编辑页(下钻 · 全宽 · 面包屑返回) ─────────
+  if (editing) {
+    return (
+      <main className="flex h-full min-h-0 flex-col overflow-hidden">
+        <Topbar title="内容" />
+        <div className="flex items-center gap-2 border-b border-border px-4 py-2.5">
+          <nav className="flex items-center gap-1 text-sm">
+            <button onClick={() => setEditing(null)} className="flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"><ChevronLeft className="size-4" />内容</button>
+            <span className="text-muted-foreground/50">/</span>
+            <span className="text-foreground">{editing.id ? '编辑' : '新建'} · {kindLabel(editing.kind || kind)}</span>
+          </nav>
+          <div className="ml-auto flex items-center gap-2">
+            <Button size="sm" onClick={save} disabled={busy || !editing.title?.trim()}><Check />{busy ? '保存中' : '保存'}</Button>
+            {editing.id && <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300" onClick={() => remove(editing.id!)}><Trash2 /></Button>}
+          </div>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto w-full max-w-3xl space-y-4 px-5 py-6 md:px-8">
+            <Field label="标题"><Input value={editing.title || ''} onChange={(e) => setEditing({ ...editing, title: e.target.value })} placeholder="标题" /></Field>
+            <Field label={editing.kind === 'project' ? '简介' : '正文(支持 Markdown)'}>
+              <textarea
+                value={editing.body || ''}
+                onChange={(e) => setEditing({ ...editing, body: e.target.value })}
+                rows={editing.kind === 'dynamic' ? 5 : 14}
+                placeholder={editing.kind === 'dynamic' ? '此刻在想什么…' : '内容…'}
+                className="w-full resize-y rounded-lg border border-input bg-card/50 px-3 py-2 text-sm leading-6 text-foreground outline-none transition-all placeholder:text-muted-foreground focus-visible:border-cyan focus-visible:shadow-glow-sm"
+              />
+            </Field>
+            {editing.kind !== 'dynamic' && (
+              <Field label="链接(可选)"><Input value={editing.url || ''} onChange={(e) => setEditing({ ...editing, url: e.target.value })} placeholder="https://…" /></Field>
+            )}
+            <Field label="标签(逗号分隔,可选)"><Input value={editing.tags || ''} onChange={(e) => setEditing({ ...editing, tags: e.target.value })} placeholder="AI, 工具" /></Field>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <Toggle on={editing.status === 'published'} onClick={() => setEditing({ ...editing, status: editing.status === 'published' ? 'draft' : 'published' })}>
+                {editing.status === 'published' ? '已发布' : '草稿'}
+              </Toggle>
+              <Toggle on={!!editing.pinned} onClick={() => setEditing({ ...editing, pinned: editing.pinned ? 0 : 1 })}>
+                <Pin className="size-3.5" />置顶
+              </Toggle>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // ───────── 列表(全宽单列) ─────────
   return (
     <main className="flex h-full min-h-0 flex-col overflow-hidden">
       <Topbar
@@ -52,7 +101,7 @@ export default function ContentApp(_: SystemAppProps) {
             {KINDS.map((k) => (
               <button
                 key={k.id}
-                onClick={() => { setKind(k.id); setEditing(null); }}
+                onClick={() => setKind(k.id)}
                 className={cn('rounded-md px-3 py-1 text-xs transition-colors', kind === k.id ? 'bg-cyan/10 text-cyan' : 'text-muted-foreground hover:text-foreground')}
               >{k.label}</button>
             ))}
@@ -60,84 +109,32 @@ export default function ContentApp(_: SystemAppProps) {
         }
       />
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto grid w-full max-w-5xl gap-4 p-5 lg:grid-cols-[1fr_1.2fr]">
-          {/* 列表 */}
-          <section className="min-w-0">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold tracking-wide">{KINDS.find((k) => k.id === kind)?.label}列表</h2>
-              <Button size="sm" onClick={() => setEditing(blank(kind))}><Plus />新建</Button>
-            </div>
-            <div className="space-y-2">
-              {items.map((it) => (
-                <button
-                  key={it.id}
-                  onClick={() => setEditing(it)}
-                  className={cn(
-                    'flex w-full items-start gap-2 rounded-xl border border-border bg-card/60 p-3 text-left transition-all hover:border-cyan/60',
-                    editing?.id === it.id && 'border-cyan shadow-glow-sm',
-                  )}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      {it.pinned ? <Pin className="size-3 text-amber" /> : null}
-                      <span className="truncate text-sm font-medium">{it.title || '(无标题)'}</span>
-                    </div>
-                    <div className="mt-1 truncate text-xs text-muted-foreground">{it.body || it.url || '—'}</div>
+        <div className="mx-auto w-full max-w-3xl px-5 py-6 md:px-8">
+          <div className="mb-4 flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-foreground">{kindLabel(kind)}</h1>
+            <Button size="sm" onClick={() => setEditing(blank(kind))}><Plus />新建</Button>
+          </div>
+          <div className="space-y-2">
+            {items.map((it) => (
+              <button
+                key={it.id}
+                onClick={() => setEditing(it)}
+                className="flex w-full items-start gap-2 rounded-xl border border-border bg-card/60 p-3.5 text-left transition-all hover:border-cyan/60"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    {it.pinned ? <Pin className="size-3 text-amber" /> : null}
+                    <span className="truncate text-sm font-medium">{it.title || '(无标题)'}</span>
                   </div>
-                  <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-[10px]', it.status === 'published' ? 'bg-lime/10 text-lime' : 'bg-muted text-muted-foreground')}>
-                    {it.status === 'published' ? '已发布' : '草稿'}
-                  </span>
-                </button>
-              ))}
-              {items.length === 0 && <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">还没有{KINDS.find((k) => k.id === kind)?.label},点「新建」开始。</div>}
-            </div>
-          </section>
-
-          {/* 编辑器 */}
-          <section className="min-w-0">
-            {editing ? (
-              <div className="rounded-xl border border-border bg-card/70 p-5 backdrop-blur-sm">
-                <div className="mb-4 flex items-center justify-between">
-                  <h2 className="text-sm font-semibold tracking-wide">{editing.id ? '编辑' : '新建'} · {KINDS.find((k) => k.id === (editing.kind || kind))?.label}</h2>
-                  {editing.id && (
-                    <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300" onClick={() => remove(editing.id!)}><Trash2 />删除</Button>
-                  )}
+                  <div className="mt-1 truncate text-xs text-muted-foreground">{it.body || it.url || '—'}</div>
                 </div>
-                <div className="space-y-3">
-                  <Field label="标题"><Input value={editing.title || ''} onChange={(e) => setEditing({ ...editing, title: e.target.value })} placeholder="标题" /></Field>
-                  <Field label={editing.kind === 'project' ? '简介' : '正文(支持 Markdown)'}>
-                    <textarea
-                      value={editing.body || ''}
-                      onChange={(e) => setEditing({ ...editing, body: e.target.value })}
-                      rows={editing.kind === 'dynamic' ? 4 : 9}
-                      placeholder={editing.kind === 'dynamic' ? '此刻在想什么…' : '内容…'}
-                      className="w-full resize-y rounded-lg border border-input bg-card/50 px-3 py-2 text-sm leading-6 text-foreground outline-none transition-all placeholder:text-muted-foreground focus-visible:border-cyan focus-visible:shadow-glow-sm"
-                    />
-                  </Field>
-                  {editing.kind !== 'dynamic' && (
-                    <Field label="链接(可选)"><Input value={editing.url || ''} onChange={(e) => setEditing({ ...editing, url: e.target.value })} placeholder="https://…" /></Field>
-                  )}
-                  <Field label="标签(逗号分隔,可选)"><Input value={editing.tags || ''} onChange={(e) => setEditing({ ...editing, tags: e.target.value })} placeholder="AI, 工具" /></Field>
-                  <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <Toggle on={editing.status === 'published'} onClick={() => setEditing({ ...editing, status: editing.status === 'published' ? 'draft' : 'published' })}>
-                      {editing.status === 'published' ? '已发布' : '草稿'}
-                    </Toggle>
-                    <Toggle on={!!editing.pinned} onClick={() => setEditing({ ...editing, pinned: editing.pinned ? 0 : 1 })}>
-                      <Pin className="size-3.5" />置顶
-                    </Toggle>
-                  </div>
-                </div>
-                <div className="mt-5 flex items-center gap-3">
-                  <Button onClick={save} disabled={busy || !editing.title?.trim()}><Check />{busy ? '保存中' : '保存'}</Button>
-                  <Button variant="ghost" onClick={() => setEditing(null)}>取消</Button>
-                </div>
-              </div>
-            ) : (
-              <div className="grid h-full min-h-[240px] place-items-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">
-                选择左侧条目编辑,或「新建」一条
-              </div>
-            )}
-          </section>
+                <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-[10px]', it.status === 'published' ? 'bg-lime/10 text-lime' : 'bg-muted text-muted-foreground')}>
+                  {it.status === 'published' ? '已发布' : '草稿'}
+                </span>
+              </button>
+            ))}
+            {items.length === 0 && <div className="rounded-xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">还没有{kindLabel(kind)},点「新建」开始。</div>}
+          </div>
         </div>
       </div>
     </main>

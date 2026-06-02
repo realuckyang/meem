@@ -3,6 +3,7 @@ import { handleApi } from './meem/api';
 import { Room } from './meem/ws/room';
 import { handlePublic, handleSiteApi } from './site/public';
 import { authorize } from './meem/auth';
+import { verifyDevice } from './meem/repository/devices';
 
 export { Room };
 
@@ -31,11 +32,19 @@ export default {
 
     // Meem 实时通道 → Room DO
     if (url.pathname === '/meem/ws') {
-      const user = await authorize(req, env);
-      if (!user) return new Response('unauthorized', { status: 401 });
       const client = url.searchParams.get('client') || 'meem';
-      const stub = env.ROOM.get(env.ROOM.idFromName(user.meem_uid));
-      return stub.fetch(new Request(`https://room/connect?uid=${user.meem_uid}&client=${client}`, req));
+      // 控制台用主 token(JWT);设备(client/extension)用各自的设备 token + device id
+      if (client === 'meem') {
+        const user = await authorize(req, env);
+        if (!user) return new Response('unauthorized', { status: 401 });
+        const stub = env.ROOM.get(env.ROOM.idFromName(user.meem_uid));
+        return stub.fetch(new Request(`https://room/connect?uid=${user.meem_uid}&client=meem`, req));
+      }
+      const token = url.searchParams.get('token') || '';
+      const dev = await verifyDevice(env, token);
+      if (!dev) return new Response('unauthorized device', { status: 401 });
+      const stub = env.ROOM.get(env.ROOM.idFromName(dev.uid));
+      return stub.fetch(new Request(`https://room/connect?uid=${dev.uid}&client=${client}&device=${encodeURIComponent(dev.id)}&kind=${dev.kind}`, req));
     }
     // Meem REST
     if (url.pathname.startsWith('/meem/api/')) return handleApi(req, env, url, ctx);

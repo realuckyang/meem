@@ -4,13 +4,13 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
 import { onFrame, sendWs } from '../../system/lib/ws';
+import { makeReqId } from '../../system/lib/fmt';
 import { TERMINAL_THEME } from './constants';
 import type { TerminalCommand, TerminalTab } from './types';
 
-let reqSeq = 0;
-const nextReq = () => `term_${++reqSeq}_${Date.now()}`;
+const nextReq = () => makeReqId('term');
 
-export function useTerminalSessions(fontSize: number, enabled = true) {
+export function useTerminalSessions(fontSize: number, enabled = true, device = '') {
   const [tabs, setTabs] = useState<TerminalTab[]>([]);
   const [active, setActive] = useState('');
   const [error, setError] = useState('');
@@ -36,8 +36,8 @@ export function useTerminalSessions(fontSize: number, enabled = true) {
       return;
     }
 
-    sendWs({ type: 'terminal.list', to: 'client', data: {} });
-    const timer = setTimeout(() => { if (!activeRef.current) sendWs({ type: 'terminal.create', to: 'client', data: {} }); }, 600);
+    sendWs({ type: 'terminal.list', to: 'client', device, data: {} });
+    const timer = setTimeout(() => { if (!activeRef.current) sendWs({ type: 'terminal.create', to: 'client', device, data: {} }); }, 600);
 
     const off = onFrame((message: any) => {
       const type = message?.type || '';
@@ -72,8 +72,8 @@ export function useTerminalSessions(fontSize: number, enabled = true) {
       } else if (type === 'terminal.error') {
         setError(data.error || '终端错误');
         setTimeout(() => setError(''), 2400);
-      } else if (type === 'connection.status' && message.computer) {
-        sendWs({ type: 'terminal.list', to: 'client', data: {} });
+      } else if (type === 'connection.status' && Array.isArray(message.online) && message.online.some((o: any) => o.id === device)) {
+        sendWs({ type: 'terminal.list', to: 'client', device, data: {} });
       }
     });
 
@@ -84,7 +84,7 @@ export function useTerminalSessions(fontSize: number, enabled = true) {
       terms.current.clear();
       fits.current.clear();
     };
-  }, [enabled]);
+  }, [enabled, device]);
 
   useEffect(() => {
     for (const [id, term] of terms.current) {
@@ -144,7 +144,7 @@ export function useTerminalSessions(fontSize: number, enabled = true) {
     if (!term || !fit || !el || !el.isConnected || el.offsetWidth < 160 || el.offsetHeight < 80) return;
     try {
       fit.fit();
-      if (term.cols >= 20 && term.rows >= 4) sendWs({ type: 'system.resize', to: 'client', data: { terminalId: id, cols: term.cols, rows: term.rows } });
+      if (term.cols >= 20 && term.rows >= 4) sendWs({ type: 'system.resize', to: 'client', device, data: { terminalId: id, cols: term.cols, rows: term.rows } });
     } catch { /* */ }
   }
 
@@ -164,28 +164,28 @@ export function useTerminalSessions(fontSize: number, enabled = true) {
 
   function sendInputRaw(value: string) {
     if (!activeRef.current || !value) return;
-    sendWs({ type: 'data.input', to: 'client', data: { terminalId: activeRef.current, input: value } });
+    sendWs({ type: 'data.input', to: 'client', device, data: { terminalId: activeRef.current, input: value } });
   }
 
   function createTerminal(cwd?: string) {
     const dir = cwd?.trim();
-    sendWs({ type: 'terminal.create', to: 'client', data: { cwd: dir || undefined } });
+    sendWs({ type: 'terminal.create', to: 'client', device, data: { cwd: dir || undefined } });
   }
 
   function activate(id: string) {
     if (!id || id === activeRef.current) return;
     setActive(id);
-    sendWs({ type: 'terminal.activate', to: 'client', data: { terminalId: id } });
+    sendWs({ type: 'terminal.activate', to: 'client', device, data: { terminalId: id } });
   }
 
   function close(id: string) {
-    sendWs({ type: 'terminal.close', to: 'client', data: { terminalId: id } });
+    sendWs({ type: 'terminal.close', to: 'client', device, data: { terminalId: id } });
   }
 
   function command(action: TerminalCommand) {
     if (!activeRef.current) return;
     if (action === 'clear') terms.current.get(activeRef.current)?.clear();
-    sendWs({ type: 'system.command', to: 'client', data: { terminalId: activeRef.current, command: action } });
+    sendWs({ type: 'system.command', to: 'client', device, data: { terminalId: activeRef.current, command: action } });
   }
 
   async function pasteClipboard() {
@@ -197,7 +197,7 @@ export function useTerminalSessions(fontSize: number, enabled = true) {
     const reqId = nextReq();
     return new Promise<any>((resolve) => {
       pendingFs.current.set(reqId, resolve);
-      sendWs({ type, to: 'client', data: { reqId, ...data } });
+      sendWs({ type, to: 'client', device, data: { reqId, ...data } });
       setTimeout(() => { if (pendingFs.current.delete(reqId)) resolve({ ok: false, error: '本机没有响应' }); }, 12000);
     });
   }

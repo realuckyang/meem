@@ -38,7 +38,7 @@ function scheduleReconnect() {
 export async function connect() {
   const { ws: wsUrl, token } = await getConfig();
   if (!token || !wsUrl) { lastError = 'not_configured'; return; }
-  const url = `${wsUrl}/meem/ws?token=${encodeURIComponent(token)}&client=extension`;
+  const url = `${wsUrl}/meem/ws?client=extension&token=${encodeURIComponent(token)}`;
   try { ws = new WebSocket(url); }
   catch (e) { lastError = e?.message || String(e); scheduleReconnect(); return; }
 

@@ -34,7 +34,7 @@ async function refresh() {
   $('site-link').href = site;
   $('site-link').textContent = site === '#' ? '打开 Meem' : `打开 ${site.replace(/^https?:\/\//, '')}`;
 
-  // 未连接时,用已存的 base/ws 预填表单(token 不回填)
+  // 未连接时,用已存的 base/ws/device 预填表单(token 不回填)
   if (!data.configured) {
     if ($('in-base') && !$('in-base').value && data.base) $('in-base').value = data.base;
     if ($('in-ws') && !$('in-ws').value && data.ws) $('in-ws').value = data.ws;

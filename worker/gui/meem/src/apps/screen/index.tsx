@@ -3,34 +3,35 @@ import { onFrame, sendWs } from '../../system/lib/ws';
 import Topbar from '../../system/Topbar';
 import type { SystemAppProps } from '../../system/registry';
 import { Button } from '../../system/ui/button';
-import ConnectionGuide from '../../system/ConnectionGuide';
-import { useConnectionStatus } from '../../system/useConnectionStatus';
+import { useSelectedDevice, DeviceSelect, DeviceGuide } from '../../system/useDevices';
 
 export default function ScreenApp(_: SystemAppProps) {
   const [img, setImg] = useState('');
   const [loading, setLoading] = useState(false);
   const reqId = useRef('');
-  const status = useConnectionStatus();
+  const [device, setDevice, devices] = useSelectedDevice('computer');
+  const online = !!devices.find((d) => d.id === device)?.online;
 
   function shot() {
     setLoading(true);
     reqId.current = 'sc' + Date.now();
-    sendWs({ type: 'screen.shot', to: 'client', data: { reqId: reqId.current } });
+    sendWs({ type: 'screen.shot', to: 'client', device, data: { reqId: reqId.current } });
   }
   useEffect(() => {
+    setImg('');
     const off = onFrame((m: any) => {
       if (m?.type === 'screen.ok' && m.data?.reqId === reqId.current) { setImg(m.data.dataUrl || ''); setLoading(false); }
       if (m?.type === 'screen.err' && m.data?.reqId === reqId.current) setLoading(false);
     });
-    if (status.computer) shot();
+    if (online) shot();
     return off;
-  }, [status.computer]);
+  }, [online, device]);
 
   return (
     <main className="flex h-full min-h-0 flex-col overflow-hidden">
-      <Topbar title="截图" />
+      <Topbar title="截图" left={devices.length ? <DeviceSelect value={device} onChange={setDevice} devices={devices} /> : undefined} />
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {!status.computer ? <ConnectionGuide kind="computer" className="h-full" onRetry={() => location.reload()} /> : (
+        {!online ? <DeviceGuide devices={devices} selected={device} kind="computer" /> : (
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-5">
           <Button variant="outline" className="self-start" onClick={shot} disabled={loading}>{loading ? '截取中...' : '重新截图'}</Button>
           {img

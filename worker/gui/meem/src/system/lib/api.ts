@@ -1,4 +1,4 @@
-export interface Chat { id: string; title: string; category: string; status: string; preview: string; parent: string | null; created: number; updated: number; }
+export interface Chat { id: string; title: string; category: string; status: string; preview: string; parent: string | null; created: number; updated: number; running?: boolean; }
 export interface Msg { id: string; chat_id: string | null; message: any; meta: any; created: number; }
 export interface TerminalSnippet { id: string; name: string; command: string; autoSend: boolean; position: number; }
 
@@ -28,29 +28,53 @@ export const api = {
   installConfig: () => J<{ baseUrl: string; wsUrl: string; token: string }>(get(`${API}/install/config`)),
   snippets: () => J<{ snippets: TerminalSnippet[] }>(get(`${API}/terminal/snippets`)),
   createSnippet: (body: { name: string; command: string; autoSend: boolean }) => J<{ snippet: TerminalSnippet }>(post(`${API}/terminal/snippets`, body)),
-  updateSnippet: (id: string, body: Partial<{ name: string; command: string; autoSend: boolean; position: number }>) => put(`${API}/terminal/snippets/${id}`, body),
-  deleteSnippet: (id: string) => del(`${API}/terminal/snippets/${id}`),
+  updateSnippet: (id: string, body: Partial<{ name: string; command: string; autoSend: boolean; position: number }>) => put(`${API}/terminal/snippets?id=${encodeURIComponent(id)}`, body),
+  deleteSnippet: (id: string) => del(`${API}/terminal/snippets?id=${encodeURIComponent(id)}`),
   settings: () => J<Record<string, any>>(get(`${API}/settings`)),
   saveSettings: (b: Record<string, unknown>) => put(`${API}/settings`, b),
   contentList: (kind?: string) => J<{ items: ContentItem[] }>(get(`${API}/content${kind ? `?kind=${kind}` : ''}`)),
   contentCreate: (b: Partial<ContentItem>) => J<{ item: ContentItem }>(post(`${API}/content`, b)),
-  contentUpdate: (id: string, b: Partial<ContentItem>) => put(`${API}/content/${id}`, b),
-  contentDelete: (id: string) => del(`${API}/content/${id}`),
+  contentUpdate: (id: string, b: Partial<ContentItem>) => put(`${API}/content?id=${encodeURIComponent(id)}`, b),
+  contentDelete: (id: string) => del(`${API}/content?id=${encodeURIComponent(id)}`),
+  taskList: (status?: string) => J<{ items: TaskItem[] }>(get(`${API}/tasks` + (status ? `?status=${status}` : ""))),
+  taskCreate: (b: Partial<TaskItem>) => J<{ item: TaskItem }>(post(`${API}/tasks`, b)),
+  taskUpdate: (id: string, b: Partial<TaskItem>) => put(`${API}/tasks?id=${encodeURIComponent(id)}`, b),
+  taskDelete: (id: string) => del(`${API}/tasks?id=${encodeURIComponent(id)}`),
+  noteList: (q?: string) => J<{ items: NoteItem[] }>(get(`${API}/notes` + (q ? `?q=${encodeURIComponent(q)}` : ''))),
+  noteCreate: (b: Partial<NoteItem>) => J<{ item: NoteItem }>(post(`${API}/notes`, b)),
+  noteUpdate: (id: string, b: Partial<NoteItem>) => put(`${API}/notes?id=${encodeURIComponent(id)}`, b),
+  noteDelete: (id: string) => del(`${API}/notes?id=${encodeURIComponent(id)}`),
+  codexEvents: (thread: string) => J<{ events: CodexEvent[] }>(get(`${API}/codex/events?thread=${encodeURIComponent(thread)}`)),
+  devices: () => J<{ devices: Device[] }>(get(`${API}/devices`)),
+  deviceCreate: (b: { kind: 'computer' | 'browser'; name: string; description?: string }) => J<{ device: Device }>(post(`${API}/devices`, b)),
+  deviceUpdate: (id: string, b: Partial<{ name: string; description: string; status: 'active' | 'disabled' }>) => put(`${API}/devices?id=${encodeURIComponent(id)}`, b),
+  deviceDelete: (id: string) => del(`${API}/devices?id=${encodeURIComponent(id)}`),
   docsNotebooks: () => J<{ notebooks: DocNotebook[] }>(get(`${API}/docs/notebooks`)),
   docsPages: (nb: string | null) => J<{ pages: DocPageMeta[] }>(get(`${API}/docs/pages${nb ? `?notebook=${encodeURIComponent(nb)}` : ''}`)),
-  docsPage: (id: string) => J<{ page: DocPage }>(get(`${API}/docs/pages/${id}`)),
+  docsPage: (id: string) => J<{ page: DocPage }>(get(`${API}/docs/pages?id=${encodeURIComponent(id)}`)),
   docsCreateNotebook: (b: { name: string; parentId?: string | null }) => J<{ notebook: DocNotebook }>(post(`${API}/docs/notebooks`, b)),
-  docsRenameNotebook: (id: string, name: string) => put(`${API}/docs/notebooks/${id}`, { name }),
-  docsDeleteNotebook: (id: string) => del(`${API}/docs/notebooks/${id}`),
+  docsUpdateNotebook: (id: string, b: Partial<{ name: string; icon: string }>) => put(`${API}/docs/notebooks?id=${encodeURIComponent(id)}`, b),
+  docsDeleteNotebook: (id: string) => del(`${API}/docs/notebooks?id=${encodeURIComponent(id)}`),
   docsCreatePage: (b: { notebookId: string | null; title: string }) => J<{ page: DocPage }>(post(`${API}/docs/pages`, b)),
-  docsUpdatePage: (id: string, b: Partial<{ title: string; content: string }>) => put(`${API}/docs/pages/${id}`, b),
-  docsDeletePage: (id: string) => del(`${API}/docs/pages/${id}`),
+  docsUpdatePage: (id: string, b: Partial<{ title: string; content: string; icon: string }>) => put(`${API}/docs/pages?id=${encodeURIComponent(id)}`, b),
+  docsDeletePage: (id: string) => del(`${API}/docs/pages?id=${encodeURIComponent(id)}`),
 };
 
 export interface DocNotebook { id: string; parent_id: string | null; name: string; icon: string | null; sort_order: number; created: number; updated: number; }
 export interface DocPageMeta { id: string; notebook_id: string | null; title: string; icon: string | null; sort_order: number; updated: number; }
 export interface DocPage extends DocPageMeta { content: string; created: number; }
 
+export interface TaskItem {
+  id: string; meem_uid: string; title: string; description: string;
+  status: 'todo' | 'doing' | 'done'; priority: 'low' | 'medium' | 'high';
+  created: number; updated: number;
+}
+export interface NoteItem {
+  id: string; meem_uid: string; title: string; body: string;
+  pinned: number; created: number; updated: number;
+}
+export interface CodexEvent { id: string; kind: string; text?: string; meta?: any; created: number; }
+export interface Device { id: string; kind: 'computer' | 'browser'; name: string; description: string; token: string; status: 'active' | 'disabled'; created: number; updated: number; }
 export interface ContentItem {
   id: string; site_uid: string; kind: 'dynamic' | 'article' | 'project';
   title: string; body: string; url: string; tags: string;

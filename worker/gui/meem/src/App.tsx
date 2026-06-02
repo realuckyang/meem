@@ -3,6 +3,7 @@ import { APPS, appFromPath, pathForApp, type AppId } from './system/registry';
 import AuthScreen from './system/AuthScreen';
 import { api, clearToken, getToken } from './system/lib/api';
 import InstallApp from './apps/install';
+import DeviceSheet from './apps/devices/DeviceSheet';
 import { NavContext, type InstallKind } from './system/nav';
 
 const installFromPath = (pathname = location.pathname): InstallKind | null => {
@@ -15,6 +16,7 @@ export default function App() {
   const [install, setInstall] = useState<InstallKind | null>(() => installFromPath());
   const [ready, setReady] = useState(false);
   const [authKey, setAuthKey] = useState(0);
+  const [deviceTarget, setDeviceTarget] = useState<string | 'new' | null>(null);
 
   useEffect(() => {
     if (!getToken()) { setReady(false); return; }
@@ -44,7 +46,7 @@ export default function App() {
   const Active = APPS.find((app) => app.id === activeApp)?.Component ?? APPS[0].Component;
 
   return (
-    <NavContext.Provider value={{ activeApp, openApp, openInstall }}>
+    <NavContext.Provider value={{ activeApp, openApp, openInstall, openDevice: (id) => setDeviceTarget(id ?? 'new') }}>
       {/* ambient cyberpunk layers */}
       <div className="neon-field" aria-hidden />
       <div className="relative z-[1] h-full">
@@ -56,6 +58,7 @@ export default function App() {
           <Active />
         )}
       </div>
+      {ready && <DeviceSheet target={deviceTarget} onClose={() => setDeviceTarget(null)} />}
       <div className="neon-scan" aria-hidden />
     </NavContext.Provider>
   );

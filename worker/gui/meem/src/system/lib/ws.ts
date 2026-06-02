@@ -1,11 +1,17 @@
 import { getToken } from './api';
 
-export interface ConnStatus { computer: boolean; browser: boolean; }
+export interface ConnStatus { computer: boolean; browser: boolean; online: { id: string; kind: string }[] }
 
 type Frame = any;
 let ws: WebSocket | null = null;
 const subs = new Set<(f: Frame) => void>();
-export const connStatus: ConnStatus = { computer: false, browser: false };
+export const connStatus: ConnStatus = { computer: false, browser: false, online: [] };
+
+function applyOnline(online: { id: string; kind: string }[]) {
+  connStatus.online = Array.isArray(online) ? online : [];
+  connStatus.computer = connStatus.online.some((d) => d.kind === 'computer');
+  connStatus.browser = connStatus.online.some((d) => d.kind === 'browser');
+}
 
 function connect() {
   if (ws && ws.readyState <= 1) return;
@@ -15,8 +21,7 @@ function connect() {
   ws = new WebSocket(`${proto}://${location.host}/meem/ws?client=meem&token=${token}`);
   ws.onmessage = (e) => {
     let f: Frame; try { f = JSON.parse(e.data); } catch { return; }
-    if (f.type === 'connection.status') { connStatus.computer = !!f.computer; connStatus.browser = !!f.browser; }
-    if (f.type === 'hello' && f.connections) { connStatus.computer = !!f.connections.computer; connStatus.browser = !!f.connections.browser; }
+    if (f.type === 'connection.status' || f.type === 'hello') applyOnline(f.online || []);
     subs.forEach((s) => s(f));
   };
   ws.onclose = () => { ws = null; setTimeout(connect, 2000); };

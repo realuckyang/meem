@@ -15,3 +15,6 @@ export interface Env {
 }
 
 export interface ConnectionStatus { computer: boolean; browser: boolean; }
+
+/** 设备信息(注入给 agent + 推给控制台)· online 来自实时连接 */
+export interface DeviceInfo { id: string; kind: string; name: string; description: string; online: boolean; }

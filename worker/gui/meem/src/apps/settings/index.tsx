@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Check, Moon, Save, Sun } from 'lucide-react';
+import { Check, Eye, Moon, Save, Sun } from 'lucide-react';
 import Topbar from '../../system/Topbar';
 import type { SystemAppProps } from '../../system/registry';
 import { api } from '../../system/lib/api';
@@ -9,10 +9,10 @@ import { Input } from '../../system/ui/input';
 import { cn } from '../../system/lib/utils';
 import { applyTheme, getTheme, type Theme } from '../../system/theme';
 
-interface Form { llm_url: string; llm_key: string; llm_model: string; max_rounds: string; persona: string; }
+interface Form { llm_url: string; llm_key: string; llm_model: string; max_rounds: string; persona: string; vision: boolean; }
 
 export default function SettingsApp(_: SystemAppProps) {
-  const [form, setForm] = useState<Form>({ llm_url: '', llm_key: '', llm_model: '', max_rounds: '', persona: '' });
+  const [form, setForm] = useState<Form>({ llm_url: '', llm_key: '', llm_model: '', max_rounds: '', persona: '', vision: false });
   const [theme, setTheme] = useState<Theme>(getTheme());
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -24,10 +24,11 @@ export default function SettingsApp(_: SystemAppProps) {
       llm_model: s.llm_model || '',
       max_rounds: s.max_rounds != null ? String(s.max_rounds) : '',
       persona: s.persona || '',
+      vision: !!s.vision,
     })).catch(() => {});
   }, []);
 
-  function set<K extends keyof Form>(k: K, v: string) { setForm((f) => ({ ...f, [k]: v })); }
+  function set<K extends keyof Form>(k: K, v: Form[K]) { setForm((f) => ({ ...f, [k]: v })); }
 
   async function save() {
     setBusy(true);
@@ -38,6 +39,7 @@ export default function SettingsApp(_: SystemAppProps) {
         llm_model: form.llm_model.trim(),
         max_rounds: Number(form.max_rounds) || undefined,
         persona: form.persona,
+        vision: form.vision ? 1 : 0,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 1800);
@@ -80,6 +82,23 @@ export default function SettingsApp(_: SystemAppProps) {
               <Field label="最大轮次 · Max Rounds">
                 <Input type="number" min={1} value={form.max_rounds} placeholder="100" onChange={(e) => set('max_rounds', e.target.value)} />
               </Field>
+              <button
+                type="button"
+                onClick={() => set('vision', !form.vision)}
+                className={cn(
+                  'flex w-full items-center gap-3 rounded-lg border px-3.5 py-3 text-left transition-all',
+                  form.vision ? 'border-cyan bg-cyan/[0.06] shadow-glow-sm' : 'border-input hover:border-cyan/50',
+                )}
+              >
+                <Eye className={cn('size-5 shrink-0', form.vision ? 'text-cyan' : 'text-muted-foreground')} />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium">视觉 · 截图工具</span>
+                  <span className="block text-xs text-muted-foreground">开启后才提供 computer/browser 截图工具(需模型支持看图)</span>
+                </span>
+                <span className={cn('relative h-5 w-9 shrink-0 rounded-full transition-colors', form.vision ? 'bg-cyan' : 'bg-muted')}>
+                  <span className={cn('absolute top-0.5 size-4 rounded-full bg-background transition-all', form.vision ? 'left-[18px]' : 'left-0.5')} />
+                </span>
+              </button>
               <Field label="人设 / System 追加(可选)">
                 <textarea
                   value={form.persona}

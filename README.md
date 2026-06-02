@@ -36,27 +36,73 @@ dev/          reference material
 - `extension` connects to `/meem/ws?client=extension` and executes browser tools.
 - `worker` routes public traffic, API requests, WebSocket connections, and static assets.
 
-## Development
+## Prerequisites
+
+- Node.js 18+ (the local client is tested on Node 22)
+- A Cloudflare account (the free tier is enough for personal use)
+- An OpenAI-compatible LLM endpoint + API key
+
+## Quick start
+
+### 1. Configure the Worker
 
 ```bash
-npm --prefix worker/gui/meem install
-npm --prefix worker/gui/meem run check
-npm --prefix worker run build:gui
-
-npm --prefix worker install
-npm --prefix worker run typecheck
-npm --prefix worker run dev
-npm --prefix worker run deploy
-npm --prefix worker run db:apply
-
-cd client
-npm install
-npm start
+cp worker/wrangler.example.jsonc worker/wrangler.jsonc
 ```
 
-Copy `worker/wrangler.example.jsonc` to `worker/wrangler.jsonc` and fill real Cloudflare bindings and LLM values. Real config files are ignored.
+Fill in your Cloudflare `account_id`, the custom domain/route, the D1 `database_id`,
+the R2 bucket, and the LLM values. Real config files (`wrangler.jsonc`,
+`extension/config.js`, `client/config.js`) are git-ignored — only the `*.example.*`
+templates are committed.
 
-During development, D1 is rebuilt from `worker/schema.sql`; migration files are intentionally not maintained.
+```bash
+# create the D1 database and R2 bucket (one time)
+npx --prefix worker wrangler d1 create meem
+npx --prefix worker wrangler r2 bucket create meem
+```
+
+### 2. Create the database schema
+
+`worker/schema.sql` is the canonical, clean set of `CREATE TABLE` statements for a
+**fresh** database (no `DROP`/migration statements). Run it once against a new D1:
+
+```bash
+npm --prefix worker run db:apply-local                                   # local dev DB
+npx --prefix worker wrangler d1 execute meem --remote --file=schema.sql  # remote DB
+```
+
+To change the schema later, apply the delta directly with
+`wrangler d1 execute ... --command "ALTER TABLE ..."` and keep `schema.sql` in sync —
+never re-run the whole file against a database that already holds data. See `AGENTS.md`.
+
+### 3. Run the Worker and the local client
+
+```bash
+npm --prefix worker install
+npm --prefix worker run build:gui   # build the console + site frontends
+npm --prefix worker run dev         # terminal 1 — Worker (deploy with: run deploy)
+
+cd client && npm install && npm start   # terminal 2 — computer client
+```
+
+The first time you open `/meem`, create the owner account, then open Settings and
+fill in the LLM endpoint, key and model.
+
+### 4. Load the browser extension (optional)
+
+```bash
+cp extension/config.example.js extension/config.js   # set BASE_URL / WS_URL / TOKEN
+```
+
+In Chrome: `chrome://extensions` → enable Developer mode → **Load unpacked** →
+select the `extension/` directory.
+
+## Frontend checks
+
+```bash
+npm --prefix worker/gui/meem run check
+npm --prefix worker run typecheck
+```
 
 ## Tool Development
 

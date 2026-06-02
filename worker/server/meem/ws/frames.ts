@@ -17,11 +17,11 @@ export type InFrame =
 
 /** 出站帧(推给 meem 控制台) */
 export type OutFrame =
-  | { type: 'hello'; client: ClientKind; connections: { computer: boolean; browser: boolean } }
+  | { type: 'hello'; client: ClientKind; online: { id: string; kind: string }[] }
   | { type: 'pong' }
-  | { type: 'message'; chat: string | null; role: string; content?: string; message?: unknown }
+  | { type: 'message'; chat: string | null; role: string; content?: string; message?: unknown; id?: string; meta?: unknown; created?: number }
   | { type: 'agent.status'; chat: string | null; status: 'running' | 'done' | 'error'; error?: string }
-  | { type: 'connection.status'; computer: boolean; browser: boolean }
+  | { type: 'connection.status'; online: { id: string; kind: string }[] }
   | { type: 'chats.update' }
   | { type: 'chats.list.ok'; chats: unknown[]; decisions: unknown[] }   // 回执:会话列表
   | { type: 'chat.history'; chat: string | null; messages: unknown[] }  // 回执:会话历史

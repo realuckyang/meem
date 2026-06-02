@@ -1,14 +1,35 @@
+import { readFile } from 'node:fs/promises';
 import { platform } from 'node:os';
 import { resolve } from 'node:path';
+import { Jimp } from 'jimp';
 import { commandExists, defaultScreenshotPath, ensureParent, fileSize, run } from '../../system/utils.js';
 
 export async function screenshot(args) {
   const outputPath = resolve(String(args.outputPath || defaultScreenshotPath()));
   const os = platform();
-  if (os === 'darwin') return macScreenshot(outputPath);
-  if (os === 'linux') return linuxScreenshot(outputPath);
-  if (os === 'win32') return windowsScreenshot(outputPath);
-  throw new Error(`unsupported_platform: ${os}`);
+  let res;
+  if (os === 'darwin') res = await macScreenshot(outputPath);
+  else if (os === 'linux') res = await linuxScreenshot(outputPath);
+  else if (os === 'win32') res = await windowsScreenshot(outputPath);
+  else throw new Error(`unsupported_platform: ${os}`);
+  // 同时回传 base64 dataUrl,供视觉模型直接读取(worker 读不到本机磁盘)
+  return { ...res, dataUrl: await encodeDataUrl(res) };
+}
+
+const MAX_SIDE = 1568; // 视觉模型有效长边上限,再大只是浪费
+const JPEG_Q = 80;
+
+/** 适当压缩:长边降到 MAX_SIDE 并转 JPEG(纯 JS · jimp,跨平台无系统依赖);失败回退原图 */
+async function encodeDataUrl(res) {
+  try {
+    const img = await Jimp.read(res.outputPath);
+    if (Math.max(img.width, img.height) > MAX_SIDE) img.scaleToFit({ w: MAX_SIDE, h: MAX_SIDE });
+    const buf = await img.getBuffer('image/jpeg', { quality: JPEG_Q });
+    return `data:image/jpeg;base64,${buf.toString('base64')}`;
+  } catch {
+    const raw = await readFile(res.outputPath);
+    return `data:image/${res.format};base64,${raw.toString('base64')}`;
+  }
 }
 
 async function macScreenshot(outputPath) {

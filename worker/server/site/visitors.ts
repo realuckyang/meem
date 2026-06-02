@@ -1,4 +1,4 @@
-// 对外网站访客账号 · 与站主 meem_users 完全分离
+// 对外网站访客账号 · 与所有者 meem_users 完全分离
 //   · token claim 用 { vid }(不是 uid:'me'),所以永远过不了 /meem 的 authorize
 //   · 每个访客一个持久对话(site_visitor_msgs)
 

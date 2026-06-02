@@ -1,11 +1,17 @@
 // ai/ 是无状态执行器:只认 messages + 注入的 store/callToolEndpoint,不碰 D1/WS 细节。
 
+export type ContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } };
+
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
-  content: string | null;
+  content: string | ContentPart[] | null;
   name?: string;
   tool_calls?: ToolCall[];
   tool_call_id?: string;
+  /** 厂商字段(如 thinking 模型的 reasoning_content)原样透传 */
+  [k: string]: unknown;
 }
 export interface ToolCall {
   id: string;
@@ -28,7 +34,7 @@ export interface Store {
   createChat(p: { title: string; category?: string; parent?: string | null; purpose?: string }): Promise<{ id: string; title: string }>;
   getChat(id: string): Promise<ChatLite | null>;
   setChat(id: string, fields: Partial<{ status: string; preview: string; closed: number }>): Promise<void>;
-  addMessage(m: { chatId: string | null; message: ChatMessage; meta?: unknown }): Promise<void>;
+  addMessage(m: { chatId: string | null; message: ChatMessage; meta?: unknown }): Promise<{ id: string; created: number }>;
 
   sql(query: string): Promise<unknown[]>;
   r2Put(path: string, content: string): Promise<void>;
@@ -47,8 +53,8 @@ export interface ToolCtx {
   uid: string;
   chat: ChatLite | null;
   store: Store;
-  /** 电脑/浏览器工具:把 tool.call 经 WS 发到对应端,等 tool.result */
-  callToolEndpoint: (kind: 'computer' | 'browser', name: string, args: unknown) => Promise<string>;
+  /** 电脑/浏览器工具:把 tool.call 经 WS 发到指定设备(deviceId),等 tool.result */
+  callToolEndpoint: (deviceId: string, name: string, args: unknown) => Promise<string>;
   signal?: AbortSignal;
 }
 
@@ -65,8 +71,8 @@ export interface ChatOptions {
   model: string;
   ctx: ToolCtx;
   tools: unknown[];
+  vision?: boolean;
   maxRounds?: number;
-  toolResultMaxChars?: number;
-  onEvent?: (e: ChatEvent) => void;
+  onEvent?: (e: ChatEvent) => void | Promise<void>;
   signal?: AbortSignal;
 }

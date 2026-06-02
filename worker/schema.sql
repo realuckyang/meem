@@ -1,27 +1,8 @@
--- Meem schema truth. Development stage: this file rebuilds D1 directly.
+-- Meem schema. Canonical table definitions for a fresh D1 database.
 -- Naming rule:
 --   meem_* = private Meem console, agent, apps, devices, deployments.
 --   site_* = public website and public visitor interaction.
 -- OpenAI-compatible assistant messages stay as a single message JSON blob.
-
-DROP TABLE IF EXISTS meem_settings;
-DROP TABLE IF EXISTS meem_users;
-DROP TABLE IF EXISTS meem_chats;
-DROP TABLE IF EXISTS meem_messages;
-DROP TABLE IF EXISTS meem_apps;
-DROP TABLE IF EXISTS meem_deployments;
-DROP TABLE IF EXISTS meem_devices;
-DROP TABLE IF EXISTS meem_terminal_snippets;
-DROP TABLE IF EXISTS site_settings;
-DROP TABLE IF EXISTS site_pages;
-DROP TABLE IF EXISTS site_inbox;
-DROP TABLE IF EXISTS site_events;
-DROP TABLE IF EXISTS site_content;
-DROP TABLE IF EXISTS site_ratelimit;
-DROP TABLE IF EXISTS site_visitors;
-DROP TABLE IF EXISTS site_visitor_msgs;
-DROP TABLE IF EXISTS doc_notebooks;
-DROP TABLE IF EXISTS doc_pages;
 
 CREATE TABLE meem_users (
   meem_uid  TEXT PRIMARY KEY DEFAULT 'me',
@@ -37,11 +18,11 @@ CREATE TABLE meem_users (
 CREATE TABLE meem_settings (
   meem_uid      TEXT PRIMARY KEY DEFAULT 'me',
   persona       TEXT NOT NULL DEFAULT '',
-  outward_name  TEXT NOT NULL DEFAULT '',
   llm_url       TEXT NOT NULL DEFAULT '',
   llm_key       TEXT NOT NULL DEFAULT '',
   llm_model     TEXT NOT NULL DEFAULT '',
   max_rounds    INTEGER NOT NULL DEFAULT 30,
+  vision        INTEGER NOT NULL DEFAULT 0,
   updated       INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
@@ -70,44 +51,20 @@ CREATE TABLE meem_messages (
 );
 CREATE INDEX idx_meem_messages_stream ON meem_messages(meem_uid, chat_id, created);
 
-CREATE TABLE meem_apps (
-  id          TEXT PRIMARY KEY,
-  meem_uid    TEXT NOT NULL DEFAULT 'me',
-  slug        TEXT NOT NULL,
-  title       TEXT NOT NULL DEFAULT '',
-  kind        TEXT NOT NULL DEFAULT 'internal',
-  entry_path  TEXT NOT NULL DEFAULT '',
-  status      TEXT NOT NULL DEFAULT 'active',
-  config      TEXT,
-  created     INTEGER NOT NULL DEFAULT (unixepoch()),
-  updated     INTEGER NOT NULL DEFAULT (unixepoch())
-);
-CREATE UNIQUE INDEX idx_meem_apps_slug ON meem_apps(meem_uid, slug);
-
-CREATE TABLE meem_deployments (
-  id          TEXT PRIMARY KEY,
-  meem_uid    TEXT NOT NULL DEFAULT 'me',
-  target      TEXT NOT NULL DEFAULT '',
-  version_id  TEXT NOT NULL DEFAULT '',
-  status      TEXT NOT NULL DEFAULT '',
-  summary     TEXT NOT NULL DEFAULT '',
-  meta        TEXT,
-  created     INTEGER NOT NULL DEFAULT (unixepoch())
-);
-CREATE INDEX idx_meem_deployments_target ON meem_deployments(meem_uid, target, created DESC);
-
+-- 设备(可添加的电脑/浏览器端;AI 按 id 调用)
 CREATE TABLE meem_devices (
   id          TEXT PRIMARY KEY,
   meem_uid    TEXT NOT NULL DEFAULT 'me',
-  kind        TEXT NOT NULL DEFAULT '',
-  label       TEXT NOT NULL DEFAULT '',
-  token_hash  TEXT NOT NULL DEFAULT '',
-  status      TEXT NOT NULL DEFAULT 'inactive',
-  meta        TEXT,
+  kind        TEXT NOT NULL DEFAULT 'computer',   -- computer | browser
+  name        TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  token       TEXT NOT NULL DEFAULT '',            -- 设备连接令牌
+  status      TEXT NOT NULL DEFAULT 'active',       -- active | disabled
   created     INTEGER NOT NULL DEFAULT (unixepoch()),
   updated     INTEGER NOT NULL DEFAULT (unixepoch())
 );
-CREATE INDEX idx_meem_devices_kind ON meem_devices(meem_uid, kind, status);
+CREATE INDEX idx_meem_devices ON meem_devices(meem_uid, kind);
+CREATE UNIQUE INDEX idx_meem_devices_token ON meem_devices(token);
 
 CREATE TABLE meem_terminal_snippets (
   id         TEXT PRIMARY KEY,
@@ -129,19 +86,6 @@ CREATE TABLE site_settings (
   updated      INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
-CREATE TABLE site_pages (
-  id          TEXT PRIMARY KEY,
-  site_uid    TEXT NOT NULL DEFAULT 'me',
-  path        TEXT NOT NULL,
-  title       TEXT NOT NULL DEFAULT '',
-  content     TEXT NOT NULL DEFAULT '',
-  meta        TEXT,
-  published   INTEGER NOT NULL DEFAULT 1,
-  created     INTEGER NOT NULL DEFAULT (unixepoch()),
-  updated     INTEGER NOT NULL DEFAULT (unixepoch())
-);
-CREATE UNIQUE INDEX idx_site_pages_path ON site_pages(site_uid, path);
-
 CREATE TABLE site_inbox (
   id         TEXT PRIMARY KEY,
   site_uid   TEXT NOT NULL DEFAULT 'me',
@@ -162,7 +106,7 @@ CREATE TABLE site_events (
 );
 CREATE INDEX idx_site_events_kind ON site_events(site_uid, kind, created DESC);
 
--- 对外内容:动态 / 文章 / 项目(站主发布,公网展示 + 门童机器人只读)
+-- 对外内容:动态 / 文章 / 项目(所有者发布,公网展示 + 门童机器人只读)
 CREATE TABLE site_content (
   id        TEXT PRIMARY KEY,
   site_uid  TEXT NOT NULL DEFAULT 'me',
@@ -185,7 +129,7 @@ CREATE TABLE site_ratelimit (
   count     INTEGER NOT NULL DEFAULT 0
 );
 
--- 访客账号(对外网站登录注册;与站主 meem_users 完全分离)
+-- 访客账号(对外网站登录注册;与所有者 meem_users 完全分离)
 CREATE TABLE site_visitors (
   id         TEXT PRIMARY KEY,
   email      TEXT NOT NULL UNIQUE,
@@ -207,8 +151,8 @@ CREATE TABLE site_visitor_msgs (
 );
 CREATE INDEX idx_site_visitor_msgs ON site_visitor_msgs(visitor_id, created);
 
--- 文档(私有,控制台「文档」应用;由 mindbase 笔记迁入)· 笔记本树 + 页面
-CREATE TABLE doc_notebooks (
+-- 文档(控制台「文档」应用)· 笔记本树 + 页面
+CREATE TABLE meem_doc_notebooks (
   id         TEXT PRIMARY KEY,
   meem_uid   TEXT NOT NULL DEFAULT 'me',
   parent_id  TEXT,
@@ -218,9 +162,9 @@ CREATE TABLE doc_notebooks (
   created    INTEGER NOT NULL DEFAULT (unixepoch()),
   updated    INTEGER NOT NULL DEFAULT (unixepoch())
 );
-CREATE INDEX idx_doc_notebooks ON doc_notebooks(meem_uid, parent_id, sort_order);
+CREATE INDEX idx_meem_doc_notebooks ON meem_doc_notebooks(meem_uid, parent_id, sort_order);
 
-CREATE TABLE doc_pages (
+CREATE TABLE meem_doc_pages (
   id          TEXT PRIMARY KEY,
   meem_uid    TEXT NOT NULL DEFAULT 'me',
   notebook_id TEXT,
@@ -231,18 +175,47 @@ CREATE TABLE doc_pages (
   created     INTEGER NOT NULL DEFAULT (unixepoch()),
   updated     INTEGER NOT NULL DEFAULT (unixepoch())
 );
-CREATE INDEX idx_doc_pages ON doc_pages(meem_uid, notebook_id, sort_order);
+CREATE INDEX idx_meem_doc_pages ON meem_doc_pages(meem_uid, notebook_id, sort_order);
+
+-- 任务清单(控制台「任务」应用)
+CREATE TABLE meem_tasks (
+  id          TEXT PRIMARY KEY,
+  meem_uid    TEXT NOT NULL DEFAULT 'me',
+  title       TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  status      TEXT NOT NULL DEFAULT 'todo',     -- todo | doing | done
+  priority    TEXT NOT NULL DEFAULT 'medium',   -- low | medium | high
+  created     INTEGER NOT NULL DEFAULT (unixepoch()),
+  updated     INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE INDEX idx_meem_tasks ON meem_tasks(meem_uid, status, updated DESC);
+
+-- Codex 会话事件(控制台「Codex」应用)· 归一化后的事件流,按 codex thread_id 归档
+CREATE TABLE meem_codex_events (
+  id         TEXT PRIMARY KEY,
+  meem_uid   TEXT NOT NULL DEFAULT 'me',
+  thread_id  TEXT NOT NULL,
+  kind       TEXT NOT NULL DEFAULT 'agent_message',
+  payload    TEXT NOT NULL DEFAULT '{}',
+  created    INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE INDEX idx_meem_codex_events ON meem_codex_events(meem_uid, thread_id, created);
+
+-- 随手记(控制台「随手记」应用)
+CREATE TABLE meem_notes (
+  id        TEXT PRIMARY KEY,
+  meem_uid  TEXT NOT NULL DEFAULT 'me',
+  title     TEXT NOT NULL DEFAULT '',
+  body      TEXT NOT NULL DEFAULT '',
+  pinned    INTEGER NOT NULL DEFAULT 0,
+  created   INTEGER NOT NULL DEFAULT (unixepoch()),
+  updated   INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE INDEX idx_meem_notes ON meem_notes(meem_uid, pinned DESC, updated DESC);
 
 INSERT INTO meem_settings (meem_uid) VALUES ('me');
 INSERT INTO site_settings (site_uid, title, description)
 VALUES ('me', 'Meem Site', 'A public site powered by Meem.');
-
-INSERT INTO meem_apps (id, meem_uid, slug, title, kind, entry_path, status)
-VALUES
-  ('app_terminal', 'me', 'terminal', '终端', 'internal', '/meem/apps/terminal', 'active'),
-  ('app_files', 'me', 'files', '文件', 'internal', '/meem/apps/files', 'active'),
-  ('app_status', 'me', 'status', '状态', 'internal', '/meem/apps/status', 'active'),
-  ('app_screen', 'me', 'screen', '截图', 'internal', '/meem/apps/screen', 'active');
 
 INSERT INTO meem_terminal_snippets (id, meem_uid, name, command, auto_send, position)
 VALUES

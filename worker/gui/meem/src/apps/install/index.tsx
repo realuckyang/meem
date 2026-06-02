@@ -61,7 +61,7 @@ export const TOKEN    = '${config.token}';
               {isClient ? (
                 <>
                   <Step n={1}>进入仓库的 <code>client</code> 目录。</Step>
-                  <Step n={2}>把右侧生成的 <code>config.js</code> 放到 <code>client/config.js</code>。</Step>
+                  <Step n={2}>把本页生成的 <code>config.js</code> 放到 <code>client/config.js</code>。</Step>
                   <Step n={3}>运行 <code>npm install</code>，然后运行 <code>npm start</code>。</Step>
                   <Step n={4}>保持终端窗口运行，Meem 会自动显示电脑已连接。</Step>
                 </>
@@ -70,7 +70,7 @@ export const TOKEN    = '${config.token}';
                   <Step n={1}>下载并解压扩展包，或直接使用仓库里的 <code>extension</code> 目录。</Step>
                   <Step n={2}>打开 <code>chrome://extensions</code> 并开启开发者模式。</Step>
                   <Step n={3}>点击“加载已解压的扩展程序”，选择解压目录。</Step>
-                  <Step n={4}>打开扩展 popup，把右侧 <code>接口地址 / WebSocket / 令牌</code> 三项粘进去,点连接。</Step>
+                  <Step n={4}>打开扩展 popup，把本页的 <code>接口地址 / WebSocket / 令牌</code> 三项粘进去,点连接。</Step>
                 </>
               )}
             </div>

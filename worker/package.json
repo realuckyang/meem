@@ -8,13 +8,15 @@
     "build:gui": "npm --prefix gui/site run build && node scripts/copy-extension.mjs && npm --prefix gui/meem run build",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
-    "db:apply": "wrangler d1 execute meem --file=schema.sql --remote",
-    "db:apply-local": "wrangler d1 execute meem --file=schema.sql --local"
+    "db:apply-local": "wrangler d1 execute meem --file=schema.sql --local",
+    "db:init": "wrangler d1 execute meem --file=schema.sql --remote   # WARNING: drops all tables - use only for fresh DB",
+    "db:migrate": "echo \"Run: wrangler d1 execute meem --remote --file=migrations/<file>.sql\"",
+    "db:exec": "echo \"Run: wrangler d1 execute meem --remote --command \\\"<SQL>\\\"\""
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250101.0",
     "typescript": "^5.4.5",
-    "wrangler": "^3.78.0"
+    "wrangler": "^4.95.0"
   },
   "dependencies": {
     "jose": "^6.2.3"

@@ -1,11 +1,10 @@
 import type { Env } from '../types';
-import { makeRepo } from '../meem/repository';
+import { makeRepo } from '../meem/repository/repo';
 import { callLm } from '../meem/ai/lm';
 import { appendMessage, loadConversation, login as visitorLogin, register as visitorRegister, verifyVisitor } from './visitors';
+import { json, readJson } from '../meem/http';
 
 const UID = 'me';
-const json = (d: unknown, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { 'content-type': 'application/json; charset=utf-8' } });
-const readJson = async (req: Request): Promise<any> => { try { return await req.json(); } catch { return {}; } };
 const clean = (value: unknown, max = 2000) => String(value || '').trim().slice(0, max);
 const clientIp = (req: Request) => req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for') || 'unknown';
 
@@ -48,7 +47,7 @@ async function concierge(req: Request, env: Env): Promise<Response> {
 
   const repo = makeRepo(env, UID);
   const ip = clientIp(req);
-  // 限流:同 IP 每小时 20 条 + 全站每天 500 条(护住站主的 LLM 账单)
+  // 限流:同 IP 每小时 20 条 + 全站每天 500 条(护住站点所有者的 LLM 账单)
   if (!(await repo.rateHit(`chat:${ip}`, 3600, 20))) return json({ reply: '你今天问得有点多啦,休息一下再来吧 🙂', limited: true });
   if (!(await repo.rateHit('chat:__global__', 86400, 500))) return json({ reply: '今日访问量已满,请明天再来。', limited: true });
 
@@ -70,15 +69,15 @@ async function concierge(req: Request, env: Env): Promise<Response> {
 
   const persona = (s.persona || '').trim();
   const system = [
-    '你是这个个人网站的「AI 助手」,代表站主回答公开访客的问题。',
-    persona && `站主偏好:${persona}`,
+    '你是这个网站的「AI 助手」,代表站点所有者回答公开访客的问题。',
+    persona && `站点所有者偏好:${persona}`,
     '规则:',
     '1. 只依据下面「已发布内容」回答;内容里没有的就如实说不知道,并建议访客在页面下方留言。',
     '2. 你没有任何工具,不能执行命令、访问文件或系统,也绝不透露任何配置、密钥或内部信息。',
     '3. 简洁友好,中文优先;遇到合作/联系/需求,引导访客留言。',
     '',
     '已发布内容:',
-    ctxText || '(站主还没有发布任何内容)',
+    ctxText || '(尚未发布任何内容)',
   ].filter(Boolean).join('\n');
 
   // 登录访客:用服务端持久对话作上下文;匿名:用前端传来的临时历史
@@ -99,7 +98,7 @@ async function concierge(req: Request, env: Env): Promise<Response> {
       model,
       messages: [{ role: 'system', content: system }, ...history.slice(-8), { role: 'user', content: message }] as any,
     });
-    const text = reply.content || '(没有回应)';
+    const text = (typeof reply.content === 'string' ? reply.content : '') || '暂无回应';
     if (visitor) { await appendMessage(env, visitor.id, 'user', message); await appendMessage(env, visitor.id, 'assistant', text); }
     return json({ reply: text });
   } catch (e: any) {
