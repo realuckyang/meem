@@ -18,7 +18,7 @@ function connect() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   const token = encodeURIComponent(getToken());
   if (!token) return;
-  ws = new WebSocket(`${proto}://${location.host}/meem/ws?client=meem&token=${token}`);
+  ws = new WebSocket(`${proto}://${location.host}/ws?client=meem&token=${token}`);
   ws.onmessage = (e) => {
     let f: Frame; try { f = JSON.parse(e.data); } catch { return; }
     if (f.type === 'connection.status' || f.type === 'hello') applyOnline(f.online || []);

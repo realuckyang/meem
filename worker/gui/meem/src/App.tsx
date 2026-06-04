@@ -7,7 +7,7 @@ import DeviceSheet from './apps/devices/DeviceSheet';
 import { NavContext, type InstallKind } from './system/nav';
 
 const installFromPath = (pathname = location.pathname): InstallKind | null => {
-  const slug = pathname.match(/^\/meem\/install\/([^/]+)/)?.[1];
+  const slug = pathname.match(/^\/install\/([^/]+)/)?.[1];
   return slug === 'client' || slug === 'extension' ? slug : null;
 };
 
@@ -26,7 +26,7 @@ export default function App() {
   useEffect(() => {
     const onPop = () => { setInstall(installFromPath()); setActiveApp(appFromPath()); };
     addEventListener('popstate', onPop);
-    if (location.pathname === '/meem' || location.pathname === '/meem/') history.replaceState(null, '', pathForApp('chat'));
+    if (location.pathname === '/' || location.pathname === '') history.replaceState(null, '', pathForApp('chat'));
     return () => removeEventListener('popstate', onPop);
   }, []);
 
@@ -39,7 +39,7 @@ export default function App() {
 
   function openInstall(kind: InstallKind) {
     setInstall(kind);
-    const next = `/meem/install/${kind}`;
+    const next = `/install/${kind}`;
     if (location.pathname !== next) history.pushState(null, '', next);
   }
 

@@ -2,14 +2,14 @@
 
 Meem is a personal AI workstation built on a Cloudflare Worker, a local computer client, and a browser extension.
 
-It gives the owner two surfaces:
+It gives the owner one surface:
 
 ```text
-/meem             Meem console
-/meem/apps/:name  internal Meem apps
+/             Meem console
+/apps/:name   internal Meem apps
 ```
 
-The Worker is the entry point. The console runs agent workflows, coordinates local and browser tools, and can help create, modify, build, and deploy internal apps. There is no public-facing website — `/meem` requires the owner account.
+The Worker is the entry point. The console runs agent workflows, coordinates local and browser tools, and can help create, modify, build, and deploy internal apps. There is no public-facing website — the console at `/` requires the owner account.
 
 ## Structure
 
@@ -17,7 +17,7 @@ The Worker is the entry point. The console runs agent workflows, coordinates loc
 worker/       Cloudflare Worker · REST API + D1 schema.sql + R2 + Room DO + routing
 worker/server/meem/ Meem backend · console API + agent + repository + Room DO
 worker/gui/meem/ Meem console frontend · React + Vite + TS
-worker/gui/meem/src/apps/ all Meem apps, including chat · mounted under /meem/apps/:name
+worker/gui/meem/src/apps/ all Meem apps, including chat · mounted under /apps/:name
 worker/gui/meem/src/system/ global Meem shell · topbar, app panel, route state, shared clients
 client/       local computer client · shell/files/screenshot/system/computer control
 client/system/ local client runtime · WebSocket lifecycle and shared utilities
@@ -28,9 +28,9 @@ dev/          reference material
 
 ## Runtime
 
-- `worker/gui/meem` connects to `/meem/ws?client=meem`.
-- `client` connects to `/meem/ws?client=client` and executes computer tools.
-- `extension` connects to `/meem/ws?client=extension` and executes browser tools.
+- `worker/gui/meem` connects to `/ws?client=meem`.
+- `client` connects to `/ws?client=client` and executes computer tools.
+- `extension` connects to `/ws?client=extension` and executes browser tools.
 - `worker` routes console traffic, API requests, WebSocket connections, and static assets.
 
 ## Prerequisites
@@ -82,7 +82,7 @@ npm --prefix worker run dev         # terminal 1 — Worker (deploy with: run de
 cd client && npm install && npm start   # terminal 2 — computer client
 ```
 
-The first time you open `/meem`, create the owner account, then open Settings and
+The first time you open `/`, create the owner account, then open Settings and
 fill in the LLM endpoint, key and model.
 
 ### 4. Load the browser extension (optional)

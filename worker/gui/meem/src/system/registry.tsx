@@ -35,23 +35,23 @@ export const APP_GROUPS: { id: AppGroup; label: string }[] = [
 export interface SystemAppProps {}
 
 export const APPS: MeemApp[] = [
-  { id: 'chat', label: '聊天', path: '/meem/apps/chat', icon: <MessageSquare />, group: 'online', Component: ChatApp },
-  { id: 'tasks', label: '任务', path: '/meem/apps/tasks', icon: <ListChecks />, group: 'online', Component: TasksApp },
-  { id: 'notes', label: '随手记', path: '/meem/apps/notes', icon: <StickyNote />, group: 'online', Component: NotesApp },
-  { id: 'docs', label: '文档', path: '/meem/apps/docs', icon: <BookText />, group: 'online', Component: DocsApp },
-  { id: 'codex', label: 'Codex', path: '/meem/apps/codex', icon: <Bot />, group: 'computer', Component: CodexApp },
-  { id: 'terminal', label: '终端', path: '/meem/apps/terminal', icon: <TerminalSquare />, group: 'computer', Component: TerminalApp },
-  { id: 'files', label: '文件', path: '/meem/apps/files', icon: <Folder />, group: 'computer', Component: FilesApp },
-  { id: 'status', label: '状态', path: '/meem/apps/status', icon: <Activity />, group: 'computer', Component: StatusApp },
-  { id: 'screen', label: '截图', path: '/meem/apps/screen', icon: <Monitor />, group: 'computer', Component: ScreenApp },
-  { id: 'settings', label: '设置', path: '/meem/apps/settings', icon: <SlidersHorizontal />, group: 'system', Component: SettingsApp },
+  { id: 'chat', label: '聊天', path: '/apps/chat', icon: <MessageSquare />, group: 'online', Component: ChatApp },
+  { id: 'tasks', label: '任务', path: '/apps/tasks', icon: <ListChecks />, group: 'online', Component: TasksApp },
+  { id: 'notes', label: '随手记', path: '/apps/notes', icon: <StickyNote />, group: 'online', Component: NotesApp },
+  { id: 'docs', label: '文档', path: '/apps/docs', icon: <BookText />, group: 'online', Component: DocsApp },
+  { id: 'codex', label: 'Codex', path: '/apps/codex', icon: <Bot />, group: 'computer', Component: CodexApp },
+  { id: 'terminal', label: '终端', path: '/apps/terminal', icon: <TerminalSquare />, group: 'computer', Component: TerminalApp },
+  { id: 'files', label: '文件', path: '/apps/files', icon: <Folder />, group: 'computer', Component: FilesApp },
+  { id: 'status', label: '状态', path: '/apps/status', icon: <Activity />, group: 'computer', Component: StatusApp },
+  { id: 'screen', label: '截图', path: '/apps/screen', icon: <Monitor />, group: 'computer', Component: ScreenApp },
+  { id: 'settings', label: '设置', path: '/apps/settings', icon: <SlidersHorizontal />, group: 'system', Component: SettingsApp },
 ];
 
 export function appFromPath(pathname = location.pathname): AppId {
-  const slug = pathname.match(/^\/meem\/apps\/([^/]+)/)?.[1];
+  const slug = pathname.match(/^\/apps\/([^/]+)/)?.[1];
   return APPS.some((app) => app.id === slug) ? slug as AppId : 'chat';
 }
 
 export function pathForApp(id: AppId): string {
-  return APPS.find((app) => app.id === id)?.path ?? '/meem/apps/chat';
+  return APPS.find((app) => app.id === id)?.path ?? '/apps/chat';
 }

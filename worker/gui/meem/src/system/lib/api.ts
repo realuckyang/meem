@@ -13,7 +13,7 @@ async function J<T>(p: Promise<Response>): Promise<T> {
   if (!r.ok) throw Object.assign(new Error(data?.error || r.statusText), { status: r.status, data });
   return data as T;
 }
-const API = '/meem/api';
+const API = '/api';
 const headers = () => ({ 'content-type': 'application/json', ...(getToken() ? { authorization: `Bearer ${getToken()}` } : {}) });
 const get = (url: string) => fetch(url, { headers: headers() });
 const post = (url: string, body: unknown) => fetch(url, { method: 'POST', headers: headers(), body: JSON.stringify(body) });

@@ -47,8 +47,8 @@ function scheduleReconnect() {
 }
 
 function connect() {
-  const url = `${WS_URL}/meem/ws?client=client&token=${encodeURIComponent(TOKEN)}`;
-  console.log(`[client] connecting -> ${WS_URL}/meem/ws?client=client`);
+  const url = `${WS_URL}/ws?client=client&token=${encodeURIComponent(TOKEN)}`;
+  console.log(`[client] connecting -> ${WS_URL}/ws?client=client`);
 
   try { ws = new WebSocket(url); }
   catch (error) { console.error('[client] new WebSocket throw:', error?.message ?? error); scheduleReconnect(); return; }

@@ -13,7 +13,7 @@ export const readJson = async (req: Request): Promise<any> => {
 /** 已鉴权路由的上下文 */
 export interface RouteCtx {
   env: Env;
-  p: string;        // 去掉 /meem/api/ 前缀的路径
+  p: string;        // 去掉 /api/ 前缀的路径
   method: string;
   req: Request;
   url: URL;

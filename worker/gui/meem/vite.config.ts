@@ -1,12 +1,12 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-// Meem 控制台只构建 /meem 页面;extension 在仓库根 /extension。
+// Meem 控制台是唯一前端,落在根路径 /;extension 在仓库根 /extension。
 export default defineConfig({
   plugins: [react()],
-  base: '/meem/',
+  base: '/',
   build: {
-    outDir: '../dist/meem',
+    outDir: '../dist',
     emptyOutDir: false,
     sourcemap: true,
     rollupOptions: {

@@ -18,7 +18,7 @@ import { settings } from './settings';
 const notFound = () => json({ error: 'not found' }, 404);
 
 export async function handleApi(req: Request, env: Env, url: URL, ctx: ExecutionContext): Promise<Response> {
-  const p = url.pathname.replace(/^\/meem\/api\//, '');
+  const p = url.pathname.replace(/^\/api\//, '');
   const method = req.method;
 
   // 公共路由(鉴权前)
