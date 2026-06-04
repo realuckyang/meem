@@ -7,7 +7,6 @@ import { makeRepo } from '../repository/repo';
 import { json, type RouteCtx } from '../http';
 import { authPublic } from './auth';
 import { account } from './account';
-import { content } from './content';
 import { docs } from './docs';
 import { terminal } from './terminal';
 import { tasks } from './tasks';
@@ -32,7 +31,6 @@ export async function handleApi(req: Request, env: Env, url: URL, ctx: Execution
 
   // 按前缀分配
   if (p === 'me' || p.startsWith('install/')) return account(c);
-  if (p.startsWith('content')) return content(c);
   if (p.startsWith('docs/')) return docs(c);
   if (p.startsWith('terminal/')) return terminal(c);
   if (p.startsWith('settings')) return settings(c);

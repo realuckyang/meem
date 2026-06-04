@@ -41,11 +41,6 @@ export interface Store {
   r2Get(path: string): Promise<string | null>;
   r2List(prefix: string): Promise<string[]>;
   r2Delete(path: string): Promise<void>;
-
-  inboxList(status: string): Promise<unknown[]>;
-  inboxRead(id: string): Promise<unknown | null>;
-  inboxReply(id: string, text: string): Promise<void>;
-  inboxLink(chatId: string | null, label: string): Promise<string>;
 }
 
 /** 工具执行上下文 */

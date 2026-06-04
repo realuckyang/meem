@@ -6,10 +6,10 @@ export function makeDecisions(env: Env, uid: string): DecisionsRepo {
   const DB = env.DB;
   return {
     async openDecisions() {
-      const chats = await DB.prepare("SELECT id FROM meem_chats WHERE meem_uid=? AND status='awaiting' ORDER BY updated DESC").bind(uid).all<{ id: string }>();
+      const chats = await DB.prepare("SELECT id FROM chats WHERE meem_uid=? AND status='awaiting' ORDER BY updated DESC").bind(uid).all<{ id: string }>();
       const out: OpenDecision[] = [];
       for (const t of chats.results) {
-        const d = await DB.prepare("SELECT message,meta FROM meem_messages WHERE meem_uid=? AND chat_id=? AND json_extract(meta,'$.kind')='decision' ORDER BY created DESC LIMIT 1")
+        const d = await DB.prepare("SELECT message,meta FROM messages WHERE meem_uid=? AND chat_id=? AND json_extract(meta,'$.kind')='decision' ORDER BY created DESC LIMIT 1")
           .bind(uid, t.id).first<{ message: string; meta: string }>();
         if (!d) continue;
         let msg: any = {}; let meta: any = {};

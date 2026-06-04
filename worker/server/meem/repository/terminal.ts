@@ -6,7 +6,7 @@ export function makeTerminal(env: Env, uid: string): TerminalRepo {
   const DB = env.DB;
   return {
     async listTerminalSnippets() {
-      const r = await DB.prepare('SELECT id,name,command,auto_send,position,created,updated FROM meem_terminal_snippets WHERE meem_uid=? ORDER BY position ASC, created ASC')
+      const r = await DB.prepare('SELECT id,name,command,auto_send,position,created,updated FROM terminal_snippets WHERE meem_uid=? ORDER BY position ASC, created ASC')
         .bind(uid).all<TerminalSnippetRow>();
       return r.results;
     },
@@ -14,7 +14,7 @@ export function makeTerminal(env: Env, uid: string): TerminalRepo {
       const id = uuid();
       const created = now();
       const position = created;
-      await DB.prepare('INSERT INTO meem_terminal_snippets (id,meem_uid,name,command,auto_send,position,created,updated) VALUES (?,?,?,?,?,?,?,?)')
+      await DB.prepare('INSERT INTO terminal_snippets (id,meem_uid,name,command,auto_send,position,created,updated) VALUES (?,?,?,?,?,?,?,?)')
         .bind(id, uid, p.name, p.command, p.autoSend ? 1 : 0, position, created, created).run();
       return { id, name: p.name, command: p.command, auto_send: p.autoSend ? 1 : 0, position, created, updated: created };
     },
@@ -26,10 +26,10 @@ export function makeTerminal(env: Env, uid: string): TerminalRepo {
       if (p.position !== undefined) { cols.push('position=?'); vals.push(p.position); }
       if (!cols.length) return;
       cols.push('updated=?'); vals.push(now(), id, uid);
-      await DB.prepare(`UPDATE meem_terminal_snippets SET ${cols.join(',')} WHERE id=? AND meem_uid=?`).bind(...vals).run();
+      await DB.prepare(`UPDATE terminal_snippets SET ${cols.join(',')} WHERE id=? AND meem_uid=?`).bind(...vals).run();
     },
     async deleteTerminalSnippet(id) {
-      await DB.prepare('DELETE FROM meem_terminal_snippets WHERE id=? AND meem_uid=?').bind(id, uid).run();
+      await DB.prepare('DELETE FROM terminal_snippets WHERE id=? AND meem_uid=?').bind(id, uid).run();
     },
   };
 }

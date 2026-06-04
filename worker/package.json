@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "build:gui": "npm --prefix gui/site run build && node scripts/copy-extension.mjs && npm --prefix gui/meem run build",
+    "build:gui": "node scripts/copy-extension.mjs && npm --prefix gui/meem run build",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
     "db:apply-local": "wrangler d1 execute meem --file=schema.sql --local",

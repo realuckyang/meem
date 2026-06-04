@@ -1,7 +1,6 @@
 import type { Env } from './types';
 import { handleApi } from './meem/api';
 import { Room } from './meem/ws/room';
-import { handlePublic, handleSiteApi } from './site/public';
 import { authorize } from './meem/auth';
 import { verifyDevice } from './meem/repository/devices';
 
@@ -18,11 +17,6 @@ function assetRequest(req: Request, pathname: string): Request {
 function serveMeem(req: Request, env: Env, url: URL): Promise<Response> {
   const path = url.pathname === '/meem' ? '/meem/' : url.pathname;
   if (path === '/meem/' || !hasFileExt(path)) return env.ASSETS.fetch(assetRequest(req, '/meem/index.html'));
-  return env.ASSETS.fetch(req);
-}
-
-function serveSite(req: Request, env: Env, url: URL): Promise<Response> {
-  if (url.pathname === '/' || !hasFileExt(url.pathname)) return env.ASSETS.fetch(assetRequest(req, '/index.html'));
   return env.ASSETS.fetch(req);
 }
 
@@ -48,13 +42,10 @@ export default {
     }
     // Meem REST
     if (url.pathname.startsWith('/meem/api/')) return handleApi(req, env, url, ctx);
-    // Site REST
-    if (url.pathname.startsWith('/site/api/')) return handleSiteApi(req, env, url, ctx);
-    // 站点公开交互页
-    if (url.pathname.startsWith('/p/')) return handlePublic(req, env, url, ctx);
     // Meem 控制台和内部应用
     if (url.pathname === '/meem' || url.pathname.startsWith('/meem/')) return serveMeem(req, env, url);
-    // 用户对外网站
-    return serveSite(req, env, url);
+    // 其余只放行静态资源(如扩展下载包 /downloads/...),其它一律 404
+    if (hasFileExt(url.pathname)) return env.ASSETS.fetch(req);
+    return new Response('Not Found', { status: 404 });
   },
 };

@@ -9,18 +9,18 @@ export function makeNotes(env: Env, uid: string): NotesRepo {
   return {
     async listNotes(q?: string) {
       const like = `%${q}%`;
-      const sql = `SELECT ${COLS} FROM meem_notes WHERE meem_uid=?`
+      const sql = `SELECT ${COLS} FROM notes WHERE meem_uid=?`
         + (q ? ' AND (title LIKE ? OR body LIKE ?)' : '')
         + ' ORDER BY pinned DESC, updated DESC';
       const stmt = q ? DB.prepare(sql).bind(uid, like, like) : DB.prepare(sql).bind(uid);
       return (await stmt.all<NoteRow>()).results;
     },
     async getNote(id) {
-      return DB.prepare(`SELECT ${COLS} FROM meem_notes WHERE id=? AND meem_uid=?`).bind(id, uid).first<NoteRow>();
+      return DB.prepare(`SELECT ${COLS} FROM notes WHERE id=? AND meem_uid=?`).bind(id, uid).first<NoteRow>();
     },
     async createNote(p) {
       const id = uuid();
-      await DB.prepare(`INSERT INTO meem_notes (${COLS}) VALUES (?,?,?,?,?,?,?)`)
+      await DB.prepare(`INSERT INTO notes (${COLS}) VALUES (?,?,?,?,?,?,?)`)
         .bind(id, uid, p.title ?? '', p.body ?? '', p.pinned ?? 0, now(), now()).run();
       return (await this.getNote(id))!;
     },
@@ -31,10 +31,10 @@ export function makeNotes(env: Env, uid: string): NotesRepo {
       }
       if (!cols.length) return;
       cols.push('updated=?'); vals.push(now(), id, uid);
-      await DB.prepare(`UPDATE meem_notes SET ${cols.join(',')} WHERE id=? AND meem_uid=?`).bind(...vals).run();
+      await DB.prepare(`UPDATE notes SET ${cols.join(',')} WHERE id=? AND meem_uid=?`).bind(...vals).run();
     },
     async deleteNote(id) {
-      await DB.prepare('DELETE FROM meem_notes WHERE id=? AND meem_uid=?').bind(id, uid).run();
+      await DB.prepare('DELETE FROM notes WHERE id=? AND meem_uid=?').bind(id, uid).run();
     },
   };
 }

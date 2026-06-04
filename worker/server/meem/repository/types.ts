@@ -7,7 +7,6 @@ export interface ChatRow {
   status: string; preview: string; peer: string | null; created: number; updated: number; closed: number | null;
 }
 export interface MessageRow { id: string; chat_id: string | null; message: string; meta: string | null; created: number; }
-export interface ContentRow { id: string; site_uid: string; kind: string; title: string; body: string; url: string; tags: string; status: string; pinned: number; created: number; updated: number; }
 export interface DocNotebook { id: string; parent_id: string | null; name: string; icon: string | null; sort_order: number; created: number; updated: number; }
 export interface DocPageMeta { id: string; notebook_id: string | null; title: string; icon: string | null; sort_order: number; updated: number; }
 export interface DocPage extends DocPageMeta { content: string; created: number; }
@@ -34,17 +33,6 @@ export interface MessagesRepo {
 export interface DecisionsRepo {
   openDecisions(): Promise<OpenDecision[]>;
 }
-export interface ContentRepo {
-  listContent(kind?: string): Promise<ContentRow[]>;
-  publicContent(kind?: string): Promise<ContentRow[]>;
-  getContent(id: string): Promise<ContentRow | null>;
-  createContent(p: { kind: string; title: string; body?: string; url?: string; tags?: string; status?: string; pinned?: number }): Promise<ContentRow>;
-  updateContent(id: string, p: Partial<{ kind: string; title: string; body: string; url: string; tags: string; status: string; pinned: number }>): Promise<void>;
-  deleteContent(id: string): Promise<void>;
-}
-export interface RateLimitRepo {
-  rateHit(bucket: string, windowSec: number, limit: number): Promise<boolean>;
-}
 export interface DocsRepo {
   docNotebooks(): Promise<DocNotebook[]>;
   docPagesList(notebookId: string | null): Promise<DocPageMeta[]>;
@@ -62,13 +50,6 @@ export interface StorageRepo {
   r2Get(path: string): Promise<string | null>;
   r2List(prefix: string): Promise<string[]>;
   r2Delete(path: string): Promise<void>;
-}
-export interface InboxRepo {
-  inboxList(status: string): Promise<unknown[]>;
-  inboxRead(id: string): Promise<unknown | null>;
-  inboxReply(id: string, text: string): Promise<void>;
-  inboxLink(chatId: string | null, label: string): Promise<string>;
-  inboxAdd(p: { fromName: string; body: string }): Promise<{ id: string; chatId: string | null }>;
 }
 export interface TerminalRepo {
   listTerminalSnippets(): Promise<TerminalSnippetRow[]>;
@@ -108,5 +89,5 @@ export interface SettingsRepo {
 }
 
 export interface Repo extends
-  ChatsRepo, MessagesRepo, DecisionsRepo, ContentRepo, RateLimitRepo,
-  DocsRepo, StorageRepo, InboxRepo, TerminalRepo, TasksRepo, NotesRepo, CodexRepo, DevicesRepo, SettingsRepo {}
+  ChatsRepo, MessagesRepo, DecisionsRepo,
+  DocsRepo, StorageRepo, TerminalRepo, TasksRepo, NotesRepo, CodexRepo, DevicesRepo, SettingsRepo {}

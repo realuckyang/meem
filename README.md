@@ -1,24 +1,21 @@
 # Meem
 
-Meem is an AI application framework built on a Cloudflare Worker, a local computer client, and a browser extension.
+Meem is a personal AI workstation built on a Cloudflare Worker, a local computer client, and a browser extension.
 
-It gives a user three surfaces:
+It gives the owner two surfaces:
 
 ```text
-/                 public website
 /meem             Meem console
 /meem/apps/:name  internal Meem apps
 ```
 
-The Worker is the public entry point. The console runs agent workflows, coordinates local and browser tools, and can help create, modify, build, and deploy the public website and internal apps.
+The Worker is the entry point. The console runs agent workflows, coordinates local and browser tools, and can help create, modify, build, and deploy internal apps. There is no public-facing website — `/meem` requires the owner account.
 
 ## Structure
 
 ```text
 worker/       Cloudflare Worker · REST API + D1 schema.sql + R2 + Room DO + routing
 worker/server/meem/ Meem backend · console API + agent + repository + Room DO
-worker/server/site/ public site backend · public forms and visitor interaction
-worker/gui/site/ public website source · mounted at /
 worker/gui/meem/ Meem console frontend · React + Vite + TS
 worker/gui/meem/src/apps/ all Meem apps, including chat · mounted under /meem/apps/:name
 worker/gui/meem/src/system/ global Meem shell · topbar, app panel, route state, shared clients
@@ -34,7 +31,7 @@ dev/          reference material
 - `worker/gui/meem` connects to `/meem/ws?client=meem`.
 - `client` connects to `/meem/ws?client=client` and executes computer tools.
 - `extension` connects to `/meem/ws?client=extension` and executes browser tools.
-- `worker` routes public traffic, API requests, WebSocket connections, and static assets.
+- `worker` routes console traffic, API requests, WebSocket connections, and static assets.
 
 ## Prerequisites
 
@@ -79,7 +76,7 @@ never re-run the whole file against a database that already holds data. See `AGE
 
 ```bash
 npm --prefix worker install
-npm --prefix worker run build:gui   # build the console + site frontends
+npm --prefix worker run build:gui   # build the console frontend
 npm --prefix worker run dev         # terminal 1 — Worker (deploy with: run deploy)
 
 cd client && npm install && npm start   # terminal 2 — computer client

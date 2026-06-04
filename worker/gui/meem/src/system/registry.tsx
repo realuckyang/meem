@@ -1,20 +1,19 @@
-import { Activity, MessageSquare, Monitor, TerminalSquare, Folder, SlidersHorizontal, Newspaper, BookText, ListChecks, StickyNote, Bot } from 'lucide-react';
+import { Activity, MessageSquare, Monitor, TerminalSquare, Folder, SlidersHorizontal, BookText, ListChecks, StickyNote, Bot } from 'lucide-react';
 import type React from 'react';
 import ChatApp from '../apps/chat';
 import TerminalApp from '../apps/terminal';
 import FilesApp from '../apps/files';
 import StatusApp from '../apps/status';
 import ScreenApp from '../apps/screen';
-import ContentApp from '../apps/content';
 import DocsApp from '../apps/docs';
 import SettingsApp from '../apps/settings';
 import TasksApp from '../apps/tasks';
 import NotesApp from '../apps/notes';
 import CodexApp from '../apps/codex';
 
-export type AppId = 'chat' | 'tasks' | 'notes' | 'codex' | 'terminal' | 'files' | 'status' | 'screen' | 'content' | 'docs' | 'settings';
+export type AppId = 'chat' | 'tasks' | 'notes' | 'codex' | 'terminal' | 'files' | 'status' | 'screen' | 'docs' | 'settings';
 
-export type AppGroup = 'online' | 'computer' | 'site' | 'system';
+export type AppGroup = 'online' | 'computer' | 'system';
 
 export interface MeemApp {
   id: AppId;
@@ -29,7 +28,6 @@ export interface MeemApp {
 export const APP_GROUPS: { id: AppGroup; label: string }[] = [
   { id: 'online', label: '在线' },
   { id: 'computer', label: '电脑' },
-  { id: 'site', label: '网站' },
 ];
 
 // Apps render their own Topbar; global navigation comes from NavContext (see ./nav).
@@ -46,7 +44,6 @@ export const APPS: MeemApp[] = [
   { id: 'files', label: '文件', path: '/meem/apps/files', icon: <Folder />, group: 'computer', Component: FilesApp },
   { id: 'status', label: '状态', path: '/meem/apps/status', icon: <Activity />, group: 'computer', Component: StatusApp },
   { id: 'screen', label: '截图', path: '/meem/apps/screen', icon: <Monitor />, group: 'computer', Component: ScreenApp },
-  { id: 'content', label: '内容', path: '/meem/apps/content', icon: <Newspaper />, group: 'site', Component: ContentApp },
   { id: 'settings', label: '设置', path: '/meem/apps/settings', icon: <SlidersHorizontal />, group: 'system', Component: SettingsApp },
 ];
 

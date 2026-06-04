@@ -34,13 +34,6 @@ export const BROWSER_TOOLS = [
   fn('browser_close_tab', '关闭指定标签', { tabId: { type: 'number' } }, ['tabId']),
 ];
 
-export const INBOX_TOOLS = [
-  fn('inbox_list', '列出收件箱(外部进来的消息)', { status: { type: 'string', description: 'new|handled|all' } }),
-  fn('inbox_read', '读某条收件箱消息全文', { id: { type: 'string' } }, ['id']),
-  fn('inbox_reply', '通过公开页通道回复外部发件人', { id: { type: 'string' }, text: { type: 'string' } }, ['id', 'text']),
-  fn('inbox_link', '为某会话生成对方免登录的公开页链接', { chat_id: { type: 'string' }, label: { type: 'string' } }),
-];
-
 export const DB_TOOLS = [
   fn('sql', "对用户的私有数据库(Cloudflare D1)跑只读查询:仅支持 SELECT(不支持 PRAGMA 及任何写操作)。查有哪些表用 SELECT name FROM sqlite_master WHERE type='table';查某表字段用 SELECT sql FROM sqlite_master WHERE name='表名'。", { query: { type: 'string' } }, ['query']),
 ];
@@ -78,7 +71,7 @@ const withDevice = (tools: any[]) => tools.map((t) => ({
 /** 按设备在线情况 + 视觉开关组装工具集 */
 export function toolsFor(opts: { computer: boolean; browser: boolean; vision?: boolean }): unknown[] {
   const tools = [
-    ...CONVERSATION_TOOLS, ...INBOX_TOOLS, ...DB_TOOLS, ...R2_TOOLS,
+    ...CONVERSATION_TOOLS, ...DB_TOOLS, ...R2_TOOLS,
     ...(opts.computer ? withDevice(COMPUTER_TOOLS) : []),
     ...(opts.browser ? withDevice(BROWSER_TOOLS) : []),
   ];

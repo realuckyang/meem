@@ -8,15 +8,15 @@ export function makeMessages(env: Env, uid: string): MessagesRepo {
   return {
     async addMessage(m) {
       const id = uuid(); const created = now();
-      await DB.prepare('INSERT INTO meem_messages (id,meem_uid,chat_id,message,meta,created) VALUES (?,?,?,?,?,?)')
+      await DB.prepare('INSERT INTO messages (id,meem_uid,chat_id,message,meta,created) VALUES (?,?,?,?,?,?)')
         .bind(id, uid, m.chatId, JSON.stringify(m.message), m.meta ? JSON.stringify(m.meta) : null, created).run();
-      if (m.chatId) await DB.prepare('UPDATE meem_chats SET updated=? WHERE id=?').bind(created, m.chatId).run();
+      if (m.chatId) await DB.prepare('UPDATE chats SET updated=? WHERE id=?').bind(created, m.chatId).run();
       return { id, created };
     },
     async listMessages(chatId) {
       const r = chatId === null
-        ? await DB.prepare('SELECT id,chat_id,message,meta,created FROM meem_messages WHERE meem_uid=? AND chat_id IS NULL ORDER BY created').bind(uid).all<MessageRow>()
-        : await DB.prepare('SELECT id,chat_id,message,meta,created FROM meem_messages WHERE meem_uid=? AND chat_id=? ORDER BY created').bind(uid, chatId).all<MessageRow>();
+        ? await DB.prepare('SELECT id,chat_id,message,meta,created FROM messages WHERE meem_uid=? AND chat_id IS NULL ORDER BY created').bind(uid).all<MessageRow>()
+        : await DB.prepare('SELECT id,chat_id,message,meta,created FROM messages WHERE meem_uid=? AND chat_id=? ORDER BY created').bind(uid, chatId).all<MessageRow>();
       return r.results;
     },
     async loadHistory(chatId) {

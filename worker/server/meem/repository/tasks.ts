@@ -6,17 +6,17 @@ export function makeTasks(env: Env, uid: string): TasksRepo {
   const DB = env.DB;
   return {
     async listTasks(status?: string) {
-      const sql = 'SELECT id,meem_uid,title,description,status,priority,created,updated FROM meem_tasks WHERE meem_uid=?'
+      const sql = 'SELECT id,meem_uid,title,description,status,priority,created,updated FROM tasks WHERE meem_uid=?'
         + (status ? ' AND status=?' : '') + ' ORDER BY updated DESC';
       const stmt = status ? DB.prepare(sql).bind(uid, status) : DB.prepare(sql).bind(uid);
       return (await stmt.all<TaskRow>()).results;
     },
     async getTask(id) {
-      return DB.prepare('SELECT id,meem_uid,title,description,status,priority,created,updated FROM meem_tasks WHERE id=? AND meem_uid=?').bind(id, uid).first<TaskRow>();
+      return DB.prepare('SELECT id,meem_uid,title,description,status,priority,created,updated FROM tasks WHERE id=? AND meem_uid=?').bind(id, uid).first<TaskRow>();
     },
     async createTask(p) {
       const id = uuid();
-      await DB.prepare('INSERT INTO meem_tasks (id,meem_uid,title,description,status,priority,created,updated) VALUES (?,?,?,?,?,?,?,?)')
+      await DB.prepare('INSERT INTO tasks (id,meem_uid,title,description,status,priority,created,updated) VALUES (?,?,?,?,?,?,?,?)')
         .bind(id, uid, p.title, p.description ?? '', p.status ?? 'todo', p.priority ?? 'medium', now(), now()).run();
       return (await this.getTask(id))!;
     },
@@ -27,10 +27,10 @@ export function makeTasks(env: Env, uid: string): TasksRepo {
       }
       if (!cols.length) return;
       cols.push('updated=?'); vals.push(now(), id, uid);
-      await DB.prepare(`UPDATE meem_tasks SET ${cols.join(',')} WHERE id=? AND meem_uid=?`).bind(...vals).run();
+      await DB.prepare(`UPDATE tasks SET ${cols.join(',')} WHERE id=? AND meem_uid=?`).bind(...vals).run();
     },
     async deleteTask(id) {
-      await DB.prepare('DELETE FROM meem_tasks WHERE id=? AND meem_uid=?').bind(id, uid).run();
+      await DB.prepare('DELETE FROM tasks WHERE id=? AND meem_uid=?').bind(id, uid).run();
     },
   };
 }

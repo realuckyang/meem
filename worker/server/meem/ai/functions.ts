@@ -35,12 +35,6 @@ const worker: Record<string, Fn> = {
     return { content: '已回复结果。', awaitHuman: options.length > 0 };
   },
 
-  // ===== 收件箱系列 =====
-  async inbox_list(a, ctx) { return asText(await ctx.store.inboxList(String(a.status ?? 'new'))); },
-  async inbox_read(a, ctx) { const r = await ctx.store.inboxRead(String(a.id)); return r ? asText(r) : '没有这条'; },
-  async inbox_reply(a, ctx) { await ctx.store.inboxReply(String(a.id), String(a.text ?? '')); return '已通过公开页回复。'; },
-  async inbox_link(a, ctx) { return `公开页链接:${await ctx.store.inboxLink(a.chat_id ?? null, String(a.label ?? ''))}`; },
-
   // ===== 数据库系列 =====
   async sql(a, ctx) {
     const q = String(a.query ?? '');

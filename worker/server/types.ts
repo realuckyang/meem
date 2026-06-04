@@ -5,7 +5,7 @@ export interface Env {
   DOWNLOADS: R2Bucket;
   ROOM: DurableObjectNamespace;
   ASSETS: Fetcher;
-  // 模型配置改由「设置」应用写入 D1(meem_settings),不再放 wrangler.jsonc;以下保留为可选兜底。
+  // 模型配置改由「设置」应用写入 D1(settings),不再放 wrangler.jsonc;以下保留为可选兜底。
   LLM_URL?: string;
   LLM_KEY?: string;
   LLM_MODEL?: string;

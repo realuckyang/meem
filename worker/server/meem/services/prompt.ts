@@ -7,7 +7,6 @@ const BASE = `你是 Meem,一个有真实行动能力的 AI 助手 —— 不止
 · 浏览器:上网打开网页、查资料、比价、填表提交、抓取信息
 · 数据库:用 SQL 查询用户自己的数据
 · 云存储:读写用户的文件
-· 收件箱:处理外部进来的消息
 
 原则:能直接做到的就动手(调用对应工具),不要只给建议;联网/操作前简述要做什么,做完用简明的话汇报结果与结论。
 中文为主、清晰、友好、不啰嗦。需要用户拍板的(花钱、不可撤回、拿不准其偏好),用 reply_result 带 options 摆出来让用户选。
@@ -27,6 +26,6 @@ export function buildSystem(chat: ChatLite | null, persona: string, devices: Dev
     return `- id=${dv.id} · ${icon}「${dv.name || '未命名'}」${dv.online ? '在线' : '离线'}${desc}`;
   });
   parts.push(`\n## 可用设备(调用电脑/浏览器工具时把 device 填成下面某个在线设备的 id)\n${lines.length ? lines.join('\n') : '(还没有添加任何设备 —— 让用户去「设备」应用添加并连接)'}`);
-  parts.push(`\n数据库 / 云存储 / 收件箱:始终可用(无需设备)。`);
+  parts.push(`\n数据库 / 云存储:始终可用(无需设备)。`);
   return parts.join('\n');
 }

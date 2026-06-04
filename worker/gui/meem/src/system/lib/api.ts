@@ -32,10 +32,6 @@ export const api = {
   deleteSnippet: (id: string) => del(`${API}/terminal/snippets?id=${encodeURIComponent(id)}`),
   settings: () => J<Record<string, any>>(get(`${API}/settings`)),
   saveSettings: (b: Record<string, unknown>) => put(`${API}/settings`, b),
-  contentList: (kind?: string) => J<{ items: ContentItem[] }>(get(`${API}/content${kind ? `?kind=${kind}` : ''}`)),
-  contentCreate: (b: Partial<ContentItem>) => J<{ item: ContentItem }>(post(`${API}/content`, b)),
-  contentUpdate: (id: string, b: Partial<ContentItem>) => put(`${API}/content?id=${encodeURIComponent(id)}`, b),
-  contentDelete: (id: string) => del(`${API}/content?id=${encodeURIComponent(id)}`),
   taskList: (status?: string) => J<{ items: TaskItem[] }>(get(`${API}/tasks` + (status ? `?status=${status}` : ""))),
   taskCreate: (b: Partial<TaskItem>) => J<{ item: TaskItem }>(post(`${API}/tasks`, b)),
   taskUpdate: (id: string, b: Partial<TaskItem>) => put(`${API}/tasks?id=${encodeURIComponent(id)}`, b),
@@ -75,8 +71,3 @@ export interface NoteItem {
 }
 export interface CodexEvent { id: string; kind: string; text?: string; meta?: any; created: number; }
 export interface Device { id: string; kind: 'computer' | 'browser'; name: string; description: string; token: string; status: 'active' | 'disabled'; created: number; updated: number; }
-export interface ContentItem {
-  id: string; site_uid: string; kind: 'dynamic' | 'article' | 'project';
-  title: string; body: string; url: string; tags: string;
-  status: 'draft' | 'published'; pinned: number; created: number; updated: number;
-}

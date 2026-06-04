@@ -48,7 +48,7 @@ export async function verifyPassword(password: string, salt: string, hash: strin
 
 export async function getUser(env: Env): Promise<MeemUser | null> {
   try {
-    return await env.DB.prepare('SELECT * FROM meem_users WHERE meem_uid=?').bind(UID).first<MeemUser>();
+    return await env.DB.prepare('SELECT * FROM users WHERE meem_uid=?').bind(UID).first<MeemUser>();
   } catch {
     return null;
   }
@@ -62,7 +62,7 @@ export async function createUser(env: Env, password: string, name = 'Meem'): Pro
   const { salt, hash } = await hashPassword(password);
   const secret = newSecret();
   const now = Math.floor(Date.now() / 1000);
-  await env.DB.prepare('INSERT INTO meem_users (meem_uid,handle,name,salt,hash,secret,created,updated) VALUES (?,?,?,?,?,?,?,?)')
+  await env.DB.prepare('INSERT INTO users (meem_uid,handle,name,salt,hash,secret,created,updated) VALUES (?,?,?,?,?,?,?,?)')
     .bind(UID, 'me', name, salt, hash, secret, now, now).run();
   const user = await getUser(env);
   if (!user) throw new Error('setup_failed');
