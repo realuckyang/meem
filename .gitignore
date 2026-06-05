@@ -6,8 +6,8 @@ dist/
 *.tsbuildinfo
 
 # worker gui
-worker/gui/meem/node_modules/
-worker/gui/dist/
+worker/ui/meem/node_modules/
+worker/ui/dist/
 
 # worker · 含真实 D1 id / R2 id / LLM key 等
 worker/node_modules/

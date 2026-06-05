@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const source = resolve(root, '../extension/meem-extension.zip');
-const target = resolve(root, 'gui/dist/downloads/extension/meem-extension.zip');
+const target = resolve(root, 'ui/dist/downloads/extension/meem-extension.zip');
 
 try {
   await mkdir(dirname(target), { recursive: true });

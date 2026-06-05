@@ -7,7 +7,7 @@
   "compatibility_flags": ["nodejs_compat"],
 
   "assets": {
-    "directory": "gui/dist",
+    "directory": "ui/dist",
     "binding": "ASSETS",
     "not_found_handling": "none",
     "html_handling": "none",

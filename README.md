@@ -16,9 +16,9 @@ The Worker is the entry point. The console runs agent workflows, coordinates loc
 ```text
 worker/       Cloudflare Worker · REST API + D1 schema.sql + R2 + Room DO + routing
 worker/server/meem/ Meem backend · console API + agent + repository + Room DO
-worker/gui/meem/ Meem console frontend · React + Vite + TS
-worker/gui/meem/src/apps/ all Meem apps, including chat · mounted under /apps/:name
-worker/gui/meem/src/system/ global Meem shell · topbar, app panel, route state, shared clients
+worker/ui/meem/ Meem console frontend · React + Vite + TS
+worker/ui/meem/src/apps/ all Meem apps, including chat · mounted under /apps/:name
+worker/ui/meem/src/system/ global Meem shell · topbar, app panel, route state, shared clients
 client/       local computer client · shell/files/screenshot/system/computer control
 client/system/ local client runtime · WebSocket lifecycle and shared utilities
 client/apps/ local client apps · terminal/files/status/computer tools
@@ -28,7 +28,7 @@ dev/          reference material
 
 ## Runtime
 
-- `worker/gui/meem` connects to `/ws?client=meem`.
+- `worker/ui/meem` connects to `/ws?client=meem`.
 - `client` connects to `/ws?client=client` and executes computer tools.
 - `extension` connects to `/ws?client=extension` and executes browser tools.
 - `worker` routes console traffic, API requests, WebSocket connections, and static assets.
@@ -76,7 +76,7 @@ never re-run the whole file against a database that already holds data. See `AGE
 
 ```bash
 npm --prefix worker install
-npm --prefix worker run build:gui   # build the console frontend
+npm --prefix worker run build:ui   # build the console frontend
 npm --prefix worker run dev         # terminal 1 — Worker (deploy with: run deploy)
 
 cd client && npm install && npm start   # terminal 2 — computer client
@@ -97,7 +97,7 @@ select the `extension/` directory.
 ## Frontend checks
 
 ```bash
-npm --prefix worker/gui/meem run check
+npm --prefix worker/ui/meem run check
 npm --prefix worker run typecheck
 ```
 
